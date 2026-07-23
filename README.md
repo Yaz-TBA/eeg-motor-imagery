@@ -47,8 +47,10 @@ honest uncertainty, and as mildly optimistic: it treats 45 cross-validated predi
 independent draws from one model when they come from five. `p = 0.0010` is reported as **p ≤
 0.001** because 1/1001 is the resolution floor of a 1000-shuffle test, not a measurement.
 
-Shuffled labels never once beat the real result across 1000 permutations, so the
-decoding is finding real structure rather than fitting noise:
+Across 1000 label shuffles, not one matched or exceeded the real result, so the
+decoding is finding real structure rather than fitting noise. ("Matched or
+exceeded" rather than "beat" because that is the comparison scikit-learn
+actually counts.)
 
 ![Permutation null distribution](permutation_null.png)
 
