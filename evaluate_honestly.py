@@ -148,8 +148,21 @@ observed, null_scores, p_value = permutation_test_score(
 print(f"Observed accuracy : {observed:.1%}")
 print(f"Null distribution : {null_scores.mean():.1%} +/- {null_scores.std():.1%} "
       f"(max {null_scores.max():.1%})")
-print(f"p-value           : {p_value:.4f}")
-print(f"Shuffled labels beat the real result {int(p_value * (N_PERMUTATIONS + 1)) - 1} "
+# sklearn computes p = (C + 1) / (n + 1) where C counts permutations scoring
+# >= observed. So the smallest attainable value is 1/(n+1): with 1000 shuffles
+# that is 0.000999, and printing "p = 0.0010" invites reading a resolution floor
+# as a measurement. Report it as a bound when it bottoms out.
+floor = 1.0 / (N_PERMUTATIONS + 1)
+if p_value <= floor + 1e-12:
+    print(f"p-value           : <= {floor:.3f}  "
+          f"(the floor of a {N_PERMUTATIONS}-shuffle test, not a measurement)")
+else:
+    print(f"p-value           : {p_value:.4f}")
+
+# ">=", not ">": sklearn counts permutations that MATCH OR EXCEED the observed
+# score, so "beat" would understate this by one comparison.
+n_ge = int(round(p_value * (N_PERMUTATIONS + 1))) - 1
+print(f"Shuffled labels matched or exceeded the real result {n_ge} "
       f"times out of {N_PERMUTATIONS}.")
 
 # A sanity check, and worth being precise about what it can and cannot catch.
