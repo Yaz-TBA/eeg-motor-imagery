@@ -33,11 +33,19 @@ raw EEG  →  average reference  →  band-pass 8–30 Hz  →  epoch around cue
 
 | Metric | Value |
 |---|---|
-| CSP+LDA accuracy (stratified 5-fold CV) | **91.1% ± 4.4%** |
+| CSP+LDA accuracy (stratified 5-fold CV) | **91.1%** |
 | Chance (majority class) | 53.3% |
-| Permutation test (1000 shuffles) | **p = 0.0010** (null 50.7% ± 8.5%) |
+| Permutation test (1000 shuffles) | **p ≤ 0.001** (null 50.7% ± 8.5%) |
 | Wilson 95% CI on n=45 | [79.3%, 96.5%] |
+| Per-fold scores | 8/9, 8/9, 8/9, 8/9, 9/9 |
 | Trials | 45 (21 hands, 24 feet), one subject |
+
+The per-fold row appears instead of a ± because a 9-trial test set can only score multiples of
+1/9. A standard deviation over those five values is a step on that ladder, not a spread, which is
+the same objection that retired the earlier "± 5.6%" below. Take the Wilson interval as the
+honest uncertainty, and as mildly optimistic: it treats 45 cross-validated predictions as
+independent draws from one model when they come from five. `p = 0.0010` is reported as **p ≤
+0.001** because 1/1001 is the resolution floor of a 1000-shuffle test, not a measurement.
 
 Shuffled labels never once beat the real result across 1000 permutations, so the
 decoding is finding real structure rather than fitting noise:
@@ -94,14 +102,16 @@ so that neither one's diagnostics get attached to the other's number.
 
 ## Honest limitations
 
-- **Within-subject, small-n.** One subject, 45 trials. The number does not
-  claim cross-subject generalization; the ±5.6% spread shows the estimate is
-  noisy.
-- **Easy contrast.** Fists vs. feet are far apart on the motor homunculus
-  (lateral vs. top-central), so their scalp patterns differ a lot.
-  Left-hand-vs-right-hand would be harder.
-- **Clean subject.** Per-subject accuracy varies widely across the 109
-  subjects; subject 1 is a good recording.
+- **Within-subject, small-n.** One subject, 45 trials. The number does not claim cross-subject
+  generalization, and the honest interval is roughly [79%, 97%].
+- **Easy contrast.** Fists vs. feet are far apart on the motor homunculus (lateral vs.
+  top-central), so their scalp patterns differ a lot. Left-hand-vs-right-hand is harder, and
+  `harder_contrast.py` found it is also **gaze-confounded** in this dataset: a decoder using only
+  frontopolar channels at 0.5–5 Hz matches the 64-channel result on this subject.
+- **Clean subject.** Subject 1 is the **91st percentile** of the 109; the median subject scores
+  60.0%. Picking it is fair for a baseline, and quoting it without the distribution would not be.
+- **No artifact rejection.** No ICA, and EEGMMIDB ships no EOG channels, so ocular contamination
+  can be bounded by ablation but never removed or directly measured.
 
 ## Reproduce
 
@@ -115,15 +125,36 @@ Data downloads automatically on first run (cached in `~/mne_data`).
 
 ### Scripts (built rung by rung)
 
-| Script | Does |
-|---|---|
-| `load_and_plot.py` | Load one run, plot raw EEG → `raw_eeg.png` |
-| `epoch_trials.py` | Cut runs 6/10/14 into labeled hands/feet trials |
-| `filter_and_epoch.py` | Add 8–30 Hz band-pass + average reference |
-| `decode_csp.py` | CSP + LDA, cross-validated, plot spatial patterns |
-| `evaluate_honestly.py` | Stress-test the number: stratification, coverage, permutation test, seed sweep |
+Rungs 1–4 build the result. Rungs 5–11 attack it, and three of them found something wrong.
+
+| # | Script | Does |
+|---|---|---|
+| 1 | `load_and_plot.py` | Load one run, plot raw EEG → `raw_eeg.png` |
+| 2 | `epoch_trials.py` | Cut runs 6/10/14 into labeled hands/feet trials |
+| 3 | `filter_and_epoch.py` | Add 8–30 Hz band-pass + average reference |
+| 4 | `decode_csp.py` | CSP + LDA, cross-validated, permutation test, spatial patterns |
+| 5 | `evaluate_honestly.py` | Stress-test the number: stratification, coverage, permutation test, 100-seed sweep of both estimators |
+| 6 | `sweep_subjects.py` | All 109 subjects, per-subject chance, against the pure-noise expectation |
+| 7 | `harder_contrast.py` | Left vs. right fist (runs 4/8/12). Found a lateralised gaze confound |
+| 8 | `cross_subject.py` | Leave-one-subject-out across 20 subjects |
+| 9 | `riemannian.py` | MDM and Tangent Space vs. the CSP baseline on identical folds |
+| 10 | `eegnet_compare.py` | EEGNet vs. CSP+LDA at two sample sizes. Where the units bug was found |
+| 11 | `regime_decomposition.py` | Decomposes rung 10's confounded third regime into band × window |
 
 ## Next
 
-- Cross-subject / harder contrasts (left vs. right hand) to test robustness.
-- Swap CSP+LDA for **EEGNet** (compact CNN) and compare against this baseline.
+Cross-subject, harder contrasts and the EEGNet comparison are all built now (rungs 7–11). What
+is actually left:
+
+- **More trials per subject.** Almost every limitation above traces back to 45 trials: the
+  quantized folds, the underpowered comparisons, the learning curve that cannot be run. Public
+  corpora exist with 2,000–5,000 trials per subject.
+- **Filter-bank CSP (FBCSP).** CSP per sub-band, combined by the classifier. A reliable gain, and
+  still classical and interpretable.
+- **The learning curve**, holding subject fixed and sweeping training-set size. That would settle
+  a claim this project made and then retracted, that the barrier is sample size rather than
+  anatomy.
+- **ICA-based artifact rejection**, and a paradigm that records EOG.
+
+See [EXPLAINER.md](EXPLAINER.md) §12 for the full scoreboard, including the five claims this
+project published and later retracted.
