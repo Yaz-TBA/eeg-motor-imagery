@@ -88,10 +88,25 @@ that maximize the class difference. That method is **CSP** (Section 8). Hold tha
 - **Size:** 109 subjects, **64-channel** EEG, sampled at **160 Hz** (160 samples per second per channel).
 - **Format:** EDF files (European Data Format — the standard container for clinical
   physiological recordings). One file per subject per run.
-- **Structure:** each subject did 14 runs. Different runs are different *tasks*:
-  - Some runs = real movement; some = **imagined** movement.
-  - **Runs 6, 10, 14 = Task 4 = imagine both fists vs. both feet.** These are the three runs
-    this project uses. Using all three gives us more trials than one run alone.
+- **Structure:** each subject did 14 runs, and different runs are different *tasks*. The
+  distinction that matters most is **executed** versus **imagined** movement, because the two
+  sit next to each other in the numbering and are trivially easy to confuse:
+
+| Task | Runs | What the subject did |
+|---|---|---|
+| baseline | 1, 2 | eyes open, eyes closed |
+| 1 | 3, 7, 11 | **executed** left vs. right fist |
+| 2 | **4, 8, 12** | **imagined** left vs. right fist |
+| 3 | 5, 9, 13 | **executed** both fists vs. both feet |
+| 4 | **6, 10, 14** | **imagined** both fists vs. both feet |
+
+**This project uses runs 6/10/14** — Task 4, imagined fists vs. feet. Using all three gives more
+trials than one run alone. The harder left/right contrast in rung 7 uses **4/8/12**.
+
+> An earlier version of this document twice told the reader to use **3/7/11** for the harder
+> left/right contrast. Those are *executed* movement. Building an imagery result on them and
+> writing it up as imagery is a silent over-claim, and it is precisely the kind a reviewer
+> catches in one minute. The code always used 4/8/12; only this document was wrong.
 
 ### 4.1 Annotations: how the data knows what the subject was doing
 Inside each EDF file are **annotations** — timestamped markers the experimenters recorded when
@@ -104,9 +119,11 @@ These annotations are the *ground-truth labels*. Without them we'd have EEG but 
 the person was told to imagine, and supervised learning would be impossible.
 
 > ⚠️ Gotcha worth knowing for a mentor conversation: T1/T2 mean *different things in different
-> runs*. In the hand runs (3/7/11) T1/T2 mean left/right fist. In *these* runs (6/10/14) T1 =
-> both fists, T2 = both feet. The code hard-codes the runs so this mapping is correct — but if
-> you ever swap runs, the labels silently change meaning. This is a classic EEGBCI footgun.
+> runs*. In the fist runs — 3/7/11 executed, 4/8/12 imagined — T1 = left fist and T2 = right
+> fist. In *these* runs (6/10/14) T1 = both fists and T2 = both feet. The code hard-codes the
+> runs so this mapping is correct, but if you ever swap runs the labels silently change meaning
+> and **nothing raises an error**. This is a classic EEGBCI footgun, and this project tripped
+> over the neighbouring version of it (see the run table above).
 
 ---
 
@@ -118,20 +135,29 @@ doing real work:
 | Library | Role in this project |
 |---|---|
 | **MNE** (`mne==1.12.1`) | The EEG/MEG workhorse. Downloads the data, reads EDF, holds the signal in `Raw`/`Epochs` objects, does filtering, referencing, epoching, and even ships the CSP implementation and the scalp-map plotting. **~90% of the domain logic is MNE.** |
-| **scikit-learn** (`scikit-learn==1.9.0`) | The generic ML layer: `LinearDiscriminantAnalysis` (the classifier), `Pipeline` (chain CSP→LDA), and `cross_val_score`/`ShuffleSplit` (honest evaluation). |
-| **NumPy** (`numpy==2.5.1`) | Array math under everything; used directly only for the chance-level calculation and rounding. |
-| **matplotlib** (`matplotlib==3.11.0`) | Renders the two PNGs (raw signal, CSP scalp maps). |
+| **scikit-learn** (`scikit-learn==1.9.0`) | The generic ML layer: `LinearDiscriminantAnalysis` (the classifier), `Pipeline` (chain CSP→LDA), and `cross_val_score` / `StratifiedKFold` / `LeaveOneGroupOut` / `permutation_test_score` (honest evaluation). |
+| **NumPy** (`numpy==2.5.1`) | Array math under everything; used directly for the chance-level calculation, the seed sweeps, and the effect decompositions. |
+| **matplotlib** (`matplotlib==3.11.0`) | Renders every PNG in the repo. |
 
-Everything else in `requirements.txt` (certifi, scipy, joblib, pooch, tqdm, pillow, …) is a
-transitive dependency — pulled in *by* the four above, not used directly by your code. `pooch`
-is worth a mention: it's the downloader MNE uses to fetch and cache the dataset.
+Three more libraries arrive with the later rungs and are only needed for those:
+
+| Library | Used by |
+|---|---|
+| **pyriemann** (`pyriemann==0.12`) | `riemannian.py` — covariance classification on the SPD manifold. |
+| **PyTorch** (`torch==2.13.0`) | `eegnet_compare.py`, `regime_decomposition.py` — the CNN. Runs on Apple GPU via the `mps` backend when available. |
+| **braindecode** (`braindecode==1.6.1`, with `skorch` and `einops`) | The EEGNet implementation and its scikit-learn-compatible `EEGClassifier` wrapper, which is what lets a CNN drop into `cross_val_score` alongside CSP+LDA. |
+
+`joblib` is used directly too — `Parallel` fans the per-subject data loading across cores in the
+sweep and the cross-subject rungs. The rest of `requirements.txt` (certifi, scipy, pooch, tqdm,
+pillow, …) is transitive. `pooch` is worth a mention: it is the downloader MNE uses to fetch and
+cache the dataset.
 
 `.gitignore` keeps the virtual environment (`.venv/`) and Python bytecode caches out of git —
 standard hygiene so the repo stays just source + results.
 
 ---
 
-## 6. The architecture: a "ladder" of four scripts
+## 6. The architecture: a ladder of eleven rungs
 
 The defining design choice of this repo is that it's built **rung by rung**. Each script is a
 complete, runnable checkpoint that adds exactly one new idea on top of the previous one. The
@@ -140,23 +166,33 @@ mentor: *it makes the pipeline debuggable and teachable, because every stage can
 inspected in isolation before the next stage is added.*
 
 ```
-load_and_plot.py      Rung 1:  Can I load the data and see a signal?
-        │
-        ▼
-epoch_trials.py       Rung 2:  Can I cut it into labeled trials?
-        │
-        ▼
-filter_and_epoch.py   Rung 3:  Can I isolate the motor rhythms first?
-        │
-        ▼
-decode_csp.py         Rung 4:  Can I actually classify it — and prove it's real?
+BUILD IT
+ 1  load_and_plot.py          Can I load the data and see a signal?
+ 2  epoch_trials.py           Can I cut it into labeled trials?
+ 3  filter_and_epoch.py       Can I isolate the motor rhythms first?
+ 4  decode_csp.py             Can I classify it?
+
+ATTACK IT
+ 5  evaluate_honestly.py      Is the number real, or an artifact of how I measured it?
+ 6  sweep_subjects.py         Does it hold across 109 people, or just the lucky one?
+ 7  harder_contrast.py        What happens on a genuinely harder contrast?
+ 8  cross_subject.py          Does it transfer to a person the model has never seen?
+ 9  riemannian.py             Does a stronger classical method beat it?
+10  eegnet_compare.py         Does a CNN beat it, and at what sample size?
+11  regime_decomposition.py   What did rung 10's third experiment actually measure?
 ```
 
 `decode_csp.py` is the *only* script you need to run to reproduce the headline result; it
-re-does the work of rungs 1–3 internally. The earlier scripts are kept as **inspectable
-checkpoints**, not as an import chain (nothing imports anything else — each file is standalone).
+re-does the work of rungs 1–3 internally. Every file is standalone — nothing imports anything
+else — so any rung can be run and read on its own.
 
-The next four sections walk each rung in depth.
+**The shape of that list is the point.** Four rungs build the result and seven try to break it.
+Three of them succeeded: rung 7 found a gaze confound in this project's own data, rung 10 was
+measuring a network that turned out to be dead, and rung 6's headline inference was backwards.
+A project that only climbs is a demo. The rungs that found something wrong are the ones worth
+talking about, and §12 reports what each one actually returned.
+
+The next sections walk each rung in depth.
 
 ---
 
@@ -272,18 +308,270 @@ a clean 1-second imagery window sharpens the class difference. (This is a tunabl
 ```python
 csp = CSP(n_components=4, reg=None, log=True, norm_trace=False)
 clf = Pipeline([("CSP", csp), ("LDA", LinearDiscriminantAnalysis())])
-cv  = ShuffleSplit(n_splits=10, test_size=0.2, random_state=42)
+
+# Stratified k-fold, not ShuffleSplit: it tests every trial exactly once and
+# keeps class balance steady across folds.
+cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
 scores = cross_val_score(clf, train_data, labels, cv=cv)
 ```
 CSP and LDA are explained in full in Sections 8 and 9; cross-validation in Section 10.
 
-Then it computes and prints the honest scoreboard:
+**(c) The significance test.** Shuffle the labels a thousand times, re-run the whole pipeline
+each time, and ask how often chance alone matches the real result:
+```python
+observed, null_scores, p_value = permutation_test_score(
+    clf, train_data, labels, scoring="accuracy", cv=cv,
+    n_permutations=1000, random_state=42, n_jobs=-1,
+)
+```
+This is the difference between "91% sounds high" and "91% is outside what this pipeline
+produces on data with no signal in it." §10.3 covers what the resulting p-value can and cannot
+say.
+
+Then it prints the scoreboard against the majority-class baseline:
 ```python
 chance = max(np.mean(labels == 2), np.mean(labels == 3))   # majority-class baseline
 ```
 and finally **visualizes what CSP learned** by fitting it on all trials and drawing the top 4
-spatial patterns as scalp maps → **`csp_patterns.png`**. This plot is the credibility check
-(Section 8.3).
+spatial patterns as scalp maps → **`csp_patterns.png`**. That plot is *interesting, and it is
+not the credibility check* — §8.3 explains why, and it is the single most important correction
+in this document.
+
+### Rung 5 — `evaluate_honestly.py`: is the number real, or an artifact of how I measured it?
+
+**Goal:** attack the headline before anyone else does.
+
+Rung 4 originally reported **94.4% ± 5.6%** from `ShuffleSplit(n_splits=10, test_size=0.2)`.
+Three things were wrong with that, and this rung finds all three.
+
+1. **The ± was quantization, not spread.** A 20% test set of 45 trials is **9 trials**, so a
+   fold's accuracy can only be a multiple of 1/9 ≈ 11.1%. The ten folds landed on just **two
+   distinct values**. "± 5.6%" is the gap between two rungs of a ladder, not a standard
+   deviation over a distribution.
+2. **ShuffleSplit is not a partition.** It resamples independently per split, so some trials are
+   **never tested at all** while others are tested several times, and class balance swings fold
+   to fold. It is also not stratified.
+3. **A fold standard deviation is not a confidence interval**, and reading it as one implies a
+   precision that 45 trials cannot support.
+
+Switching to `StratifiedKFold(n_splits=5, shuffle=True)` — every trial tested exactly once,
+class balance held steady — gives the number this repo now publishes: **91.1%**, with a
+1000-shuffle permutation test at **p ≤ 0.001**.
+
+**The uncomfortable part, which is the actually interesting finding.** It would be tidy to say
+the estimator change corrected an inflated number. It did not. Sweeping **100 cross-validation
+seeds** through both estimators:
+
+| estimator | mean | range | where seed 42 falls |
+|---|---|---|---|
+| ShuffleSplit (retracted) | 93.6% | 87.8–98.9% | 49th percentile |
+| **StratifiedKFold (published)** | **93.8%** | 88.9–97.8% | **3rd percentile** |
+
+The two estimators **agree in expectation to about 0.2 points**. So the 94.4 → 91.1 drop is
+roughly **2.7 points of seed luck and 0.6 points of real estimator change**. The switch is still
+correct, for coverage and stratification reasons, but presenting it as an integrity correction
+would be its own small dishonesty. The published 91.1% is a **conservative draw** from an
+88.9–97.8% distribution, and that is how it should be described out loud.
+
+There is a methodological trap here worth naming, because this project fell into it: the
+"seed 42 is not cherry-picked" credential was originally computed for **ShuffleSplit** and then
+silently carried onto the **StratifiedKFold** number. Diagnostics do not transfer across
+estimators. The script now sweeps both so neither one's verdict can be attached to the other's
+number.
+
+### Rung 6 — `sweep_subjects.py`: does it hold across 109 people?
+
+**Goal:** turn a claim about *this subject* into a claim about *the method*.
+
+The identical pipeline runs on all 109 subjects, computing **chance per subject** — class
+balance differs between people, so borrowing subject 1's 53.3% to judge subject 47 would be its
+own small lie.
+
+| | |
+|---|---|
+| median | **60.0%** |
+| IQR | 52.8–75.6% |
+| above their own chance | 79 / 109 |
+| exactly at chance | 6 / 109 |
+| below their own chance | 24 / 109 |
+
+**Subject 1's 91.1% is the 91st percentile.** Say that out loud before anyone has to ask.
+
+**The inference this rung originally drew was backwards, which is worth more than the numbers.**
+The first write-up read "27% of subjects at or below chance" as a **BCI illiteracy rate**, and
+the coincidence that 27% sits inside the literature's familiar 15–30% band made it feel like
+replication. Both halves were wrong:
+
+- **The direction.** This pipeline's own permutation null is 50.7% ± 8.5%. Under a **global null
+  in which nobody has any signal**, the expected fraction landing at or below their own chance
+  line is **~55% (59/109)**. Observed: **30/109 (28%)**. Seeing *half* the noise-only rate is
+  **evidence of signal across the population**, not a measure of failure.
+- **The comparison.** The literature's 15–30% describes users who cannot achieve control *after
+  training with online feedback*. These are naive, single-session, offline subjects. By the
+  literature's own operational criterion (~70% for usable binary control), this sweep says
+  **65% fall short, not 27%**.
+
+The script now prints the pure-noise expectation directly beneath the counts, so the number
+cannot be misread that way twice.
+
+**A second trap it caught.** The original bucketing used `beat = acc > chance`, and for **six
+subjects** those two quantities are *mathematically equal* (accuracy is `mean(k/9)`, chance is
+`m/45`). Whether the float landed one ULP above or below decided the bucket, so the headline
+count moved with fold ordering. Three explicit buckets with a tolerance replaced it, which is
+why the table above reports ties as their own row.
+
+### Rung 7 — `harder_contrast.py`: how I found a gaze confound in my own result
+
+**Goal as stated:** measure what the method costs when the classes move closer together. Left
+fist versus right fist share the same sensorimotor strip, mirrored, instead of sitting
+centimetres apart the way fists and feet do.
+
+**Runs 4/8/12** — imagined left vs. right fist. Not 3/7/11, which are *executed* movement.
+
+Subject 1 scores **73.3%**, and the original write-up reported that as "what a harder contrast
+costs: 17.8 points." Nearly everything about that sentence was wrong.
+
+- **It is n=1.** Rung 6 had just swept 109 subjects and this rung silently reverted to one. The
+  **group** left/right mean across 16 subjects is **57.5%** (median 53.3%), so the real cost of
+  the harder contrast is about **7 points, not 17.8**.
+- **The 95% CI** on the difference between two independent n=45 estimates is **[2.4, 33.1]**.
+- **The window was the joint maximum.** Sliding the 1-second crop gives 55.6 / **73.3 (used)** /
+  64.4 / 46.7 / 57.8%. Adjacent windows swinging 27 points is noise, and the reported one is the
+  peak of it.
+- **The two conditions come from different recording runs**, so "harder contrast" cannot be
+  separated from "different session."
+
+**And then the real problem.** The PhysioNet protocol places the target on the **left or right
+of the screen and leaves it there** until the subject relaxes, so a lateralised visual stimulus
+is present for the entire decoding window. On subject 1, filtered to 0.5–5 Hz, frontopolar
+channels show **+4.41 µV on left cues and −3.69 µV on right cues (t = 5.12, p < 0.001)**. Across
+16 subjects the effect is significant in 11 and **sign-consistent in 15 (p = 0.0005)**.
+
+A decoder using **only 8 frontopolar channels at 0.5–5 Hz reaches 73.3%** on subject 1 —
+numerically identical to the 64-channel "motor imagery" headline.
+
+Splitting the band confirms the diagnosis: mu alone **73.3%**, beta alone 64.4%, combined
+**73.3%**. The combined band buys nothing over mu. This is an **alpha-band decoder**.
+
+EEGMMIDB has **no EOG channels** and this pipeline has no ICA, so the confound can be neither
+removed nor monitored. In fairness, group-wide the ocular decoder averages 53.9% against the
+pipeline's 57.5%, so gaze does not explain left/right decoding in general. But the specific
+number that got reported came from the subject where the confound is strongest.
+
+**Why this rung is kept.** As "the cost of a harder contrast" it is a bad measurement. As "I
+built a rung, believed it, and then found the confound in my own data" it is the most useful
+thing in the repository.
+
+### Rung 8 — `cross_subject.py`: does it transfer to a person the model has never seen?
+
+**Goal:** the result a deployed BCI actually needs. Everything up to here is *within*-subject —
+the model trains and tests on the same brain. A real system meets a new user whose skull
+thickness, cortical folding and electrode placement are all different, and it has to work anyway.
+
+Trials from 20 subjects are pooled and evaluated **leave-one-subject-out**: train on 19, test on
+the held-out person, rotate, with subject as the group in `LeaveOneGroupOut`.
+
+The within-to-cross gap is the deliverable, and the honest form of it is a **confidence interval
+rather than a point estimate**: cross-subject sits at near-parity, 95% CI **[−1.9, +11.2]
+points, p = 0.181**. An 11-point drop is fully consistent with this data, and so is no drop at
+all. The experiment cannot separate them.
+
+**Retracted from the original write-up:** "the barrier is sample size, not anatomy." That came
+from a single uncontrolled comparison that varied two factors at once, with no learning curve
+behind it. It may well be true. This rung does not show it, and the way to show it is to hold
+the subject fixed and sweep training-set size, which needs more trials per subject than
+EEGMMIDB has.
+
+**A correction about a check rather than a result.** This script asserted that no subject
+appears on both sides of a `LeaveOneGroupOut` split, and reported passing it as evidence of no
+leakage. That assertion is **definitionally true and can never fail** — it restates the
+definition of the splitter. It now carries an honest comment about what it can and cannot catch.
+A guard that cannot fail is worse than no guard, because it reads as protection in a review.
+
+### Rung 9 — `riemannian.py`: does a stronger classical method beat it?
+
+**Goal:** answer the failure rung 8 measured. CSP learns spatial filters tuned to the training
+population's anatomy, and a new skull shifts everything. Riemannian methods attack that
+directly. A trial's spatial covariance matrix is **symmetric positive definite**, SPD matrices
+live on a curved manifold rather than in flat space, and treating them as flat feature vectors
+distorts the distances between them. Measuring distance *along* the manifold respects the actual
+geometry, and it is the current state of the art for classical BCI.
+
+Four pipelines — MDM and Tangent Space, each on all 64 channels and on the sensorimotor subset —
+run against the CSP+LDA baseline on **identical LOSO folds**.
+
+**It lost.** The honest reading of *how* it lost is much narrower than what was first written:
+
+| comparison | paired p |
+|---|---|
+| MDM-64 | **0.005** |
+| MDM-motor | 0.200 |
+| TS-64 | 0.349 |
+| TS-motor | 0.330 |
+
+Only MDM-64 is significant; the other three confidence intervals span zero. The minimum
+detectable difference at 80% power with n=20 is about **5–6 points**, and three of the four
+deltas are smaller than that.
+
+**Retracted:** "no method dominates, and the best method is subject-specific." Per-subject
+optimality requires a **subject × method interaction**, and there is none (χ²₁₉ = 13.0,
+**p = 0.84**). The 9-8-3 win/loss/tie split is exactly what a *uniform* −2.6-point difference
+plus 45-trial noise produces. "No method dominates" is indistinguishable here from "this
+experiment cannot tell these methods apart," and only the second is supported.
+
+Two further caveats surfaced on review. The script selects its best pipeline by **max mean over
+the same test folds it reports from**, which is selection on the test set. And framing the
+comparison as "2080 parameters versus a classical baseline" ignored that
+`Covariances(estimator="oas")` is a shrinkage estimator *built* for exactly the small-sample
+regime, while the CSP baseline it loses to runs with `reg=None`.
+
+### Rung 10 — `eegnet_compare.py`: does a CNN beat designed filters?
+
+**Goal:** the question is not "is deep learning better" but **at what sample size does
+*learning* the filters start to beat *designing* them**. EEGNet is structurally doing what CSP
+does — a temporal convolution discovers frequency filters, then a depthwise spatial convolution
+learns a spatial filter per temporal filter — except end to end.
+
+| regime | data | CSP + LDA | EEGNet |
+|---|---|---|---|
+| **A** within-subject, subject 1 | 45 trials | **91.1%** | 82.2% |
+| **B** cross-subject LOSO, narrow band | ~900 trials | 59.4% | **60.1%** |
+
+At n=45 the CNN loses by **8.9 points**. Pooled across 20 subjects the two are level. That is the
+honest small-data statement, and it is the expected shape: learned filters need volume.
+
+**This rung was measuring a dead network, and it took adversarial review to catch it.**
+
+MNE returns data in **volts**. The signal standard deviation is about 1.3e-5, so the variance is
+about **1.6e-10**. braindecode's EEGNet normalises with `BatchNorm2d(eps=1e-3)` — a variance
+**seven orders of magnitude below eps**. The batch-norm denominator is therefore essentially
+just eps, normalisation never engages, activations stay near 1e-8, and the network cannot train
+out of it: reaching useful logits would require final-layer weights around 1e8, which 100 AdamW
+steps at lr=1e-3 cannot travel to.
+
+The failure was **silent, and it looked like a result**:
+
+| | accuracy | predicted class counts |
+|---|---|---|
+| as originally committed (volts) | 53.3% | **[0, 45]** |
+| rescaled to microvolts | **82.2%** | [21, 24] — matches truth exactly |
+
+The dead model **predicted a single class for all 45 trials**. Its 53.3% was the *majority-class
+rate*, not chance performance — and "a CNN performs at chance on small data" is an entirely
+plausible finding, which is exactly why it was written up as a headline result and recommended
+for memorisation. The gap originally reported was **−37.8 points**. The real one is **−8.9**.
+
+**The two guards now in the file are the actual lesson.** Every check in this project up to that
+point was a *null* check: permutation tests, chance baselines, leakage assertions. Those catch a
+model that is too good and **can never catch one that is dead**. So the file now carries
+
+1. a **variance-versus-eps assertion** that fails loudly when the units are wrong, and
+2. a **degenerate-prediction check** wired into the scorer itself, so it runs on *every fold* at
+   no extra compute and refuses to score a model that emitted one class for everything.
+
+CSP is unaffected by the units, because it works on variance *ratios*, which are scale
+invariant. That asymmetry is precisely why the bug hid: the baseline was healthy, so the
+comparison looked healthy.
 
 ---
 
@@ -380,34 +668,88 @@ accuracy would be inflated. Wrapping both in a Pipeline is what makes the evalua
 With 45 trials, a single random split could be lucky or unlucky by chance. One number would be
 meaningless.
 
-### 10.2 ShuffleSplit ×10
-`ShuffleSplit(n_splits=10, test_size=0.2, random_state=42)`:
-- Randomly hold out **20%** of trials (≈9) as a test set, train on the other 80%, score.
-- Repeat **10 times** with different random splits.
-- Report the **mean ± standard deviation** across the 10 runs.
-- `random_state=42` fixes the randomness so the result is **reproducible** — you get the same
-  94.4% every time you run it.
+### 10.2 StratifiedKFold ×5
+`StratifiedKFold(n_splits=5, shuffle=True, random_state=42)`:
+- **Partition** the 45 trials into 5 folds. Train on 4, test on 1, rotate.
+- **Stratified**: each fold preserves the 21/24 class balance, so no fold is scored against a
+  wildly different floor than the others.
+- Every trial is tested **exactly once**. Nothing is skipped and nothing is double-counted.
+- `random_state=42` fixes the fold assignment so the run is reproducible.
 
-The reported **±5.6%** spread is not a footnote — it's honesty. It tells you the estimate is
-*noisy* (because n is small), so you shouldn't over-trust the exact 94.4%.
+This replaced `ShuffleSplit(n_splits=10, test_size=0.2)`, which was neither a partition nor
+stratified: it never tested 5 of the 45 trials while testing others up to 6 times, and let class
+balance swing from 2:7 to 7:2 across folds. §7 rung 5 walks through the whole comparison,
+including the finding that most of the resulting 94.4 → 91.1 change was **seed luck rather than
+a correction**.
+
+> **The ± is still not a spread, and this document should not pretend otherwise.** The five folds
+> score `[8/9, 8/9, 8/9, 8/9, 9/9]`. A 9-trial test set can only produce multiples of 1/9, so
+> "± 4.4%" is one rung of exactly the same quantization ladder that made "± 5.6%" meaningless. It
+> is reported because the script prints it, not because it is a confidence interval. For an
+> actual interval, a Wilson bound on 45 trials gives roughly **[79%, 97%]** — and even that is
+> optimistic, because it treats 45 cross-validated predictions as independent draws from one
+> model when they come from five different ones.
 
 ### 10.3 The chance baseline
 ```python
 chance = max(mean(labels==2), mean(labels==3))   # = 24/45 = 53.3%
 ```
 A model that always guesses the majority class ("feet") would be right 53.3% of the time. So the
-number that matters is not "94%" in a vacuum but **"94% vs. a 53% floor"** — the model is doing
-far better than guessing. *Always report accuracy against chance;* a raw accuracy with no
-baseline is a red flag a mentor will catch immediately.
+number that matters is never "91%" in a vacuum but **"91% against a 53.3% floor."** *Always
+report accuracy against chance;* a raw accuracy with no baseline is a red flag a mentor will
+catch immediately.
 
-### 10.4 How to read the final printout
+Note this is the **majority-class rate**, not 50%. That distinction did real damage in this
+project: a broken network in rung 10 scored exactly 53.3% by predicting one class for every
+trial, and because 53.3% reads as "chance," it was mistaken for a finding rather than a bug.
+
+### 10.4 The permutation test — is 91% outside what noise produces?
+
+Cross-validation tells you the estimate is stable. It does not tell you the signal is real. For
+that, `permutation_test_score` shuffles the labels 1000 times and re-runs the **entire pipeline**
+on each shuffle, building the distribution of accuracies this exact method produces on data whose
+labels mean nothing.
+
+The null lands at **50.7% ± 8.5%**, with a maximum of 82.2% across 1000 shuffles. The observed
+91.1% sits outside all of it.
+
+Two honesty notes about the reported p-value:
+
+- With 1000 permutations the smallest reportable value is **1/1001**, so `p = 0.0010` is the
+  **resolution floor of the test, not a measurement**. Report it as **p ≤ 0.001**.
+- scikit-learn counts permutations scoring **≥** the observed value, so the correct phrasing is
+  "no shuffle matched or exceeded the real result," not "none beat it."
+
+### 10.5 The ablation — the control that actually rules out artifacts
+
+A permutation test proves the model found *structure*. It cannot prove that structure is
+**motor**. A decoder riding an eye-movement artifact that correlates with the cue would pass a
+permutation test comfortably.
+
+The control that discriminates is an **ablation**, because it makes a falsifiable prediction: if
+the decoder is reading sensorimotor cortex, then removing sensorimotor cortex must break it.
+
+| channels used | accuracy |
+|---|---|
+| sensorimotor only | **95.9%** |
+| all 64 | 91.1% |
+| frontopolar only | **47.4%, i.e. chance** |
+| leave-one-run-out, all 64 | 93.3% |
+
+Delete the cortex that should carry the signal and the decoder collapses to chance. Keep only
+that cortex and it *improves*. That is a control. Reading a scalp map by eye — which is what this
+document used to offer here — is not, and §8.3 is the full account of why.
+
+### 10.6 How to read the final printout
 ```
-CSP+LDA accuracy: 94.4%  (+/- 5.6%)
+CSP+LDA accuracy: 91.1%  (+/- 4.4%)
 Chance (majority class): 53.3%
-Per-fold: [1.   0.89 1.   0.89 ...]
+Per-fold: [0.89 0.89 0.89 0.89 1.  ]
+Permutation test: p = 0.0010 (null 50.7% +/- 8.5%, max 82.2%)
 ```
-The per-fold list shows individual splits ranged from ~89% to 100% — consistent with a real,
-strong effect plus small-sample noise.
+Four folds at 8/9 and one at 9/9. Read that per-fold line as the quantization warning it is: the
+folds are not sampling a smooth distribution, they are landing on the only values a 9-trial test
+set can produce.
 
 ---
 
@@ -416,40 +758,80 @@ strong effect plus small-sample noise.
 Every constant near the top of the scripts is a lever. Here's what each does and what happens
 if you turn it:
 
-| Knob | Current | What it controls | Try changing it to… |
+| Knob | Current | What it controls | Turning it |
 |---|---|---|---|
-| `SUBJECT` | 1 | Which person | Loop over all 109; report mean accuracy — the real test of the method (see §12). |
-| `RUNS` | 6,10,14 | Which task | **3,7,11** = imagine *left vs. right fist* — a much harder contrast (same homunculus strip). Accuracy will drop; that's the point. |
-| `L_FREQ,H_FREQ` | 8,30 | The band kept | Split into mu (8–12) and beta (13–30) separately (filter-bank CSP) and combine — often a real accuracy gain. |
-| CSP `n_components` | 4 | # spatial filters | 6 or 8 — more filters can help or overfit; cross-validate to decide. |
-| CSP `reg` | None | Covariance shrinkage | `'ledoit_wolf'` — stabilizes CSP when trials are few or channels many; important for cross-subject. |
-| crop `1.0–2.0 s` | 1 s window | Which slice = features | Widen to 0.5–2.5 s, or slide the window; the imagery signal isn't perfectly time-locked. |
-| `cv` splits/test_size | 10 / 0.2 | Evaluation rigor | Stratified K-fold; or **leave-one-subject-out** once you go multi-subject. |
-| `random_state` | 42 | Reproducibility seed | Change it and re-run to feel how much the 94% wobbles with n=45. |
+| `SUBJECT` | 1 | Which person | **Already swept** — rung 6 runs all 109. Median 60.0%, and subject 1 is the 91st percentile. |
+| `RUNS` | 6,10,14 | Which task | **4,8,12** = *imagined* left vs. right fist, a much harder contrast on the same homunculus strip. **Not 3,7,11 — those are executed movement** (see the run table in §4). **Already built** as rung 7, where it found a gaze confound. |
+| `L_FREQ,H_FREQ` | 8,30 | The band kept | Split into mu (8–12) and beta (13–30) and combine (filter-bank CSP) — often a real gain, and still unbuilt here. Splitting them on the left/right contrast is what exposed it as an alpha-band decoder. |
+| CSP `n_components` | 4 | # spatial filters | 6 or 8 — more filters can help or overfit; cross-validate to decide. Untested here. |
+| CSP `reg` | None | Covariance shrinkage | `'ledoit_wolf'` — stabilizes CSP when trials are few or channels many. Worth noting that rung 9's Riemannian comparison ran with shrinkage while this baseline did not, which flattered the comparison in the baseline's favour. |
+| crop `1.0–2.0 s` | 1 s window | Which slice becomes features | Sliding it on the left/right contrast gave 55.6 / 73.3 / 64.4 / 46.7 / 57.8% — a 27-point swing across adjacent windows. Treat this knob as a **noise source**, not a tuning surface. |
+| `cv` | `StratifiedKFold(5, shuffle=True)` | Evaluation rigor | **Leave-one-subject-out** once you go multi-subject (rungs 8–10 do). Leave-one-**run**-out is the cheaper session-level check: it holds at 93.3%. |
+| `random_state` | 42 | Reproducibility seed | Rung 5 already swept 100 seeds: 88.9–97.8%, with 42 at the **3rd percentile**. Worth knowing that 42 was **inherited from MNE's CSP tutorial, not chosen** — which makes "the seed wasn't cherry-picked" true but vacuous. |
+
+> **On that last row.** This baseline is MNE's CSP tutorial almost verbatim: the runs, the
+> subject, `tmin`/`tmax`, `firwin`, the 1–2 s crop, `CSP(n_components=4, log=True,
+> norm_trace=False)`, and the seed all match. That is entirely legitimate for a baseline, and it
+> is much better to say so first than to have someone else point it out.
 
 ---
 
-## 12. How to extend it (concrete next projects, roughly in order of value)
+## 12. The scoreboard: what every rung actually returned
 
-1. **Multi-subject sweep (highest value, lowest effort).** Wrap the whole pipeline in a loop
-   over subjects 1–109, collect per-subject accuracy, and plot the distribution. This converts
-   "94% on one lucky subject" into a defensible claim about the *method*. Expect a wide spread —
-   some subjects are "BCI illiterate" and barely beat chance. This single change is what turns a
-   demo into a result.
-2. **Cross-subject generalization.** Train on subjects 1–108, test on 109 (leave-one-subject-out).
-   This is much harder — every brain/skull is different — and is where naive CSP struggles.
-   Motivates transfer-learning and covariance-alignment methods.
-3. **Harder contrasts.** Switch to runs 3/7/11 (left vs. right fist). Lower accuracy but far
-   more useful for a real BCI (a left/right decision drives a cursor).
-4. **Filter-bank CSP (FBCSP).** Run CSP separately in several sub-bands and let the classifier
-   combine them. A well-known, reliable accuracy bump — and still classical/interpretable.
-5. **Swap in EEGNet (the README's stated "Next").** A compact convolutional neural net that
-   learns spatial + temporal filters end-to-end, no hand-designed CSP. The right way to compare
-   is *against this CSP+LDA baseline on the exact same splits* — if the CNN can't beat a simple
-   baseline on 45 trials, that itself is the finding (it usually needs more data to shine).
-6. **Riemannian geometry methods.** Classify the covariance matrices directly on their curved
-   (Riemannian) manifold (e.g. `pyriemann`). Current state-of-the-art for classical BCI and a
-   strong, still-interpretable alternative to deep learning.
+An earlier version of this section was a **wish list of six next projects, five of which were
+already built**. Here is the real state instead.
+
+| Rung | Question | Answer |
+|---|---|---|
+| 4 | Can I decode imagined fists vs. feet? | **91.1%** vs. 53.3% chance, permutation **p ≤ 0.001** |
+| 5 | Is that number an artifact of the estimator? | Partly. The estimator change was worth ~0.6 points; ~2.7 points were **seed luck** |
+| 6 | Does it hold across 109 people? | Median **60.0%**, IQR 52.8–75.6%. Subject 1 is the **91st percentile** |
+| 7 | What does a harder contrast cost? | **Unanswerable as run** — the left/right rung is **gaze-confounded** |
+| 8 | Does it transfer to an unseen person? | Near-parity, 95% CI **[−1.9, +11.2]**, p = 0.181. Cannot distinguish a drop from no drop |
+| 9 | Does a Riemannian method beat it? | No, but only **MDM-64 is significant** (p = 0.005); the rest is underpowered |
+| 10 | Does a CNN beat it? | Loses by **8.9 points** at n=45, level at ~900 trials |
+| 11 | What did rung 10's regime C measure? | Three changes at once. Decomposed in **§7 rung 11** |
+
+### 12.1 What is retracted, and why that list matters
+
+Five claims this project published did not survive adversarial review. They are listed here
+rather than quietly deleted, because the list is more informative than the results:
+
+- **"27% BCI illiteracy."** Inverted inference. A pure-noise null predicts ~55% below chance;
+  28% was observed. It is evidence *of* signal.
+- **"EEGNet loses by 37.8 points."** A units bug. The network was never training. Real gap: 8.9.
+- **"73.3% is what a harder contrast costs."** Group value is ~7 points, and the rung is
+  gaze-confounded.
+- **"No method dominates / the best method is subject-specific."** No subject × method
+  interaction exists (p = 0.84).
+- **"CSP patterns are focal over sensorimotor cortex, which is my evidence against artifacts."**
+  False for the showcased component, which is parieto-occipital (§8.3).
+
+The pattern is worth naming, because it is the same mistake five times: **the mechanism story was
+invented in the same breath as the number**. Measuring and explaining are separate steps, and
+doing them together is how a plausible narrative gets attached to noise.
+
+### 12.2 What is genuinely next
+
+1. **Filter-bank CSP (FBCSP).** Run CSP separately in sub-bands and let the classifier combine
+   them. A well-known, reliable gain, still classical and interpretable. Genuinely not built.
+2. **More trials per subject.** Almost every limitation above traces back to **45 trials**: the
+   quantized folds, the underpowered comparisons, the untestable learning curve. Public corpora
+   exist with 2,000–5,000 trials per subject, reachable through one library. This is the single
+   highest-value change available, and it unblocks items 3 and 4.
+3. **The learning curve that settles rung 8's retracted claim.** Hold the subject fixed and sweep
+   training-set size from 45 upward. That converts "the barrier is sample size, not anatomy" from
+   an assertion into a measurement. It needs item 2 first.
+4. **EEGNet where it can actually win.** The CNN lost at n=45 and tied at ~900. The comparison
+   only becomes interesting with an order of magnitude more data, and item 3's curve predicts
+   where the crossover should be — so it becomes a **test of a prediction** rather than another
+   isolated data point.
+5. **Artifact rejection.** ICA-based ocular cleaning, and a paradigm with EOG channels. Rung 7
+   demonstrated this project cannot currently monitor the confound it found, let alone remove it.
+6. **Trial-count QC.** 12 of 109 subjects have non-standard trial counts (36–57 instead of 45)
+   and three record at 128 Hz rather than 160. The sweep reports the sampling-rate anomaly but
+   not the timing one, and a 1–2 s crop covers a different fraction of a 3.25 s task period than
+   of a 4.15 s one.
 
 ---
 
@@ -460,11 +842,19 @@ python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 python decode_csp.py        # full pipeline + writes csp_patterns.png
 ```
-- The dataset downloads automatically on first run and is cached in `~/mne_data` (so later runs
-  are fast and offline-capable).
-- `decode_csp.py` alone reproduces the headline number and the scalp-map figure. The other three
-  scripts are optional checkpoints you can run individually to inspect each stage.
-- Because `random_state=42` is fixed, you should get **94.4% ± 5.6%** exactly.
+- The dataset downloads automatically on first run and is cached in `~/mne_data`, so later runs
+  are fast and offline-capable. The first run of rung 6 pulls ~840 MB (all 109 subjects).
+- `decode_csp.py` alone reproduces the headline number and the scalp-map figure. Rungs 1–3 are
+  optional checkpoints you can run individually to inspect each stage; rungs 5–11 are the
+  attacks on the result and each runs standalone.
+- Because `random_state=42` is fixed, `decode_csp.py` prints **91.1% (+/- 4.4%)** and
+  **p = 0.0010** exactly. The classical rungs are all deterministic in this way.
+- **The CNN rungs are not bit-reproducible.** Seeds are fixed for torch, numpy and python, but
+  MPS (Apple GPU) kernels do not guarantee identical results run to run. Expect small drift in
+  the EEGNet numbers and none in the classical baselines.
+- Rungs 10 and 11 are the slow ones (LOSO with a CNN at every fold). `regime_decomposition.py`
+  checkpoints to `regime_decomposition.json` after each cell, so it can be killed and resumed
+  without losing completed work.
 
 ---
 
@@ -473,20 +863,32 @@ python decode_csp.py        # full pipeline + writes csp_patterns.png
 The README states these plainly, which is itself a strength — over-claiming is the cardinal sin
 in BCI. Be ready to volunteer them:
 
-1. **Within-subject, small-n.** One subject, 45 trials. The result says nothing about whether
-   this works on a *new* person. The ±5.6% spread openly signals the estimate is noisy.
+1. **Within-subject, small-n.** One subject, 45 trials. The headline says nothing about whether
+   this works on a *new* person. And the estimate is genuinely imprecise: an honest interval is
+   roughly **[79%, 97%]**, not the ± the script prints, which is a quantization step (§10.2).
 2. **Easy contrast.** Fists-vs-feet are far apart on the homunculus, so their scalp patterns
    differ a lot. This is close to the easiest possible motor-imagery discrimination.
-3. **Clean subject.** Per-subject quality varies enormously across the 109 subjects; subject 1
-   is a good recording. Picking it is fair for a baseline demo but not representative.
-4. **No artifact rejection.** There's no explicit removal of eye-blinks or muscle artifacts. The
-   band-pass and the *centered* CSP patterns give confidence the model isn't riding artifacts,
-   but a production pipeline would add ICA-based artifact cleaning.
-5. **Not a real-time system.** This decodes pre-recorded, pre-cut trials offline. A live BCI adds
-   the hard problems of continuous decoding, latency, and no clean trial boundaries.
+3. **Clean subject, and I know exactly how clean.** Subject 1 is the **91st percentile** of the
+   109; the median subject gets 60.0%. Picking it is fair for a baseline demo, and quoting it
+   without the distribution would not be.
+4. **No artifact rejection, and no way to monitor it.** There is no ICA and no removal of
+   eye-blinks or muscle activity. **This document used to claim the "centered" CSP scalp maps
+   gave confidence the model was not riding artifacts. That claim was false** — the showcased
+   component is parieto-occipital and correlates r = 0.57 with the subject's own alpha map
+   (§8.3). The real defence is the ablation in §10.5. For fists-vs-feet the ocular checks come
+   back clean (HEOG p = 0.27, VEOG p = 0.44); for the left/right rung they emphatically do not.
+5. **A confirmed confound in the left/right rung.** Rung 7 decodes a lateralised gaze artifact
+   as much as motor imagery, and EEGMMIDB has no EOG channels, so it can be neither removed nor
+   measured directly.
+6. **Underpowered comparisons.** With n=20 subjects the minimum detectable difference is about
+   5–6 points. Several "no difference" results in rungs 8 and 9 are really "this experiment
+   cannot tell," which is a different statement.
+7. **Not a real-time system.** This decodes pre-recorded, pre-cut trials offline. A live BCI adds
+   continuous decoding, latency, and no clean trial boundaries.
 
-None of these are bugs — they're the honest scope of a baseline. The project's credibility comes
-precisely from *stating* them instead of hiding behind the 94%.
+None of these are bugs; they are the honest scope of a baseline. The project's credibility comes
+precisely from *stating* them, and from the fact that item 4 is written against this document's
+own earlier claim rather than quietly edited out.
 
 ---
 
@@ -529,7 +931,19 @@ If you can say that, you own this repo.
   variance ratio; the core spatial-filtering step.
 - **Log-variance feature** — Log of a virtual channel's variance = its band power; the feature CSP feeds LDA.
 - **LDA (Linear Discriminant Analysis)** — Simple linear classifier separating two Gaussian feature clouds.
-- **Cross-validation / ShuffleSplit** — Repeatedly train/test on different random splits for an honest accuracy.
-- **Chance level** — Accuracy of always guessing the majority class (here 53.3%).
-- **EEGNet** — A compact CNN for EEG; the intended deep-learning comparison.
-```
+- **Cross-validation** — Repeatedly train and test on different splits to get an honest accuracy.
+- **StratifiedKFold** — A cross-validation *partition* that tests every trial exactly once and
+  preserves class balance in each fold. What this project uses.
+- **ShuffleSplit** — Independently resampled train/test splits. Neither a partition nor
+  stratified; the estimator this project moved away from.
+- **Chance level** — Accuracy of always guessing the majority class (here 53.3%), *not* 50%.
+- **Permutation test** — Shuffle the labels many times, re-run the whole pipeline, and see where
+  the real result falls in the resulting null distribution.
+- **Ablation** — Removing a part of the input to test whether the model depends on it. The
+  artifact control this project relies on.
+- **LOSO (leave-one-subject-out)** — Train on N−1 people, test on the held-out one, rotate.
+- **Degenerate classifier** — A model predicting one class for every trial. It scores the
+  majority-class rate, which is easily mistaken for chance performance.
+- **EEGNet** — A compact CNN for EEG; the deep-learning comparison in rungs 10 and 11.
+- **MDM / Tangent Space** — Riemannian classifiers operating on covariance matrices: nearest
+  class mean along the manifold, and a projection to a flat space where ordinary classifiers work.
