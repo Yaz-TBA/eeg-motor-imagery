@@ -1,0 +1,10 @@
+# Deep-learning extras for eegnet_compare.py only.
+# Kept separate so the classical rungs (decode_csp, evaluate_honestly,
+# sweep_subjects, harder_contrast, cross_subject, riemannian) stay lightweight:
+# these pull ~35 additional packages.
+#
+# Verified 2026-07-22 against Python 3.14.6. Installing these did NOT move
+# mne/scikit-learn/numpy/scipy, and decode_csp.py still reproduced 91.1% +/- 4.4%
+# with p = 0.0010 afterwards.
+braindecode==1.6.1
+torch==2.13.0
