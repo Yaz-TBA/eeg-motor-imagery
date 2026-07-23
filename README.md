@@ -44,8 +44,9 @@ The per-fold row appears instead of a ± because a 9-trial test set can only sco
 1/9. A standard deviation over those five values is a step on that ladder, not a spread, which is
 the same objection that retired the earlier "± 5.6%" below. Take the Wilson interval as the
 honest uncertainty, and as mildly optimistic: it treats 45 cross-validated predictions as
-independent draws from one model when they come from five. `p = 0.0010` is reported as **p ≤
-0.001** because 1/1001 is the resolution floor of a 1000-shuffle test, not a measurement.
+independent draws from one model when they come from five. The permutation p is reported as
+**p ≤ 0.001** rather than `0.0010` because 1/1001 is the resolution floor of a 1000-shuffle test,
+not a measurement; the scripts print the bound directly.
 
 Across 1000 label shuffles, not one matched or exceeded the real result, so the
 decoding is finding real structure rather than fitting noise. ("Matched or

@@ -38,6 +38,7 @@ SUBJECT = 1
 RUNS = [6, 10, 14]
 TMIN, TMAX = -1.0, 4.0
 L_FREQ, H_FREQ = 8.0, 30.0
+N_PERMUTATIONS = 1000
 
 # --- load + preprocess (rungs 1-2) ---
 edf_paths = eegbci.load_data(subjects=SUBJECT, runs=RUNS, update_path=True)
@@ -70,14 +71,19 @@ scores = cross_val_score(clf, train_data, labels, cv=cv)
 # Shuffle the labels 1000x and re-run: does the real result stand outside chance?
 observed, null_scores, p_value = permutation_test_score(
     clf, train_data, labels, scoring="accuracy", cv=cv,
-    n_permutations=1000, random_state=42, n_jobs=-1,
+    n_permutations=N_PERMUTATIONS, random_state=42, n_jobs=-1,
 )
 
 chance = max(np.mean(labels == 2), np.mean(labels == 3))
 print(f"\nCSP+LDA accuracy: {scores.mean():.1%}  (+/- {scores.std():.1%})")
 print(f"Chance (majority class): {chance:.1%}")
 print(f"Per-fold: {np.round(scores, 2)}")
-print(f"Permutation test: p = {p_value:.4f} "
+# sklearn computes p = (C + 1)/(n + 1) where C counts permutations scoring >=
+# observed, so 1/1001 is the FLOOR of a 1000-shuffle test. Printing "0.0010"
+# invites reading the test's resolution limit as a measurement.
+p_floor = 1.0 / (N_PERMUTATIONS + 1)
+p_str = f"<= {p_floor:.3f}" if p_value <= p_floor + 1e-12 else f"=  {p_value:.4f}"
+print(f"Permutation test: p {p_str} "
       f"(null {null_scores.mean():.1%} +/- {null_scores.std():.1%}, "
       f"max {null_scores.max():.1%})")
 

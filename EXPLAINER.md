@@ -715,8 +715,9 @@ The null lands at **50.7% ± 8.5%**, with a maximum of 82.2% across 1000 shuffle
 
 Two honesty notes about the reported p-value:
 
-- With 1000 permutations the smallest reportable value is **1/1001**, so `p = 0.0010` is the
-  **resolution floor of the test, not a measurement**. Report it as **p ≤ 0.001**.
+- With 1000 permutations the smallest reportable value is **1/1001**, so a printed `p = 0.0010`
+  would be the **resolution floor of the test, not a measurement**. Both `decode_csp.py` and
+  `evaluate_honestly.py` detect that case and print **`p <= 0.001`** instead.
 - scikit-learn counts permutations scoring **≥** the observed value, so the correct phrasing is
   "no shuffle matched or exceeded the real result," not "none beat it."
 
@@ -745,7 +746,7 @@ document used to offer here — is not, and §8.3 is the full account of why.
 CSP+LDA accuracy: 91.1%  (+/- 4.4%)
 Chance (majority class): 53.3%
 Per-fold: [0.89 0.89 0.89 0.89 1.  ]
-Permutation test: p = 0.0010 (null 50.7% +/- 8.5%, max 82.2%)
+Permutation test: p <= 0.001 (null 50.7% +/- 8.5%, max 82.2%)
 ```
 Four folds at 8/9 and one at 9/9. Read that per-fold line as the quantization warning it is: the
 folds are not sampling a smooth distribution, they are landing on the only values a 9-trial test
