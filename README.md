@@ -24,21 +24,45 @@ raw EEG  →  average reference  →  band-pass 8–30 Hz  →  epoch around cue
   the variance ratio between classes — a handful of spatial filters that
   separate hands from feet. The log-variance along the top axes is the feature.
 - **LDA** separates the two feature clouds with a linear boundary.
-- **10× ShuffleSplit cross-validation** gives an honest accuracy, not a
-  single lucky split.
+- **Stratified 5-fold cross-validation** tests every trial exactly once and
+  holds class balance steady across folds.
+- **A 1000-shuffle permutation test** asks whether the result could have come
+  from chance at all.
 
 ## Result
 
 | Metric | Value |
 |---|---|
-| CSP+LDA accuracy (10-fold CV) | **94.4% ± 5.6%** |
+| CSP+LDA accuracy (stratified 5-fold CV) | **91.1% ± 4.4%** |
 | Chance (majority class) | 53.3% |
-| Trials | 45 (21 hands, 24 feet) |
+| Permutation test (1000 shuffles) | **p = 0.0010** (null 50.7% ± 8.5%) |
+| Wilson 95% CI on n=45 | [79.3%, 96.5%] |
+| Trials | 45 (21 hands, 24 feet), one subject |
 
-The learned CSP patterns are focal over central/sensorimotor cortex — the
-model found real motor sources, not noise:
+Shuffled labels never once beat the real result across 1000 permutations, so the
+decoding is finding real structure rather than fitting noise:
+
+![Permutation null distribution](permutation_null.png)
+
+The learned CSP patterns are focal over central/sensorimotor cortex, which is the
+evidence the model found real motor sources and not eye or muscle artifact:
 
 ![CSP spatial patterns](csp_patterns.png)
+
+### A note on the earlier number
+
+An earlier version of this README reported **94.4% ± 5.6%** under "10-fold CV."
+Two things were wrong with that. The evaluation was `ShuffleSplit`, which is not
+k-fold: it never tested 5 of the 45 trials while testing others up to 6 times, and
+it left class balance swinging from 2:7 to 7:2 across folds. And the ± 5.6% was a
+quantization artifact rather than a spread, because a 9-trial test set can only
+score multiples of 1/9, so the ten folds landed on just two distinct values.
+
+Stratified 5-fold puts the honest figure at 91.1%. The lower number is the better
+claim, because it now carries a significance test. `evaluate_honestly.py`
+reproduces the whole comparison, including a seed sweep showing the original
+random seed sat at the 49th percentile of 100 alternatives and was not
+cherry-picked.
 
 ## Honest limitations
 
@@ -69,6 +93,7 @@ Data downloads automatically on first run (cached in `~/mne_data`).
 | `epoch_trials.py` | Cut runs 6/10/14 into labeled hands/feet trials |
 | `filter_and_epoch.py` | Add 8–30 Hz band-pass + average reference |
 | `decode_csp.py` | CSP + LDA, cross-validated, plot spatial patterns |
+| `evaluate_honestly.py` | Stress-test the number: stratification, coverage, permutation test, seed sweep |
 
 ## Next
 

@@ -20,7 +20,11 @@ from mne.datasets import eegbci
 from mne.decoding import CSP
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 from sklearn.pipeline import Pipeline
-from sklearn.model_selection import ShuffleSplit, cross_val_score
+from sklearn.model_selection import (
+    StratifiedKFold,
+    cross_val_score,
+    permutation_test_score,
+)
 
 SUBJECT = 1
 RUNS = [6, 10, 14]
@@ -49,13 +53,25 @@ train_data = epochs.copy().crop(tmin=1.0, tmax=2.0).get_data(copy=False)
 csp = CSP(n_components=4, reg=None, log=True, norm_trace=False)
 clf = Pipeline([("CSP", csp), ("LDA", LinearDiscriminantAnalysis())])
 
-cv = ShuffleSplit(n_splits=10, test_size=0.2, random_state=42)
+# Stratified k-fold, not ShuffleSplit: it tests every trial exactly once and
+# keeps class balance steady across folds. See evaluate_honestly.py for why the
+# original 10x80/20 split overstated both the accuracy and its precision.
+cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
 scores = cross_val_score(clf, train_data, labels, cv=cv)
+
+# Shuffle the labels 1000x and re-run: does the real result stand outside chance?
+observed, null_scores, p_value = permutation_test_score(
+    clf, train_data, labels, scoring="accuracy", cv=cv,
+    n_permutations=1000, random_state=42, n_jobs=-1,
+)
 
 chance = max(np.mean(labels == 2), np.mean(labels == 3))
 print(f"\nCSP+LDA accuracy: {scores.mean():.1%}  (+/- {scores.std():.1%})")
 print(f"Chance (majority class): {chance:.1%}")
 print(f"Per-fold: {np.round(scores, 2)}")
+print(f"Permutation test: p = {p_value:.4f} "
+      f"(null {null_scores.mean():.1%} +/- {null_scores.std():.1%}, "
+      f"max {null_scores.max():.1%})")
 
 # --- see the spatial filters: fit CSP on all trials and plot top patterns ---
 csp.fit_transform(train_data, labels)
