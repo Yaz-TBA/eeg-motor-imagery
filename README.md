@@ -44,8 +44,28 @@ decoding is finding real structure rather than fitting noise:
 
 ![Permutation null distribution](permutation_null.png)
 
-The learned CSP patterns are focal over central/sensorimotor cortex, which is the
-evidence the model found real motor sources and not eye or muscle artifact:
+The evidence that this is motor activity and not eye or muscle artifact is an
+**ablation**, not a picture:
+
+| Channels used | Accuracy |
+|---|---|
+| sensorimotor only | **95.9%** |
+| all 64 | 91.1% |
+| frontopolar only | **47.4%, i.e. chance** |
+| leave-one-run-out (all 64) | 93.3% |
+
+Remove the cortex that should carry the signal and the decoder collapses to
+chance. Keep only that cortex and it improves. That is a control; a scalp map is
+not.
+
+The learned CSP patterns are plotted below because they are interesting, **not as
+proof**. An earlier version of this README claimed they were "focal over central
+sensorimotor cortex" and offered that as the artifact defence. That was wrong:
+the strongest component here peaks at **POz, PO4 and Oz**, which is
+parieto-occipital, and it correlates r = 0.57 with this subject's own eyes-closed
+alpha map. Components 0 and 1 *are* genuinely sensorimotor (FC3/C3/FC1 and
+FC4/FC2/C4). Reading topographies by eye is not a control, which is why the
+ablation above replaced it.
 
 ![CSP spatial patterns](csp_patterns.png)
 

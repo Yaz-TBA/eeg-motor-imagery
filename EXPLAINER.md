@@ -13,9 +13,10 @@ When you *imagine* moving a body part — without actually moving it — the par
 that controls that body part changes its electrical rhythm. This project records that
 electrical activity from the scalp (EEG), isolates the relevant rhythms, and trains a simple
 machine-learning model to guess **which** movement a person imagined: *both fists* or *both
-feet*. On one clean subject it reaches **94% accuracy** (chance is 53%), and it visualizes
-the brain map the model learned to prove it locked onto real motor cortex, not noise. This is
-the canonical "hello world" of brain–computer interfaces (BCIs), done honestly and reproducibly.
+feet*. On one clean subject it reaches **91% accuracy** (chance is 53%, permutation p <= 0.001),
+and it establishes that the signal is motor by **ablation**: restricted to sensorimotor channels the
+decoder improves to 95.9%, restricted to frontopolar channels it falls to chance. This is the
+canonical "hello world" of brain-computer interfaces (BCIs), done honestly and reproducibly.
 
 ---
 
@@ -324,18 +325,34 @@ virtual channels over the trial:
 
 So each trial becomes a 4-dimensional feature vector: `[logvar₁, logvar₂, logvar₃, logvar₄]`.
 
-### 8.3 The `csp_patterns.png` plot — *why it's the honesty check*
+### 8.3 The `csp_patterns.png` plot — *interesting, but NOT the honesty check*
 `csp.plot_patterns(...)` draws each spatial filter as a **scalp map** (a top-down head with a
-color heatmap). The README's screenshot shows the learned patterns are **focal over central /
-sensorimotor cortex** — bright spots right where hands and feet motor areas live (§3.1).
+color heatmap).
 
-**Why this matters enormously:** a model can hit 94% by cheating — locking onto an eye-blink
-artifact, a neck-muscle tension that happens to correlate with the cue, or a per-run drift.
-If CSP had learned those, the scalp maps would light up at the *edges* of the head (eyes,
-temples, neck), not the center. Because the patterns are centered on motor cortex, you have
-**physiological evidence the model found real motor sources.** Accuracy alone never proves this;
-the scalp map does. Being able to say *"and here's how I know it's not an artifact"* is what
-separates a credible BCI result from a lucky number.
+> [!warning] **An earlier version of this section was wrong and it is worth understanding why.**
+> It claimed the learned patterns were "focal over central / sensorimotor cortex" and offered that
+> as proof the model found motor sources. Checking the actual channel weights: components 0 and 1
+> *are* sensorimotor (FC3/C3/FC1 and FC4/FC2/C4), but the component this document showcased peaks at
+> **POz, PO4, Oz** — parieto-occipital — and correlates r = 0.57 with the subject's own eyes-closed
+> alpha map. In MNE topomaps posterior is at the **bottom**, and a lower-central blob was misread as
+> the vertex. **Reading a topography by eye is not a control.**
+
+**Why this matters enormously:** a model can hit 91% by cheating — locking onto an eye-blink
+artifact, a neck-muscle tension that happens to correlate with the cue, or a per-run drift. The
+control that actually catches this is an **ablation**: remove the cortex that should carry the
+signal and see whether the decoder dies. Here it does (frontopolar-only = 47.4%, chance), and
+keeping only sensorimotor channels *improves* it to 95.9%.
+The intuition people reach for is: if CSP had learned an artifact, the scalp maps would light up at
+the *edges* of the head (eyes, temples, neck) rather than the center, so centered patterns prove
+motor sources. **That intuition is too weak to rely on, and this project is a worked example of why.**
+Occipital alpha sits at the back of the head, not the edge; it is large, it is inside the 8-30 Hz
+band, and at a glance in a topomap it is easy to mistake for something central.
+
+**Accuracy alone never proves the signal is neural, and neither does a scalp map.** What proves it is
+an ablation, because it makes a falsifiable prediction: if the decoder is reading sensorimotor cortex,
+then deleting sensorimotor cortex must break it. Here that prediction holds, sharply. Being able to
+say *"here is the control I ran, and here is what would have falsified it"* is what separates a
+credible BCI result from a lucky number.
 
 ---
 
@@ -484,11 +501,11 @@ If a mentor says *"walk me through it,"* this is the spine:
 > band-pass to the motor band on the continuous signal — before epoching, to keep filter edge
 > artifacts out of the trials — then use CSP to recombine all 64 electrodes into a few virtual
 > channels whose variance best separates the classes, feed the log-variance into an LDA, and
-> cross-validate. 94% versus a 53% chance baseline on one clean subject. And I plotted the CSP
-> patterns — they're focal over central sensorimotor cortex, which is my evidence the model
-> locked onto real motor sources, not eye or muscle artifacts. The honest caveats are that it's
-> one subject, small-n, and an easy contrast; the natural next step is a 109-subject sweep and
-> an EEGNet comparison against this baseline."
+> cross-validate. 91% versus a 53% chance baseline on one clean subject, with a thousand-shuffle
+> permutation test at p under 0.001. My evidence that it's motor and not artifact is an ablation:
+> on sensorimotor channels alone it goes up to 96%, on frontopolar channels alone it drops to
+> chance. The honest caveats are that it's one subject and an easy contrast, and that subject sits
+> in the top decile of the 109 I swept, where the median is 60%."
 
 If you can say that, you own this repo.
 
