@@ -22,6 +22,12 @@ import matplotlib
 
 matplotlib.use("Agg")
 
+import os
+
+# joblib workers are fresh processes that re-import mne at its default log level,
+# so mne.set_log_level() below never reaches them. The environment does.
+os.environ.setdefault("MNE_LOGGING_LEVEL", "ERROR")
+
 import warnings
 
 import matplotlib.pyplot as plt

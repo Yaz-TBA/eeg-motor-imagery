@@ -14,6 +14,14 @@ import matplotlib
 
 matplotlib.use("Agg")
 
+import os
+
+# joblib spawns fresh processes that re-import mne at its DEFAULT log level, so
+# mne.set_log_level() in this file never reaches them. Setting it in the
+# environment does, because children inherit it. Without this, the parallel
+# permutation test buries the results under megabytes of rank-estimation output.
+os.environ.setdefault("MNE_LOGGING_LEVEL", "ERROR")
+
 import numpy as np
 import mne
 from mne.datasets import eegbci
