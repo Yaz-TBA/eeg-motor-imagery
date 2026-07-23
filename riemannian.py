@@ -77,37 +77,64 @@ def load_subject(subject):
         events, _ = mne.events_from_annotations(raw, event_id=dict(T1=2, T2=3))
         epochs = mne.Epochs(raw, events, dict(hands=2, feet=3), tmin=TMIN, tmax=TMAX,
                             picks="eeg", baseline=None, preload=True)
-        return subject, epochs.copy().crop(1.0, 2.0).get_data(copy=False), epochs.events[:, -1]
+        return (subject, epochs.copy().crop(1.0, 2.0).get_data(copy=False),
+                epochs.events[:, -1], epochs.ch_names)
     except Exception as exc:  # noqa: BLE001
         print(f"  S{subject:03d} skipped: {type(exc).__name__}")
-        return subject, None, None
+        return subject, None, None, None
 
 
 print(f"Loading {len(SUBJECTS)} subjects...")
-loaded = [(s, X, y) for s, X, y in
+loaded = [(s, X, y, ch) for s, X, y, ch in
           Parallel(n_jobs=-1)(delayed(load_subject)(s) for s in SUBJECTS)
           if X is not None]
 
-n_samples = min(X.shape[-1] for _, X, _ in loaded)
-X_all = np.concatenate([X[:, :, :n_samples] for _, X, _ in loaded], axis=0)
-y_all = np.concatenate([y for _, _, y in loaded])
-groups = np.concatenate([np.full(len(y), s) for s, _, y in loaded])
+n_samples = min(X.shape[-1] for _, X, _, _ in loaded)
+X_all = np.concatenate([X[:, :, :n_samples] for _, X, _, _ in loaded], axis=0)
+y_all = np.concatenate([y for _, _, y, _ in loaded])
+groups = np.concatenate([np.full(len(y), s) for s, _, y, _ in loaded])
+ch_names = loaded[0][3]
 print(f"Pooled {X_all.shape[0]} trials from {len(loaded)} subjects")
 
+# --- give the manifold methods a fair test -----------------------------------
+# A 64x64 covariance matrix has 64*65/2 = 2080 free parameters, estimated from
+# 161 samples per trial, and its tangent space has 2080 features for ~855
+# training trials. That is hopelessly under-determined, and it is the standard
+# trap when Riemannian methods are dropped onto a full montage. The literature
+# applies them to a sensorimotor subset. So run BOTH and let the comparison show
+# whether a loss is the method's fault or the montage's.
+MOTOR_CHANNELS = ["FC3", "FC1", "FCz", "FC2", "FC4",
+                  "C5", "C3", "C1", "Cz", "C2", "C4", "C6",
+                  "CP3", "CP1", "CPz", "CP2", "CP4"]
+motor_idx = [ch_names.index(c) for c in MOTOR_CHANNELS if c in ch_names]
+X_motor = X_all[:, motor_idx, :]
+print(f"Sensorimotor subset: {len(motor_idx)} channels "
+      f"({len(motor_idx) * (len(motor_idx) + 1) // 2} covariance parameters "
+      f"vs {X_all.shape[1] * (X_all.shape[1] + 1) // 2} for the full montage)")
+
 PIPELINES = {
-    "CSP + LDA (baseline)": Pipeline([
+    "CSP + LDA (baseline)": (Pipeline([
         ("CSP", CSP(n_components=4, reg=None, log=True, norm_trace=False)),
         ("LDA", LinearDiscriminantAnalysis()),
-    ]),
-    "Cov + MDM": Pipeline([
+    ]), X_all),
+    "Cov + MDM (64 ch)": (Pipeline([
         ("Cov", Covariances(estimator="oas")),
         ("MDM", MDM()),
-    ]),
-    "Cov + TangentSpace + LR": Pipeline([
+    ]), X_all),
+    "Cov + TS + LR (64 ch)": (Pipeline([
         ("Cov", Covariances(estimator="oas")),
         ("TS", TangentSpace()),
         ("LR", LogisticRegression(max_iter=1000)),
-    ]),
+    ]), X_all),
+    "Cov + MDM (motor)": (Pipeline([
+        ("Cov", Covariances(estimator="oas")),
+        ("MDM", MDM()),
+    ]), X_motor),
+    "Cov + TS + LR (motor)": (Pipeline([
+        ("Cov", Covariances(estimator="oas")),
+        ("TS", TangentSpace()),
+        ("LR", LogisticRegression(max_iter=1000)),
+    ]), X_motor),
 }
 
 logo = LeaveOneGroupOut()
@@ -117,10 +144,10 @@ print(f"\nLeave-one-subject-out, identical folds for every pipeline.")
 print(f"Pooled chance: {chance:.1%}\n")
 
 results = {}
-for name, pipe in PIPELINES.items():
-    scores = cross_val_score(pipe, X_all, y_all, groups=groups, cv=logo, n_jobs=-1)
+for name, (pipe, X) in PIPELINES.items():
+    scores = cross_val_score(pipe, X, y_all, groups=groups, cv=logo, n_jobs=-1)
     results[name] = scores
-    print(f"{name:<26} {scores.mean():.1%} +/- {scores.std():.1%}  "
+    print(f"{name:<24} {scores.mean():.1%} +/- {scores.std():.1%}  "
           f"(median {np.median(scores):.1%}, "
           f"{(scores > chance).sum()}/{len(scores)} above chance)")
 
@@ -144,12 +171,13 @@ best_name = max(results, key=lambda k: results[k].mean())
 print(f"\nBest on this data: {best_name} ({results[best_name].mean():.1%})")
 
 # --- figure ------------------------------------------------------------------
-fig, ax = plt.subplots(figsize=(9, 5))
+fig, ax = plt.subplots(figsize=(11, 5))
 names = list(results)
 data = [results[n] for n in names]
-bp = ax.boxplot(data, labels=[n.replace(" + ", "\n+ ") for n in names],
+bp = ax.boxplot(data, tick_labels=[n.replace(" (", "\n(") for n in names],
                 patch_artist=True, widths=0.55)
-for patch, color in zip(bp["boxes"], ["#4a6fa5", "#e67e22", "#27ae60"]):
+for patch, color in zip(bp["boxes"],
+                        ["#4a6fa5", "#e67e22", "#27ae60", "#e67e22", "#27ae60"]):
     patch.set_facecolor(color)
     patch.set_alpha(0.75)
 for i, scores in enumerate(data, 1):
