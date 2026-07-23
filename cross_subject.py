@@ -95,11 +95,37 @@ clf = Pipeline([
 ])
 logo = LeaveOneGroupOut()
 
-# --- leakage assertion: no held-out subject may appear in its training fold ---
-for train_idx, test_idx in logo.split(X_all, y_all, groups):
-    assert not set(groups[train_idx]) & set(groups[test_idx]), \
-        "Subject leaked across the split -- cross-subject result would be meaningless."
-print("Leakage check passed: every held-out subject is absent from its training fold.")
+# --- structural checks that can ACTUALLY FAIL --------------------------------
+# The obvious assertion here -- "no group appears in both train and test" -- is
+# definitionally true for LeaveOneGroupOut and can never fire. Asserting it and
+# printing "leakage check passed" is theatre: it reads as evidence in a review
+# while proving nothing. These three can genuinely fail.
+folds = list(logo.split(X_all, y_all, groups))
+
+# 1. Exactly one held-out subject per fold, and every subject held out once.
+held_out = [set(groups[te]) for _, te in folds]
+assert all(len(h) == 1 for h in held_out), "a fold held out more than one subject"
+assert {next(iter(h)) for h in held_out} == set(groups), \
+    "not every subject was held out exactly once"
+
+# 2. The groups array is aligned with the data. A silent misalignment here would
+#    corrupt every pairing downstream without raising anything.
+assert len(groups) == len(y_all) == X_all.shape[0], "groups/labels/data length mismatch"
+
+# 3. THE REAL LEAKAGE TEST, and the only empirical one: shuffle the labels and
+#    the cross-subject score must collapse to chance. If a leak existed, the
+#    shuffled score would stay elevated.
+rng = np.random.default_rng(0)
+shuffled = rng.permutation(y_all)
+shuffled_score = cross_val_score(clf, X_all, shuffled, groups=groups,
+                                 cv=logo, n_jobs=-1).mean()
+print(f"Structural checks passed ({len(folds)} folds, one subject each).")
+print(f"Label-shuffled control: {shuffled_score:.1%} "
+      f"(must sit near chance; elevated would mean a leak)")
+assert shuffled_score < 0.60, (
+    f"Label-shuffled cross-subject score is {shuffled_score:.1%}, too high. "
+    "Something is leaking."
+)
 
 print("\nRunning leave-one-subject-out...")
 scores = cross_val_score(clf, X_all, y_all, groups=groups, cv=logo, n_jobs=-1)

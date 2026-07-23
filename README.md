@@ -58,11 +58,19 @@ it left class balance swinging from 2:7 to 7:2 across folds. And the ± 5.6% was
 quantization artifact rather than a spread, because a 9-trial test set can only
 score multiples of 1/9, so the ten folds landed on just two distinct values.
 
-Stratified 5-fold puts the honest figure at 91.1%. The lower number is the better
-claim, because it now carries a significance test. `evaluate_honestly.py`
-reproduces the whole comparison, including a seed sweep showing the original
-random seed sat at the 49th percentile of 100 alternatives and was not
-cherry-picked.
+Stratified 5-fold puts the figure at 91.1%, and the lower number is the better
+claim because it now carries a significance test.
+
+**But most of that 3.3-point drop is seed luck, not a correction.** Sweeping 100
+cross-validation seeds gives a mean of 93.6% for ShuffleSplit and 93.8% for
+stratified 5-fold, so the two estimators agree in expectation to about 0.2 points.
+Seed 42 happens to sit at the 49th percentile for the old estimator and the **3rd
+percentile** for the new one. The estimator change is still right, for coverage
+and stratification reasons, but it is worth roughly 0.6 points, not 3.3. The
+published 91.1% is a conservative draw from an 88.9-97.8% seed distribution.
+
+`evaluate_honestly.py` reproduces the whole comparison, sweeping both estimators
+so that neither one's diagnostics get attached to the other's number.
 
 ## Honest limitations
 

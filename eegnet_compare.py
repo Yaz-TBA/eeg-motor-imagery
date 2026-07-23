@@ -56,10 +56,10 @@ from mne.datasets import eegbci
 from mne.decoding import CSP
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 from sklearn.pipeline import Pipeline
+from sklearn.metrics import accuracy_score, make_scorer
 from sklearn.model_selection import (
     LeaveOneGroupOut,
     StratifiedKFold,
-    cross_val_predict,
     cross_val_score,
 )
 
@@ -188,6 +188,18 @@ def assert_not_degenerate(pred, tag):
     )
 
 
+def _guarded_accuracy(y_true, y_pred):
+    """Accuracy, but refuses to score a model that predicted one class."""
+    assert_not_degenerate(np.asarray(y_pred), "fold")
+    return accuracy_score(y_true, y_pred)
+
+
+# Passed as scoring= to every EEGNet call, so the guard runs on EVERY fold at
+# zero extra compute. Defining a guard and never calling it is worse than no
+# guard, because it reads as protection in a review.
+GUARDED = make_scorer(_guarded_accuracy)
+
+
 def make_csp():
     return Pipeline([
         ("CSP", CSP(n_components=4, reg=None, log=True, norm_trace=False)),
@@ -240,7 +252,7 @@ csp_a, t_csp_a = timed(lambda: cross_val_score(
 seed_everything()
 net_a, t_net_a = timed(lambda: cross_val_score(
     make_eegnet(X1.shape[1], X1.shape[2]), for_torch(X1), y1,
-    cv=cv5, error_score="raise"))
+    cv=cv5, scoring=GUARDED, error_score="raise"))
 
 chance_a = max(np.mean(y1 == 0), np.mean(y1 == 1))
 print(f"chance                {chance_a:.1%}")
@@ -264,7 +276,7 @@ csp_b, t_csp_b = timed(lambda: cross_val_score(
 seed_everything()
 net_b, t_net_b = timed(lambda: cross_val_score(
     make_eegnet(Xn.shape[1], Xn.shape[2]), for_torch(Xn), yn,
-    groups=gn, cv=logo, error_score="raise"))
+    groups=gn, cv=logo, scoring=GUARDED, error_score="raise"))
 
 chance_b = max(np.mean(yn == 0), np.mean(yn == 1))
 print(f"chance                {chance_b:.1%}")
@@ -292,7 +304,7 @@ csp_c, t_csp_c = timed(lambda: cross_val_score(
 seed_everything()
 net_c, t_net_c = timed(lambda: cross_val_score(
     make_eegnet(Xw.shape[1], Xw.shape[2]), for_torch(Xw), yw,
-    groups=gw, cv=logo, error_score="raise"))
+    groups=gw, cv=logo, scoring=GUARDED, error_score="raise"))
 
 print(f"chance                {max(np.mean(yw == 0), np.mean(yw == 1)):.1%}")
 print(f"CSP + LDA (wide)      {csp_c.mean():.1%} +/- {csp_c.std():.1%}   ({t_csp_c:.1f}s)")
