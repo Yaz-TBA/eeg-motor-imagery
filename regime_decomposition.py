@@ -89,6 +89,14 @@ CELLS = {
     "narrow-long":  dict(l_freq=8.0, h_freq=30.0, crop=(1.0, 4.0), band="narrow", window="long"),
     "wide-long":    dict(l_freq=4.0, h_freq=38.0, crop=(1.0, 4.0), band="wide",   window="long"),
     "original-C":   dict(l_freq=4.0, h_freq=38.0, crop=(0.0, 4.0), band="wide",   window="long+cue"),
+    # The confirmatory cell. The 2x2 shows the whole regime-C effect comes from
+    # admitting the 0-1 s cue period, and the obvious explanation is that a CNN
+    # with temporal convolutions can read a phase-locked cue-evoked response
+    # while CSP's log-variance band power is close to blind to it. That is an
+    # interpretation, not a measurement, so this cell measures it: decode the
+    # CUE WINDOW ALONE, containing no imagery at all. If the explanation is
+    # right, EEGNet should score above chance here and CSP should not.
+    "cue-only":     dict(l_freq=4.0, h_freq=38.0, crop=(0.0, 1.0), band="wide",   window="cue only"),
 }
 
 DEVICE = "mps" if torch.backends.mps.is_available() else "cpu"
@@ -279,8 +287,19 @@ print("window      = long minus short, averaged over both bands")
 print("interaction = how much the band effect changes when the window lengthens")
 print("cue onset   = moving the crop start 1.0 s -> 0.0 s, the undocumented third change")
 
+# The confirmatory test: the cue window on its own contains NO imagery.
+if "cue-only" in results:
+    cue = results["cue-only"]
+    print(f"\n{'=' * 70}\nCUE WINDOW ALONE (0-1 s, no imagery in it at all)\n{'=' * 70}")
+    print(f"CSP + LDA  {cue['csp_mean']:.1%}")
+    print(f"EEGNet     {cue['eegnet_mean']:.1%}")
+    print("\nIf EEGNet scores above chance on a window containing no imagery, then")
+    print("regime C's 'the ranking flips' is the CNN reading the cue-evoked")
+    print("response, not learning motor imagery better than CSP does.")
+
 # --- figure ------------------------------------------------------------------
-order = ["narrow-short", "wide-short", "narrow-long", "wide-long", "original-C"]
+order = ["narrow-short", "wide-short", "narrow-long", "wide-long", "original-C",
+         "cue-only"]
 fig, ax = plt.subplots(figsize=(10, 5))
 x = np.arange(len(order))
 ax.bar(x - 0.2, [results[c]["csp_mean"] for c in order], width=0.4,

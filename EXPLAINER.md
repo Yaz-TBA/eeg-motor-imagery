@@ -573,6 +573,78 @@ CSP is unaffected by the units, because it works on variance *ratios*, which are
 invariant. That asymmetry is precisely why the bug hid: the baseline was healthy, so the
 comparison looked healthy.
 
+### Rung 11 — `regime_decomposition.py`: what did rung 10's third experiment actually measure?
+
+Rung 10 has a third regime this document has not mentioned yet, and the reason is that **it was
+not interpretable**. Regime C reported that EEGNet *beat* CSP once both were given a wider band
+and a longer window, and the write-up explained it: "CSP wins in regime B only because the band
+was pre-selected for it."
+
+Regime C differs from regime B in **three** ways at once:
+
+1. the **band**, 8–30 Hz → 4–38 Hz
+2. the **window length**, 1 s → 4 s
+3. the **crop start**, 1.0 s → 0.0 s
+
+Change three factors, measure one difference, and you have measured nothing. The third change is
+the worst of them because it was never mentioned at all: starting at 0.0 s admits the **cue
+period** into the decoding window, so regime C decodes a different *cognitive* window rather than
+simply a longer one.
+
+This rung re-runs it as a factorial with the crop start **pinned at 1.0 s**, so "longer window"
+means "more imagery" rather than "now with added cue":
+
+| | 8–30 Hz | 4–38 Hz |
+|---|---|---|
+| **1.0–2.0 s** | CSP 59.4% / EEGNet 60.1% | CSP 57.9% / EEGNet 56.1% |
+| **1.0–4.0 s** | CSP 58.9% / EEGNet 60.7% | CSP 55.3% / EEGNet 57.7% |
+
+with a fifth cell reproducing the original regime C exactly (4–38 Hz, **0.0**–4.0 s):
+**CSP 51.4% / EEGNet 63.0%**.
+
+**First, a control.** The `narrow-short` cell is regime B's configuration, and it reproduces
+regime B's numbers exactly — CSP 59.4%, EEGNet 60.1%. An independent reimplementation landing on
+the same values is the evidence that this harness measures what the rung it audits measured.
+
+**The result.** Paired across the same 20 subjects, EEGNet does not significantly beat CSP
+anywhere in the 2×2. It only does so in the cell with the undocumented crop start:
+
+| cell | EEGNet − CSP | 95% CI | p |
+|---|---|---|---|
+| narrow-short | +0.7 | [−5.2, +6.5] | 0.815 |
+| wide-short | −1.8 | [−8.3, +4.8] | 0.578 |
+| narrow-long | +1.8 | [−5.3, +8.8] | 0.603 |
+| wide-long | +2.3 | [−5.1, +9.8] | 0.522 |
+| **original-C** | **+11.6** | **[+5.0, +18.1]** | **0.002** |
+
+Isolating that one change: the gap between the two models **widens by 9.2 points** when the crop
+start moves from 1.0 s to 0.0 s — 95% CI [+2.0, +16.4], **p = 0.015**. It accounts for essentially
+all of the 11.6. Split by model, the cue period **helps EEGNet (+5.3, p = 0.044)** and does not
+significantly move CSP (−3.9, p = 0.134).
+
+**And the stated mechanism is refuted outright.** "The band was pre-selected for CSP" predicts
+that widening it should hurt CSP more than EEGNet. The opposite is closer to true:
+
+| | effect of widening the band | p |
+|---|---|---|
+| CSP | −2.6 | 0.089 |
+| EEGNet | **−3.5** | **0.017** |
+| difference | −0.9, 95% CI [−5.2, +3.3] | 0.645 |
+
+Widening the band hurts *both* models by about the same amount, and the only band effect that
+reaches significance is the one on **EEGNet**. Nothing in the data supports the explanation that
+was published.
+
+**So what is regime C?** The measured claim is narrow and solid: *the entire "ranking flips"
+result is produced by admitting the cue period, not by the band or the window that the write-up
+credited.* The obvious explanation — a CNN's temporal convolutions can exploit a phase-locked
+cue-evoked response, while CSP's log-variance band power is close to blind to one — is an
+**interpretation, and this project's recurring failure has been inventing the mechanism in the
+same breath as the number.** So rung 11 tests it instead of asserting it, with a sixth cell that
+decodes the **cue window alone (0–1 s), which contains no imagery at all.**
+
+<!-- CUE-ONLY-RESULT -->
+
 ---
 
 ## 8. CSP — Common Spatial Patterns (the heart of the method)
@@ -791,16 +863,19 @@ already built**. Here is the real state instead.
 | 8 | Does it transfer to an unseen person? | Near-parity, 95% CI **[−1.9, +11.2]**, p = 0.181. Cannot distinguish a drop from no drop |
 | 9 | Does a Riemannian method beat it? | No, but only **MDM-64 is significant** (p = 0.005); the rest is underpowered |
 | 10 | Does a CNN beat it? | Loses by **8.9 points** at n=45, level at ~900 trials |
-| 11 | What did rung 10's regime C measure? | Three changes at once. Decomposed in **§7 rung 11** |
+| 11 | What did rung 10's regime C measure? | The **cue period**, not the band or window it credited. That one undocumented change carries **+9.2 of the 11.6-point gap** (p = 0.015) |
 
 ### 12.1 What is retracted, and why that list matters
 
-Five claims this project published did not survive adversarial review. They are listed here
+Six claims this project published did not survive adversarial review. They are listed here
 rather than quietly deleted, because the list is more informative than the results:
 
 - **"27% BCI illiteracy."** Inverted inference. A pure-noise null predicts ~55% below chance;
   28% was observed. It is evidence *of* signal.
 - **"EEGNet loses by 37.8 points."** A units bug. The network was never training. Real gap: 8.9.
+- **"The ranking flips once both models get a wider band and a longer window."** Three factors
+  moved at once. Rung 11 shows the effect is carried by a fourth thing nobody documented — the
+  cue period — and that the stated band mechanism is not merely unsupported but backwards.
 - **"73.3% is what a harder contrast costs."** Group value is ~7 points, and the rung is
   gaze-confounded.
 - **"No method dominates / the best method is subject-specific."** No subject × method
