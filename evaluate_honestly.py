@@ -150,12 +150,20 @@ print(f"p-value           : {p_value:.4f}")
 print(f"Shuffled labels beat the real result {int(p_value * (N_PERMUTATIONS + 1)) - 1} "
       f"times out of {N_PERMUTATIONS}.")
 
-# The honesty check this whole rung exists for.
-assert abs(null_scores.mean() - 0.5) < 0.10, (
-    f"Permutation null centred at {null_scores.mean():.1%}, not ~50%. "
-    "Labels are leaking into the shuffle; the p-value would be meaningless."
+# A sanity check, and worth being precise about what it can and cannot catch.
+# It CANNOT catch label leakage: permutation_test_score permutes y and refits the
+# whole pipeline inside CV, so leakage-into-the-shuffle is structurally
+# impossible here. What it does catch is a mis-specified null -- e.g. a scorer
+# that is not accuracy, or class proportions that make 50% the wrong reference.
+# The tolerance is deliberately tighter than the null's own sd (8.5 pts), because
+# a +/-10 pt window would accept a null centred at 59%.
+assert abs(null_scores.mean() - 0.5) < 0.05, (
+    f"Permutation null centred at {null_scores.mean():.1%}, not ~50%. The null is "
+    "mis-specified; the p-value would not mean what it appears to."
 )
-print("Check passed: null is centred near 50%, so the shuffle is clean.")
+print("Null is centred near 50%, so the reference distribution is well formed.")
+print(f"NOTE: p is bounded below by 1/(n+1) = {1/(N_PERMUTATIONS+1):.4f}. "
+      f"Report this as p <= {1/(N_PERMUTATIONS+1):.3f}, not as a measured value.")
 
 # --- 5. an interval that reflects n=45 ---------------------------------------
 print("\n--- 5. An honest interval ---")
@@ -168,16 +176,33 @@ print(f"What '+/- 5.6%' implies           : [88.8%, 100.0%]  <- far too tight")
 
 # --- 6. how much does the seed matter? ---------------------------------------
 print(f"\n--- 6. Seed sensitivity across {N_SEEDS} random_state values ---")
+# BOTH estimators get swept. Sweeping only the retracted one (ShuffleSplit) and
+# then attaching its "not cherry-picked" verdict to the PUBLISHED number would be
+# a bait-and-switch: they are different estimators with different seed behaviour.
 seed_means = np.array([
     cross_val_score(make_clf(), data, labels,
                     cv=ShuffleSplit(n_splits=10, test_size=0.2, random_state=s)).mean()
     for s in range(N_SEEDS)
 ])
-pct = 100 * (seed_means < seed_means[42]).mean()
-print(f"mean {seed_means.mean():.1%} | std {seed_means.std():.1%} | "
-      f"min {seed_means.min():.1%} | max {seed_means.max():.1%}")
-print(f"Range is {100*(seed_means.max()-seed_means.min()):.1f} points on an arbitrary choice.")
-print(f"Seed 42 sits at the {pct:.0f}th percentile -- it was not cherry-picked.")
+strat_means = np.array([
+    cross_val_score(make_clf(), data, labels,
+                    cv=StratifiedKFold(n_splits=5, shuffle=True, random_state=s)).mean()
+    for s in range(N_SEEDS)
+])
+
+for name, arr in (("ShuffleSplit (retracted)", seed_means),
+                  ("StratifiedKFold (published)", strat_means)):
+    pct = 100 * (arr < arr[42]).mean()
+    print(f"{name:<28} mean {arr.mean():.1%} | min {arr.min():.1%} | "
+          f"max {arr.max():.1%} | range {100*(arr.max()-arr.min()):.1f} pts")
+    print(f"{'':28} seed 42 lands at the {pct:.0f}th percentile "
+          f"({arr[42]:.1%})")
+
+print(f"\nThe two estimators agree in expectation to "
+      f"{100*abs(seed_means.mean() - strat_means.mean()):.1f} points.")
+print("So the headline drop from 94.4% to 91.1% is mostly SEED LUCK, not a")
+print("change of estimator. The estimator change is the right call for other")
+print("reasons (coverage, stratification); it just is not worth 3 points.")
 
 # --- figures -----------------------------------------------------------------
 fig, ax = plt.subplots(figsize=(7, 4))

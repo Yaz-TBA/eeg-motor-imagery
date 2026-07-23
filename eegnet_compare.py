@@ -59,6 +59,7 @@ from sklearn.pipeline import Pipeline
 from sklearn.model_selection import (
     LeaveOneGroupOut,
     StratifiedKFold,
+    cross_val_predict,
     cross_val_score,
 )
 
@@ -71,6 +72,7 @@ SEED = 42
 N_EPOCHS = 100
 BATCH_SIZE = 32
 LR = 1e-3
+BN_EPS = 1e-3  # braindecode EEGNet's BatchNorm2d eps; see for_torch()
 
 # Two preprocessing regimes. "narrow" is what every other rung uses.
 NARROW = dict(l_freq=8.0, h_freq=30.0, crop=(1.0, 2.0))
@@ -137,6 +139,55 @@ def pool(regime, subjects=SUBJECTS):
     return X_all, y_all, groups
 
 
+def for_torch(X):
+    """Volts -> microvolts, then float32. BOTH conversions are load-bearing.
+
+    UNITS BUG, caught by adversarial review after the first version of this rung
+    was already written up. MNE returns data in VOLTS: X.std() is about 1.3e-5,
+    so the variance is about 1.6e-10. braindecode's EEGNet normalises with
+    BatchNorm2d(eps=1e-3), and a variance SEVEN ORDERS OF MAGNITUDE below eps
+    means the batch-norm denominator is essentially just eps. Normalisation
+    never engages, activations stay near 1e-8, and the network cannot train:
+    reaching useful logits would need final-layer weights around 1e8, which
+    100 AdamW steps at lr=1e-3 cannot travel to.
+
+    The failure is SILENT and it looks like a result. The network emitted class 1
+    for all 45 trials of subject 1 and scored 53.3%, which is exactly subject 1's
+    majority-class rate -- so it reads as "CNN performs at chance on small data",
+    a completely plausible finding. It was a dead network. Rescaled here, the
+    same code and seed gives 82.2% with predicted class counts [21, 24] matching
+    the true counts exactly.
+
+    Every EEG deep-learning recipe scales to microvolts for this reason. CSP is
+    unaffected because it works on variance RATIOS, which are scale-invariant.
+    """
+    Xs = (X * 1e6).astype(np.float32)
+    # The guard that would have caught this in the first place. BatchNorm can
+    # only normalise if the signal variance is well above its eps.
+    var = float(Xs.var())
+    assert var > 1e3 * BN_EPS, (
+        f"Signal variance {var:.2e} is not comfortably above BatchNorm eps "
+        f"{BN_EPS:.0e}. BatchNorm will not normalise and the network will not "
+        f"train. Check the units: MNE returns volts, torch models want microvolts."
+    )
+    return Xs
+
+
+def assert_not_degenerate(pred, tag):
+    """A model that predicts one class for everything is broken, not accurate.
+
+    This is the OTHER guard that would have caught the units bug. A dead network
+    scores exactly the majority-class rate, which is indistinguishable from
+    "performs at chance" unless you look at what it actually predicted.
+    """
+    counts = np.bincount(pred, minlength=2)
+    assert counts.min() > 0, (
+        f"{tag}: model predicted class {int(counts.argmax())} for all "
+        f"{counts.sum()} trials. That is a degenerate classifier scoring the "
+        f"majority-class rate, not a model performing at chance."
+    )
+
+
 def make_csp():
     return Pipeline([
         ("CSP", CSP(n_components=4, reg=None, log=True, norm_trace=False)),
@@ -188,7 +239,7 @@ csp_a, t_csp_a = timed(lambda: cross_val_score(
     make_csp(), X1, y1, cv=cv5, error_score="raise"))
 seed_everything()
 net_a, t_net_a = timed(lambda: cross_val_score(
-    make_eegnet(X1.shape[1], X1.shape[2]), X1.astype(np.float32), y1,
+    make_eegnet(X1.shape[1], X1.shape[2]), for_torch(X1), y1,
     cv=cv5, error_score="raise"))
 
 chance_a = max(np.mean(y1 == 0), np.mean(y1 == 1))
@@ -212,7 +263,7 @@ csp_b, t_csp_b = timed(lambda: cross_val_score(
     make_csp(), Xn, yn, groups=gn, cv=logo, n_jobs=-1, error_score="raise"))
 seed_everything()
 net_b, t_net_b = timed(lambda: cross_val_score(
-    make_eegnet(Xn.shape[1], Xn.shape[2]), Xn.astype(np.float32), yn,
+    make_eegnet(Xn.shape[1], Xn.shape[2]), for_torch(Xn), yn,
     groups=gn, cv=logo, error_score="raise"))
 
 chance_b = max(np.mean(yn == 0), np.mean(yn == 1))
@@ -240,7 +291,7 @@ csp_c, t_csp_c = timed(lambda: cross_val_score(
     make_csp(), Xw, yw, groups=gw, cv=logo, n_jobs=-1, error_score="raise"))
 seed_everything()
 net_c, t_net_c = timed(lambda: cross_val_score(
-    make_eegnet(Xw.shape[1], Xw.shape[2]), Xw.astype(np.float32), yw,
+    make_eegnet(Xw.shape[1], Xw.shape[2]), for_torch(Xw), yw,
     groups=gw, cv=logo, error_score="raise"))
 
 print(f"chance                {max(np.mean(yw == 0), np.mean(yw == 1)):.1%}")

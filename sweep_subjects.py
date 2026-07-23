@@ -131,7 +131,16 @@ ok = [r for r in rows if not np.isnan(r["accuracy"])]
 bad = [r for r in rows if np.isnan(r["accuracy"])]
 acc = np.array([r["accuracy"] for r in ok])
 chance = np.array([r["chance"] for r in ok])
-beat = acc > chance
+
+# TIES ARE REAL AND MUST BE NAMED. `acc > chance` looks obvious and is a trap:
+# accuracy is mean(k_i/9) and chance is m/45, and for several subjects those are
+# mathematically EQUAL. Whether the float mean lands one ULP (1e-16) above or
+# below then decides which bucket the subject falls in, so the headline count
+# changes with fold ordering. Report three buckets with an explicit tolerance.
+TOL = 1e-9
+beat = acc > chance + TOL
+tied = np.abs(acc - chance) <= TOL
+below = acc < chance - TOL
 
 print(f"\n{'=' * 62}")
 print(f"{len(ok)} of {len(rows)} subjects evaluated successfully")
@@ -143,12 +152,30 @@ print(f"min / max  {acc.min():.1%} (S{ok[int(acc.argmin())]['subject']:03d}) "
       f"/ {acc.max():.1%} (S{ok[int(acc.argmax())]['subject']:03d})")
 print(f"mean per-subject chance  {chance.mean():.1%}")
 
-print(f"\nSubjects that beat their own chance : {beat.sum()}/{len(ok)} "
-      f"({beat.mean():.0%})")
-print(f"Subjects at or below their chance   : {(~beat).sum()}/{len(ok)} "
-      f"({(~beat).mean():.0%})  <- the honest headline")
+print(f"\nAbove their own chance : {beat.sum()}/{len(ok)}")
+print(f"Exactly AT chance      : {tied.sum()}/{len(ok)}  (mathematical ties, not noise)")
+print(f"Below their own chance : {below.sum()}/{len(ok)}")
 for thresh in (0.60, 0.70, 0.80, 0.90):
     print(f"  above {thresh:.0%}: {(acc > thresh).sum():3d}/{len(ok)}")
+
+# --- what would PURE NOISE produce? The counts above are meaningless without it.
+# Our own permutation test (evaluate_honestly.py) measured the null at
+# 50.7% +/- 8.5% for this pipeline at n=45. Under a GLOBAL null where nobody has
+# any signal, a subject still falls at-or-below its own chance line with
+# probability Phi((chance - 50.7%) / 8.5%).
+NULL_MEAN, NULL_SD = 0.507, 0.085
+from math import erf, sqrt  # noqa: E402
+
+phi = lambda z: 0.5 * (1 + erf(z / sqrt(2)))  # noqa: E731
+p_below_null = np.array([phi((c - NULL_MEAN) / NULL_SD) for c in chance])
+print(f"\nUnder a pure-noise null ({NULL_MEAN:.1%} +/- {NULL_SD:.1%}), you would "
+      f"expect\n  {p_below_null.mean():.0%} ({p_below_null.sum():.0f}/{len(ok)}) "
+      f"at-or-below their own chance line.")
+print(f"Observed: {(~beat).sum()}/{len(ok)} ({(~beat).mean():.0%}).")
+if (~beat).mean() < p_below_null.mean():
+    print("  -> FEWER below chance than noise alone predicts. That is evidence of")
+    print("     signal across the population, NOT a measure of BCI illiteracy.")
+    print("     Calling this figure an illiteracy rate would be backwards.")
 
 sub1 = next((r for r in ok if r["subject"] == 1), None)
 if sub1:
