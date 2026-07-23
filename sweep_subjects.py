@@ -2,13 +2,27 @@
 
 This is the rung that turns a demo into a result. A single subject's accuracy
 says almost nothing about the METHOD -- subject 1 is a clean recording, and
-per-subject quality in this dataset varies enormously. Some people are
-"BCI illiterate": their motor imagery simply does not produce a separable
-mu/beta pattern, and no amount of modelling rescues it.
+per-subject quality in this dataset varies enormously.
 
 So we run the identical pipeline across every subject and look at the whole
-distribution: median, spread, and how many people the method actually fails.
-That last count is the honest headline, not the mean.
+distribution: median, spread, and how many people land below their own chance
+line.
+
+READ THAT LAST COUNT CAREFULLY, BECAUSE AN EARLIER VERSION OF THIS SCRIPT GOT IT
+BACKWARDS. It called the below-chance fraction a "BCI illiteracy rate" and noted
+it fell inside the literature's familiar 15-30%, which made it feel like
+replication. The inference was inverted. This pipeline's own permutation null is
+50.7% +/- 8.5%, so under a GLOBAL NULL in which nobody has any signal you would
+expect roughly 55% of subjects to land at or below their own chance line. The
+observed figure is 28%. Seeing half the noise-only rate is evidence of signal
+ACROSS THE POPULATION, not a measure of failure. The pure-noise expectation is
+now printed directly beneath the counts so the number cannot be misread that way
+a second time.
+
+The literature comparison was wrong too: 15-30% describes users who cannot
+achieve control AFTER training with online feedback. These are naive,
+single-session, offline subjects. By that literature's own operational criterion
+(~70% for usable binary control), this sweep says 65% fall short, not 27%.
 
 Two rules this script follows:
   1. Chance is computed PER SUBJECT. Class balance differs between people, so
@@ -179,9 +193,12 @@ if (~beat).mean() < p_below_null.mean():
 
 sub1 = next((r for r in ok if r["subject"] == 1), None)
 if sub1:
-    pct = 100 * (acc < sub1["accuracy"]).mean()
+    pct = int(round(100 * (acc < sub1["accuracy"]).mean()))
+    # 91st, not "91th". 11/12/13 always take "th"; otherwise 1/2/3 -> st/nd/rd.
+    suffix = ("th" if 11 <= pct % 100 <= 13
+              else {1: "st", 2: "nd", 3: "rd"}.get(pct % 10, "th"))
     print(f"\nSubject 1 (the original headline): {sub1['accuracy']:.1%}, "
-          f"the {pct:.0f}th percentile of subjects.")
+          f"the {pct}{suffix} percentile of subjects.")
 
 if bad:
     print(f"\nExcluded ({len(bad)}), with reasons:")

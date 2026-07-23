@@ -1,7 +1,9 @@
-"""Ask the question a skeptical reader asks first: how do you know 94% is real?
+"""Ask the question a skeptical reader asks first: how do you know the number is real?
 
-decode_csp.py reports "94.4% +/- 5.6%" from 10 random 80/20 splits. That number
-reproduces exactly, but three things about it are weaker than they look:
+THIS RUNG IS WHAT CHANGED THE HEADLINE. decode_csp.py originally reported
+"94.4% +/- 5.6%" from 10 random 80/20 splits (ShuffleSplit); it now uses
+StratifiedKFold(5) and reports 91.1% with a permutation p <= 0.001. The original
+number reproduced exactly, but three things about it were weaker than they looked:
 
   1. With 45 trials, a 20% test set is 9 trials -- so a fold's accuracy can ONLY
      be a multiple of 1/9. The "+/- 5.6%" is the gap between two rungs of a
