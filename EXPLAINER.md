@@ -643,7 +643,39 @@ cue-evoked response, while CSP's log-variance band power is close to blind to on
 same breath as the number.** So rung 11 tests it instead of asserting it, with a sixth cell that
 decodes the **cue window alone (0–1 s), which contains no imagery at all.**
 
-<!-- CUE-ONLY-RESULT -->
+**The confirmation.** Decoding the cue window on its own — 0–1 s, containing no motor imagery at
+all — against the pooled majority-class floor of **50.1%** (pooling 20 subjects balances the
+classes, unlike subject 1's 53.3%):
+
+| model | cue window alone | against chance |
+|---|---|---|
+| CSP + LDA | 53.7% | 95% CI [50.6%, 56.8%], p = 0.027 |
+| **EEGNet** | **61.1%** | 95% CI [57.3%, 64.9%], **p < 0.0001** |
+
+EEGNet decodes a window with no imagery in it at **61.1%**. And the decisive comparison: adding
+the entire three-second imagery window on top of the cue buys it **+1.9 points, 95% CI
+[−2.8, +6.6], p = 0.41** — indistinguishable from nothing. CSP is not helped either (−2.2 points,
+p = 0.20).
+
+So EEGNet's 63.0% in regime C is, within measurement error, **entirely available from the cue
+period alone**. The interpretation is now a measurement: regime C's "the ranking flips" is the
+CNN reading the **cue-evoked response**, not learning motor imagery better than CSP does. The
+reason CSP cannot follow it there is structural — a phase-locked evoked deflection is a
+*temporal* pattern, and CSP's log-variance features throw timing away by construction, keeping
+only band power.
+
+This is the same shape of finding as rung 7's gaze confound, and it earns the same framing: build
+a rung, believe it, then find the confound in your own result. **Two of the eleven rungs turned
+out to be decoding the stimulus rather than the intention.** For a project about reading
+*intent*, that is the most useful thing in the repository, and it is why regime C is kept and
+re-analysed rather than deleted.
+
+> **The general lesson, worth carrying to any BCI result.** Both confounds were invisible to
+> accuracy, to cross-validation, and to permutation testing, because in every case the model was
+> finding real, reproducible structure. It was simply the wrong structure. The only checks that
+> caught either one were **ablations that removed the thing the claim depends on** — frontopolar
+> channels in rung 7, the imagery window here. If a result cannot survive deleting what it
+> claims to be reading, the claim is about something else.
 
 ---
 
@@ -863,7 +895,7 @@ already built**. Here is the real state instead.
 | 8 | Does it transfer to an unseen person? | Near-parity, 95% CI **[−1.9, +11.2]**, p = 0.181. Cannot distinguish a drop from no drop |
 | 9 | Does a Riemannian method beat it? | No, but only **MDM-64 is significant** (p = 0.005); the rest is underpowered |
 | 10 | Does a CNN beat it? | Loses by **8.9 points** at n=45, level at ~900 trials |
-| 11 | What did rung 10's regime C measure? | The **cue period**, not the band or window it credited. That one undocumented change carries **+9.2 of the 11.6-point gap** (p = 0.015) |
+| 11 | What did rung 10's regime C measure? | **The cue, not the imagery.** EEGNet scores 61.1% on the cue window alone; adding the whole imagery window buys +1.9 (p = 0.41) |
 
 ### 12.1 What is retracted, and why that list matters
 
@@ -874,8 +906,10 @@ rather than quietly deleted, because the list is more informative than the resul
   28% was observed. It is evidence *of* signal.
 - **"EEGNet loses by 37.8 points."** A units bug. The network was never training. Real gap: 8.9.
 - **"The ranking flips once both models get a wider band and a longer window."** Three factors
-  moved at once. Rung 11 shows the effect is carried by a fourth thing nobody documented — the
-  cue period — and that the stated band mechanism is not merely unsupported but backwards.
+  moved at once, and the effect turns out to belong to none of the two that were credited. Rung
+  11 traces it to an undocumented crop-start change, shows the stated band mechanism is
+  backwards, and confirms by measurement that EEGNet scores **61.1% on a window containing no
+  imagery at all**.
 - **"73.3% is what a harder contrast costs."** Group value is ~7 points, and the rung is
   gaze-confounded.
 - **"No method dominates / the best method is subject-specific."** No subject × method
@@ -924,7 +958,7 @@ python decode_csp.py        # full pipeline + writes csp_patterns.png
   optional checkpoints you can run individually to inspect each stage; rungs 5–11 are the
   attacks on the result and each runs standalone.
 - Because `random_state=42` is fixed, `decode_csp.py` prints **91.1% (+/- 4.4%)** and
-  **p = 0.0010** exactly. The classical rungs are all deterministic in this way.
+  **p <= 0.001** exactly. The classical rungs are all deterministic in this way.
 - **The CNN rungs are not bit-reproducible.** Seeds are fixed for torch, numpy and python, but
   MPS (Apple GPU) kernels do not guarantee identical results run to run. Expect small drift in
   the EEGNet numbers and none in the classical baselines.
@@ -953,9 +987,13 @@ in BCI. Be ready to volunteer them:
    component is parieto-occipital and correlates r = 0.57 with the subject's own alpha map
    (§8.3). The real defence is the ablation in §10.5. For fists-vs-feet the ocular checks come
    back clean (HEOG p = 0.27, VEOG p = 0.44); for the left/right rung they emphatically do not.
-5. **A confirmed confound in the left/right rung.** Rung 7 decodes a lateralised gaze artifact
-   as much as motor imagery, and EEGMMIDB has no EOG channels, so it can be neither removed nor
-   measured directly.
+5. **Two confirmed confounds, in rungs 7 and 11.** Rung 7's left/right decoding rides a
+   lateralised gaze artifact, and EEGMMIDB ships no EOG channels, so it can be bounded but
+   neither removed nor monitored. Rung 11's wide-window CNN comparison turned out to be reading
+   the cue-evoked response: EEGNet scores **61.1% on a window containing no imagery at all**.
+   Neither touches the fists-vs-feet headline, which passes both its ocular checks and its
+   channel ablation — but together they are why this project treats "the accuracy is real" and
+   "the accuracy is measuring what I said it measures" as two separate claims.
 6. **Underpowered comparisons.** With n=20 subjects the minimum detectable difference is about
    5–6 points. Several "no difference" results in rungs 8 and 9 are really "this experiment
    cannot tell," which is a different statement.
@@ -985,7 +1023,27 @@ If a mentor says *"walk me through it,"* this is the spine:
 > chance. The honest caveats are that it's one subject and an easy contrast, and that subject sits
 > in the top decile of the 109 I swept, where the median is 60%."
 
-If you can say that, you own this repo.
+And when they ask the follow-up that actually matters — *"what did you get wrong?"* — this is the
+stronger half of the answer:
+
+> "Three things, and two of them are the same mistake. I built a left-versus-right rung and
+> reported what a harder contrast costs. It was decoding gaze: the cue sits on one side of the
+> screen for the whole trial, and a decoder using only frontopolar channels below 5 Hz matches my
+> 64-channel number on that subject. Then I compared against a CNN and reported that it wins once
+> you give it a wider band and a longer window. It wasn't the band or the window — I had also
+> moved the crop start without noting it, which let the cue-evoked response into the window. The
+> CNN scores 61% on the cue period alone, with no imagery in it at all, and adding the entire
+> imagery window on top buys it two points I can't distinguish from zero. Both times the model
+> was finding real, reproducible structure that survived permutation testing. It was just the
+> wrong structure. The third was a units bug: MNE returns volts, the network's batch-norm epsilon
+> is a thousand times larger than the signal variance, so it never trained and scored exactly the
+> majority-class rate — which reads as 'CNN performs at chance on small data,' a completely
+> plausible finding I wrote up as a headline."
+
+That answer is worth more than the 91%. Anyone can report an accuracy; the thing a lab is
+actually screening for is whether you find your own confounds before a reviewer does.
+
+If you can say both, you own this repo.
 
 ---
 

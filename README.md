@@ -142,7 +142,7 @@ Rungs 1–4 build the result. Rungs 5–11 attack it, and three of them found so
 | 8 | `cross_subject.py` | Leave-one-subject-out across 20 subjects |
 | 9 | `riemannian.py` | MDM and Tangent Space vs. the CSP baseline on identical folds |
 | 10 | `eegnet_compare.py` | EEGNet vs. CSP+LDA at two sample sizes. Where the units bug was found |
-| 11 | `regime_decomposition.py` | Decomposes rung 10's confounded third regime. The "EEGNet wins" result came from an undocumented crop-start change, not the band |
+| 11 | `regime_decomposition.py` | Decomposes rung 10's confounded third regime. The "EEGNet wins" result is the CNN reading the **cue**, not the imagery |
 
 ## Next
 
