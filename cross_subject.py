@@ -118,7 +118,7 @@ assert len(groups) == len(y_all) == X_all.shape[0], "groups/labels/data length m
 rng = np.random.default_rng(0)
 shuffled = rng.permutation(y_all)
 shuffled_score = cross_val_score(clf, X_all, shuffled, groups=groups,
-                                 cv=logo, n_jobs=-1).mean()
+                                 cv=logo, n_jobs=-1, error_score="raise").mean()
 print(f"Structural checks passed ({len(folds)} folds, one subject each).")
 print(f"Label-shuffled control: {shuffled_score:.1%} "
       f"(must sit near chance; elevated would mean a leak)")
@@ -128,7 +128,12 @@ assert shuffled_score < 0.60, (
 )
 
 print("\nRunning leave-one-subject-out...")
-scores = cross_val_score(clf, X_all, y_all, groups=groups, cv=logo, n_jobs=-1)
+# error_score="raise" on both CV calls above and here. The default would score a
+# folding failure NaN and average it in, so a leak check that never actually ran
+# could still print a comfortable number -- exactly the kind of quiet pass this
+# rung is built to refuse.
+scores = cross_val_score(clf, X_all, y_all, groups=groups, cv=logo, n_jobs=-1,
+                         error_score="raise")
 tested = [s for s, _, _ in loaded]
 
 chance_all = max(np.mean(y_all == 2), np.mean(y_all == 3))
@@ -140,6 +145,34 @@ print(f"median    {np.median(scores):.1%}")
 print(f"min / max {scores.min():.1%} / {scores.max():.1%}")
 print(f"pooled chance {chance_all:.1%}")
 print(f"subjects above pooled chance: {(scores > chance_all).sum()}/{len(scores)}")
+
+# --- positive control, and the one rung where it MUST NOT be an assert ---------
+# Every other classical rung asserts that the model beats the majority-class
+# rate. Doing that here would be a category error. This rung's stated premise is
+# "EXPECT THE NUMBER TO FALL, AND DO NOT TUNE UNTIL IT STOPS FALLING" -- a
+# cross-subject score sitting at chance is a legitimate scientific finding about
+# how badly naive CSP transfers, not a bug in the code. An assert would convert
+# that finding into a crash, and the obvious way to make a crash go away is to
+# tune until it passes. That is precisely the behaviour this file forbids.
+#
+# So it reports and warns. The negative control above (shuffled labels must
+# collapse) is the one that gets to abort, because an elevated shuffled score
+# has no honest interpretation.
+#
+# print, not warnings.warn -- filterwarnings("ignore") at the top would eat it.
+# TOL because a score exactly equal to chance can land either side of a bare
+# comparison on float noise alone -- see decode_csp.py, where a majority-class
+# dummy tests 1.1e-16 above the line.
+TOL = 1e-9
+print(f"\nPositive control: LOSO mean {scores.mean():.1%} vs pooled majority-class "
+      f"rate {chance_all:.1%} ({100 * (scores.mean() - chance_all):+.1f} points).")
+if scores.mean() <= chance_all + TOL:
+    print("  !! At or below chance. That is a REPORTABLE RESULT about transfer,")
+    print("     not necessarily a defect -- but check the pipeline before you")
+    print("     publish it, because a broken model looks identical from here.")
+else:
+    print("  Above chance, so the transfer gap below is a gap in a working model,")
+    print("  not the distance between two kinds of noise.")
 
 # --- compare against within-subject, if the sweep has been run ---------------
 within = {}

@@ -96,7 +96,13 @@ def evaluate_subject(subject):
             ("LDA", LinearDiscriminantAnalysis()),
         ])
         cv = StratifiedKFold(n_splits=N_SPLITS, shuffle=True, random_state=42)
-        scores = cross_val_score(clf, X, y, cv=cv)
+        # error_score="raise" serves rule 2 above ("nothing is dropped silently").
+        # sklearn's default would catch a broken fold, score it NaN, and return a
+        # mean of NaN -- which lands in this table as an ordinary exclusion with
+        # no reason attached. Raising instead sends it to the except below, where
+        # it becomes a FAILED row that names the exception. Across 109 subjects
+        # this is the difference between a recorded failure and a missing one.
+        scores = cross_val_score(clf, X, y, cv=cv, error_score="raise")
 
         return dict(
             subject=subject,
@@ -171,6 +177,31 @@ print(f"Exactly AT chance      : {tied.sum()}/{len(ok)}  (mathematical ties, not
 print(f"Below their own chance : {below.sum()}/{len(ok)}")
 for thresh in (0.60, 0.70, 0.80, 0.90):
     print(f"  above {thresh:.0%}: {(acc > thresh).sum():3d}/{len(ok)}")
+
+# --- positive control, SCOPED TO THE POPULATION and deliberately not an assert -
+# `assert accuracy > chance` per subject would be wrong here, and would fire on
+# perfectly honest data: two dozen of these people really do land below their own
+# chance line, and that spread IS the result this rung exists to show. Aborting
+# on it would delete the finding.
+#
+# What cannot be true if the pipeline is alive is that the whole DISTRIBUTION
+# sits at chance, so the check is scoped to the median across subjects. Median,
+# not mean, because a handful of near-perfect subjects can drag a mean above a
+# dead population. It warns rather than raises: a sweep that fails this should
+# still write its CSV and figure, because the per-subject rows are what you would
+# need to diagnose it.
+#
+# print, not warnings.warn -- this file calls filterwarnings("ignore") at the top
+# to silence MNE, and that filter would swallow this too.
+# TOL is the same one the bucket counts above use, and for the same reason: an
+# accuracy that is mathematically EQUAL to chance can land either side of a bare
+# comparison depending on float path, so a dead population could slip past.
+med_acc, med_chance = float(np.median(acc)), float(np.median(chance))
+if med_acc <= med_chance + TOL:
+    print(f"\n!! POSITIVE CONTROL FAILED: median accuracy {med_acc:.1%} does not "
+          f"exceed the median per-subject chance line {med_chance:.1%}.")
+    print("   The population as a whole is at chance, which no working decoder")
+    print("   produces. Treat every number in this report as suspect.")
 
 # --- what would PURE NOISE produce? The counts above are meaningless without it.
 # Our own permutation test (evaluate_honestly.py) measured the null at

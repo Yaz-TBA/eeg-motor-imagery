@@ -103,7 +103,12 @@ print("Attainable values near the headline: "
       + ", ".join(f"{k}/{test_n}={k/test_n:.1%}" for k in range(test_n - 2, test_n + 1)))
 
 cv_shuffle = ShuffleSplit(n_splits=10, test_size=0.2, random_state=42)
-scores_shuffle = cross_val_score(make_clf(), data, labels, cv=cv_shuffle)
+# error_score="raise" on every CV call in this file. sklearn's default catches a
+# fold that throws, scores it NaN, and returns a mean that is quietly wrong --
+# which in a script whose entire subject is "how do you know the number is real"
+# would be an embarrassing place to accept a silent failure.
+scores_shuffle = cross_val_score(make_clf(), data, labels, cv=cv_shuffle,
+                                 error_score="raise")
 distinct = sorted({round(float(s), 4) for s in scores_shuffle})
 print(f"\nThe 10 folds produced {len(distinct)} distinct values: "
       + ", ".join(f"{v:.1%}" for v in distinct))
@@ -129,14 +134,44 @@ print(f"{'ShuffleSplit(10, 0.2)':<24} {scores_shuffle.mean():.1%} +/- {scores_sh
 strat_scores = {}
 for k in (5, 10):
     cv = StratifiedKFold(n_splits=k, shuffle=True, random_state=42)
-    s = cross_val_score(make_clf(), data, labels, cv=cv)
+    s = cross_val_score(make_clf(), data, labels, cv=cv, error_score="raise")
     strat_scores[k] = s
     print(f"{f'StratifiedKFold({k})':<24} {s.mean():.1%} +/- {s.std():.1%}")
 print("Note the +/- on 10-fold: 4-5 test trials per fold makes a fold std meaningless.")
 
+# POSITIVE CONTROL on the PUBLISHED estimator, before anything is inferred from
+# it. Sections 4-6 all interrogate the 5-fold number; if the pipeline had quietly
+# collapsed to predicting one class, they would still run and still print, and
+# the permutation test would even agree that a majority-class predictor beats
+# shuffled labels. So check the other direction first: is the model alive?
+#
+# The bar is 53.3% (24/45), the MAJORITY-CLASS rate, not 50%. With 21 hands and
+# 24 feet, "always feet" scores 53.3% for free, so 50% is the wrong reference --
+# the same point section 2 makes about the worst-balanced ShuffleSplit fold.
+# Only the stratified estimator is checked. The retracted ShuffleSplit number is
+# reported for contrast, and asserting on a retracted estimator would imply we
+# still stand behind it.
+#
+# The tolerance is load-bearing. A majority-class dummy scores exactly 24/45 on
+# these folds -- numerically identical to chance -- but arrives there as a mean of
+# k/9 fold scores, and floating point puts it 1.1e-16 ABOVE a directly computed
+# 24/45. A bare `> chance` therefore PASSES a model that learned nothing. This
+# file is about numbers that look stronger than they are; a guard with that bug
+# would belong in the retracted column.
+TOL = 1e-9
+assert strat_scores[5].mean() > chance + TOL, (
+    f"Positive control failed: StratifiedKFold(5) scored {strat_scores[5].mean():.1%}, "
+    f"not above the majority-class rate of {chance:.1%} ({n_hands} hands / {n_feet} "
+    "feet). A constant predictor matches that, so there is no decoding to evaluate "
+    "and sections 4-6 would be interrogating noise."
+)
+
 # --- 4. permutation test: is it real? ----------------------------------------
 print(f"\n--- 4. Permutation test ({N_PERMUTATIONS} label shuffles) ---")
 print("Running... (this is the slow part)")
+# No error_score argument: permutation_test_score does not accept one, and does
+# not need it -- it calls estimator.fit with nothing catching the exception, so a
+# broken fold raises rather than silently becoming NaN.
 observed, null_scores, p_value = permutation_test_score(
     make_clf(), data, labels,
     scoring="accuracy",
@@ -196,12 +231,14 @@ print(f"\n--- 6. Seed sensitivity across {N_SEEDS} random_state values ---")
 # a bait-and-switch: they are different estimators with different seed behaviour.
 seed_means = np.array([
     cross_val_score(make_clf(), data, labels,
-                    cv=ShuffleSplit(n_splits=10, test_size=0.2, random_state=s)).mean()
+                    cv=ShuffleSplit(n_splits=10, test_size=0.2, random_state=s),
+                    error_score="raise").mean()
     for s in range(N_SEEDS)
 ])
 strat_means = np.array([
     cross_val_score(make_clf(), data, labels,
-                    cv=StratifiedKFold(n_splits=5, shuffle=True, random_state=s)).mean()
+                    cv=StratifiedKFold(n_splits=5, shuffle=True, random_state=s),
+                    error_score="raise").mean()
     for s in range(N_SEEDS)
 ])
 

@@ -30,6 +30,22 @@ original regime C exactly (4-38 Hz, 0.0-4.0 s) so the cue-onset contribution --
 the change nobody documented -- gets its own number instead of hiding inside
 the others.
 
+That fifth cell prices the change but does not explain it, so a sixth cell
+decodes the 0-1 s window ON ITS OWN, and a seventh is that cell's control.
+The control is the part that was missing. Calling 0-1 s "the cue window, no
+imagery in it" is an assumption, not a measurement: the subject begins
+imagining AT the cue, so 0-1 s holds the visual evoked response AND the first
+second of imagery, and either one could be carrying the score. The honest
+control is the second BEFORE the cue, -1.0 to 0.0 s, which contains neither.
+That window sits inside the T0 rest period -- task onsets are 8.3 s apart with
+a 4.2 s rest before each -- so nothing task-related has happened in it yet.
+
+Chance is the correct answer for the pre-cue cell, which makes it the only cell
+in the grid that can FAIL. Above-chance decoding there would not be a finding,
+it would be a defect: subject identity leaking through the folds, slow drift,
+filter ringing, or a bug. Only if pre-cue sits at chance while 0-1 s sits above
+it is the effect genuinely locked to cue onset.
+
 Both models run in every cell on identical LOSO folds. Reporting the CNN across
 a grid while holding the classical baseline fixed would smuggle the confound
 back in through the comparison.
@@ -67,6 +83,7 @@ from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 from sklearn.pipeline import Pipeline
 from sklearn.metrics import accuracy_score, make_scorer
 from sklearn.model_selection import LeaveOneGroupOut, cross_val_score
+from scipy import stats
 
 mne.set_log_level("ERROR")
 warnings.filterwarnings("ignore")
@@ -79,6 +96,11 @@ BATCH_SIZE = 32
 LR = 1e-3
 BN_EPS = 1e-3
 CHECKPOINT = "regime_decomposition.json"
+
+# Epoch bounds. tmin is 1 s BEFORE the cue, which is what makes the pre-cue
+# control cell possible without re-epoching; every crop below must fit inside
+# these bounds and there is an assert at the bottom of CELLS that checks it.
+EPOCH_TMIN, EPOCH_TMAX = -1.0, 4.0
 
 # The 2x2, plus the original regime C as a fifth reference cell. Crop start is
 # 1.0 s everywhere except that fifth cell, which exists precisely to price the
@@ -97,7 +119,52 @@ CELLS = {
     # CUE WINDOW ALONE, containing no imagery at all. If the explanation is
     # right, EEGNet should score above chance here and CSP should not.
     "cue-only":     dict(l_freq=4.0, h_freq=38.0, crop=(0.0, 1.0), band="wide",   window="cue only"),
+    # The control for the cell above, and the only cell here where chance is the
+    # right answer. "cue-only" is misnamed if taken literally: imagery starts AT
+    # the cue, so 0-1 s contains the evoked response AND one second of imagery.
+    # This cell takes the second BEFORE the cue -- no flash, no imagery, pure
+    # rest -- with the band and window length matched to "cue-only" so the two
+    # differ in nothing but their position relative to the cue. At chance here
+    # and above chance there, the effect is post-cue. Above chance HERE and the
+    # whole rung is measuring a leak, not a brain.
+    "pre-cue":      dict(l_freq=4.0, h_freq=38.0, crop=(-1.0, 0.0), band="wide",  window="pre-cue"),
 }
+
+# CAVEAT ON THE CONTROL ITSELF. "Contains no post-cue signal" is true of the
+# window but not quite true of the filtered samples in it. load_subject filters
+# the CONTINUOUS recording and crops afterwards, and MNE's zero-phase firwin at
+# 4-38 Hz is a 265-tap symmetric FIR: half-length 132 samples = 0.825 s at
+# 160 Hz. Energy at t=0 therefore spreads backwards to t=-0.825 s, so only the
+# first 0.175 s of this window is strictly filter-clean. The smear is real and
+# measurable -- a linear ERP-style decoder (which, unlike CSP log-variance, can
+# see a phase-locked evoked response) scores 53.7% here as-scripted, p=0.029,
+# and falls to 52.0%, p=0.16, when the window is rebuilt from a segment that
+# physically ENDS at t=0.0 s so no post-cue sample exists to leak. Neither model
+# in this grid is affected -- CSP lands at 47.7% and EEGNet at 51.8%, both at
+# chance -- but the direction matters: smear can only push a pre-cue score UP,
+# so a null here is conservative, while an above-chance pre-cue result would
+# have to be re-run with truncated filtering before it meant anything.
+
+# LIMITATION, and this control does not remove it. A pre-cue null localises the
+# effect to AFTER the cue; it cannot split "cue flash" from "imagery onset",
+# because in EEGBCI those two begin at the same instant. Separating them needs a
+# contrast in which the cue looks IDENTICAL across classes, and EEGBCI is not
+# that: the target is a bar at the TOP of the screen for fists and the BOTTOM
+# for feet. The stimulus is position-confounded with the label, so a
+# class-discriminative visual evoked response -- different retinotopic locus,
+# different eye movement to fixate it -- necessarily exists post-cue whatever
+# the subject imagines. Deciding how much of the 0-1 s score is visual would
+# take a dataset with a class-neutral cue (e.g. an identical central symbol, or
+# an auditory cue), or a delayed-response design that puts a gap between cue and
+# imagery onset. This grid can bound WHEN the effect starts, not WHAT it is.
+
+# Every crop must fit the epoch. A cell asking for samples the epoching never
+# produced would otherwise fail as a silently short array in pool()'s min().
+for _name, _c in CELLS.items():
+    assert EPOCH_TMIN <= _c["crop"][0] < _c["crop"][1] <= EPOCH_TMAX, (
+        f"cell {_name!r} crops {_c['crop']} outside epoch bounds "
+        f"({EPOCH_TMIN}, {EPOCH_TMAX}); widen the epoching in load_subject()."
+    )
 
 DEVICE = "mps" if torch.backends.mps.is_available() else "cpu"
 
@@ -120,7 +187,8 @@ def load_subject(subject, cell):
         raw.filter(cell["l_freq"], cell["h_freq"], fir_design="firwin",
                    skip_by_annotation="edge")
         events, _ = mne.events_from_annotations(raw, event_id=dict(T1=2, T2=3))
-        epochs = mne.Epochs(raw, events, dict(hands=2, feet=3), tmin=-1.0, tmax=4.0,
+        epochs = mne.Epochs(raw, events, dict(hands=2, feet=3),
+                            tmin=EPOCH_TMIN, tmax=EPOCH_TMAX,
                             picks="eeg", baseline=None, preload=True)
         X = epochs.copy().crop(*cell["crop"]).get_data(copy=False)
         return subject, X, epochs.events[:, -1]
@@ -287,19 +355,45 @@ print("window      = long minus short, averaged over both bands")
 print("interaction = how much the band effect changes when the window lengthens")
 print("cue onset   = moving the crop start 1.0 s -> 0.0 s, the undocumented third change")
 
-# The confirmatory test: the cue window on its own contains NO imagery.
-if "cue-only" in results:
-    cue = results["cue-only"]
-    print(f"\n{'=' * 70}\nCUE WINDOW ALONE (0-1 s, no imagery in it at all)\n{'=' * 70}")
-    print(f"CSP + LDA  {cue['csp_mean']:.1%}")
-    print(f"EEGNet     {cue['eegnet_mean']:.1%}")
-    print("\nIf EEGNet scores above chance on a window containing no imagery, then")
-    print("regime C's 'the ranking flips' is the CNN reading the cue-evoked")
-    print("response, not learning motor imagery better than CSP does.")
+# The confirmatory test and its control, read as a pair. Same band, same window
+# length, same folds; the only difference is which side of the cue they sit on.
+if "cue-only" in results and "pre-cue" in results:
+    cue, pre = results["cue-only"], results["pre-cue"]
+    print(f"\n{'=' * 70}\nTHE CUE, AND THE SECOND BEFORE IT\n{'=' * 70}")
+    # "At chance" is a claim about a distribution, so it gets a test rather than
+    # an eyeball. One-sample t across the 20 LOSO folds against 0.5, and a
+    # paired t between the two windows on the SAME folds.
+    def _vs_chance(scores):
+        s = np.asarray(scores)
+        t, p = stats.ttest_1samp(s, 0.5)
+        return f"{s.mean():>7.1%} (p={p:.3f})"
+
+    print(f"{'window':<26}{'CSP+LDA':>20}{'EEGNet':>20}")
+    print(f"{'-1.0 to 0.0 s  (pre-cue)':<26}"
+          f"{_vs_chance(pre['csp']):>20}{_vs_chance(pre['eegnet']):>20}"
+          f"   <- must be chance")
+    print(f"{'0.0 to 1.0 s   (post-cue)':<26}"
+          f"{_vs_chance(cue['csp']):>20}{_vs_chance(cue['eegnet']):>20}")
+    for model, label in (("csp", "CSP+LDA"), ("eegnet", "EEGNet")):
+        a, b = np.asarray(pre[model]), np.asarray(cue[model])
+        t, p = stats.ttest_rel(b, a)
+        print(f"  paired post-cue minus pre-cue, {label:<8} "
+              f"{100 * (b - a).mean():+.1f} pts (p={p:.4f})")
+    print("\nThe post-cue row on its own proves nothing -- a model can look")
+    print("above chance there because of subject leakage or drift that has")
+    print("nothing to do with the cue. The pre-cue row is the control that")
+    print("rules those out: it is matched in band, length and folds, and it")
+    print("contains neither the cue flash nor any imagery. Chance pre-cue plus")
+    print("above-chance post-cue localises the effect to cue onset, so regime")
+    print("C's 'the ranking flips' is the CNN reading something time-locked to")
+    print("the cue rather than learning motor imagery better than CSP does.")
+    print("It does NOT say which post-cue thing: see the LIMITATION note next")
+    print("to the cell definitions -- EEGBCI's cue is position-confounded with")
+    print("the class, so cue flash and imagery onset cannot be separated here.")
 
 # --- figure ------------------------------------------------------------------
 order = ["narrow-short", "wide-short", "narrow-long", "wide-long", "original-C",
-         "cue-only"]
+         "cue-only", "pre-cue"]
 fig, ax = plt.subplots(figsize=(10, 5))
 x = np.arange(len(order))
 ax.bar(x - 0.2, [results[c]["csp_mean"] for c in order], width=0.4,
@@ -307,13 +401,15 @@ ax.bar(x - 0.2, [results[c]["csp_mean"] for c in order], width=0.4,
 ax.bar(x + 0.2, [results[c]["eegnet_mean"] for c in order], width=0.4,
        label="EEGNet", color="#8e44ad")
 ax.axhline(0.5, color="#c0392b", ls="--", lw=1.2, label="chance")
-ax.axvline(3.5, color="#7f8c8d", ls=":", lw=1.2)
+ax.axvline(3.5, color="#7f8c8d", ls=":", lw=1.2)   # 2x2 | cue-window cells
+ax.axvline(5.5, color="#7f8c8d", ls=":", lw=1.2)   # post-cue | the control
 ax.set_xticks(x)
 ax.set_xticklabels([c.replace("-", "\n") for c in order], fontsize=9)
 ax.set_ylabel("accuracy (LOSO, 20 subjects)")
 ax.set_ylim(0, 1)
 ax.set_title("Regime C decomposed: band and window varied independently\n"
-             "(rightmost cell adds the undocumented 0 s crop start)", fontsize=11)
+             "(cells 5-6 add the undocumented 0 s crop start; cell 7 is the "
+             "pre-cue control, which must land on chance)", fontsize=11)
 ax.legend(loc="upper right")
 fig.tight_layout()
 fig.savefig("regime_decomposition.png", dpi=120)

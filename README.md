@@ -56,27 +56,58 @@ actually counts.)
 ![Permutation null distribution](permutation_null.png)
 
 The evidence that this is motor activity and not eye or muscle artifact is an
-**ablation**, not a picture:
+**ablation**, not a picture. Every row is printed by `ablate_channels.py`, one
+seed (42), one pipeline, on the same 45 trials:
 
-| Channels used | Accuracy |
-|---|---|
-| sensorimotor only | **95.9%** |
-| all 64 | 91.1% |
-| frontopolar only | **47.4%, i.e. chance** |
-| leave-one-run-out (all 64) | 93.3% |
+| Channels used | ch | Accuracy | Trials |
+|---|---|---|---|
+| sensorimotor only (FC/C/CP strip) | 17 | **95.6%** | 43/45 |
+| all 64 | 64 | 91.1% | 41/45 |
+| frontopolar only (Fp/AF ring) | 8 | **51.1%** — *below* the 53.3% majority-class floor | 23/45 |
+| leave-one-run-out (all 64) | 64 | 93.3% | 42/45 |
 
-Remove the cortex that should carry the signal and the decoder collapses to
-chance. Keep only that cortex and it improves. That is a control; a scalp map is
-not.
+Remove the cortex that should carry the signal and the decoder falls to the
+majority-class floor — 51.1% is one trial *worse* than ignoring the EEG and
+always answering "feet", with folds scattered from 0.33 to 0.78. That is a
+control; a scalp map is not.
+
+The other direction is weaker than this README used to claim it. Sensorimotor-only
+is 43/45 against all-64's 41/45 — a **two-trial** difference, which on n=45 is
+inside noise. The defensible statement is *"dropping 47 non-motor channels does
+not hurt"*, not *"the sensorimotor subset is better."* The load-bearing half of
+the ablation is the collapse, not the gain.
+
+> **Correction, and it is the reason `ablate_channels.py` now exists.** Until this
+> commit the two bolded rows read **95.9%** and **47.4%, i.e. chance**, and *no
+> script in the repo produced them*. Both are also arithmetically unreachable:
+> with 45 trials tested exactly once each, accuracy can only be k/45 — steps of
+> 2.222% — and neither 0.959 nor 0.474 is on that lattice. The real values are
+> 43/45 = 95.6% and 23/45 = 51.1%. The framing was wrong twice over too:
+> frontopolar-only is not "chance," because chance here is the 53.3%
+> majority-class rate, not 50%. The table is kept in corrected form rather than
+> deleted, because a headline control that no code produced is the most useful
+> thing this repo found about itself.
+>
+> One honest limit on what the ablation bounds: the average reference is computed
+> over all 64 channels *before* any subset is picked, so the subsets are not
+> electrically independent — every channel carries −1/64 of every other. This
+> **bounds** the ocular contribution; it does not eliminate it.
 
 The learned CSP patterns are plotted below because they are interesting, **not as
 proof**. An earlier version of this README claimed they were "focal over central
 sensorimotor cortex" and offered that as the artifact defence. That was wrong:
 the strongest component here peaks at **POz, PO4 and Oz**, which is
-parieto-occipital, and it correlates r = 0.57 with this subject's own eyes-closed
-alpha map. Components 0 and 1 *are* genuinely sensorimotor (FC3/C3/FC1 and
-FC4/FC2/C4). Reading topographies by eye is not a control, which is why the
-ablation above replaced it.
+parieto-occipital and looks like occipital alpha. A second component mixes
+sensorimotor weights (FC3/C3/FC1, FC4/FC2/C4) with occipital ones. Reading
+topographies by eye is not a control, which is why the ablation above replaced it.
+
+> **A second correction, inside the first one.** This paragraph used to add that
+> the showcased component "correlates r = 0.57 with this subject's own eyes-closed
+> alpha map." No script in this repo computes any correlation, and the figure did
+> not reproduce under the obvious definitions. It has been withdrawn rather than
+> re-derived: the qualitative claim (that component is posterior and alpha-like)
+> stands on the channel weights, and a retraction passage resting on an
+> unproduced number would be the exact defect it was written to correct.
 
 ![CSP spatial patterns](csp_patterns.png)
 
@@ -97,8 +128,20 @@ cross-validation seeds gives a mean of 93.6% for ShuffleSplit and 93.8% for
 stratified 5-fold, so the two estimators agree in expectation to about 0.2 points.
 Seed 42 happens to sit at the 49th percentile for the old estimator and the **3rd
 percentile** for the new one. The estimator change is still right, for coverage
-and stratification reasons, but it is worth roughly 0.6 points, not 3.3. The
-published 91.1% is a conservative draw from an 88.9-97.8% seed distribution.
+and stratification reasons, but it is worth roughly 0.6 points, not 3.3.
+
+**So the headline understates itself, deliberately and on the record.** 91.1% is a
+low draw from its own estimator: the same pipeline averages **93.8%** across 100
+cross-validation seeds, over a range of 88.9–97.8%. The number published here is
+the conservative one, and it is the one carrying the permutation test.
+
+Read those percentiles with one caveat the script makes visible: the estimator is
+quantized to 1/45, so the 100 seeds land on only a handful of distinct values and
+many of them tie exactly on 91.1%. `evaluate_honestly.py` ranks seeds *strictly
+below*, which is the most flattering of the available tie conventions — counting
+ties as at-or-below would place seed 42 materially higher. The 2.7-point gap
+between 91.1% and the 93.8% mean does not depend on the convention; the word
+"3rd" does.
 
 `evaluate_honestly.py` reproduces the whole comparison, sweeping both estimators
 so that neither one's diagnostics get attached to the other's number.
@@ -109,12 +152,28 @@ so that neither one's diagnostics get attached to the other's number.
   generalization, and the honest interval is roughly [79%, 97%].
 - **Easy contrast.** Fists vs. feet are far apart on the motor homunculus (lateral vs.
   top-central), so their scalp patterns differ a lot. Left-hand-vs-right-hand is harder, and
-  `harder_contrast.py` found it is also **gaze-confounded** in this dataset: a decoder using only
-  frontopolar channels at 0.5–5 Hz matches the 64-channel result on this subject.
+  `harder_contrast.py` found it is also **gaze-confounded** in this dataset. The cue sits on one
+  side of the screen for the whole trial, and on subject 1 the frontopolar asymmetry
+  (Fp1+AF7+AF3 minus Fp2+AF8+AF4) is **+11.89 µV on left cues and −12.99 µV on right cues** in
+  the cue window (Welch t = +7.71, p = 3.7e-09). A decoder using **frontopolar mean amplitude
+  alone reaches 86.7%** on that window (p ≤ 0.001).
+
+  > **Correction.** This bullet used to say "a decoder using only frontopolar channels at
+  > 0.5–5 Hz matches the 64-channel result on this subject." At matched settings it does not.
+  > Same trials, same folds, same 1.0–2.0 s window: all-64 at 8–30 Hz is 73.3%, frontopolar at
+  > 0.5–5 Hz is **53.3%** — 20 points below, not level. The old "match" compared a frontopolar
+  > decoder on the whole 0–4 s epoch against a 64-channel decoder on a 1-second crop, which is
+  > two different experiments. The confound is real; the evidence quoted for it was
+  > window-shopped, and CSP's log-variance features are close to blind to it anyway, because a
+  > sustained gaze deviation is a DC shift. Swapping the *feature* to mean amplitude is what
+  > actually finds it.
+
 - **Clean subject.** Subject 1 is the **91st percentile** of the 109; the median subject scores
   60.0%. Picking it is fair for a baseline, and quoting it without the distribution would not be.
-- **No artifact rejection.** No ICA, and EEGMMIDB ships no EOG channels, so ocular contamination
-  can be bounded by ablation but never removed or directly measured.
+- **No artifact rejection.** No ICA, and EEGMMIDB ships **no EOG channels**, so ocular
+  contamination can be bounded by ablation but never removed or directly measured. Any "ocular
+  check" in this repo is a *frontal-EEG surrogate*, not an eye electrode, and it is named as one
+  wherever it appears.
 
 ## Reproduce
 
@@ -142,7 +201,27 @@ Rungs 1–4 build the result. Rungs 5–11 attack it, and three of them found so
 | 8 | `cross_subject.py` | Leave-one-subject-out across 20 subjects |
 | 9 | `riemannian.py` | MDM and Tangent Space vs. the CSP baseline on identical folds |
 | 10 | `eegnet_compare.py` | EEGNet vs. CSP+LDA at two sample sizes. Where the units bug was found |
-| 11 | `regime_decomposition.py` | Decomposes rung 10's confounded third regime. The "EEGNet wins" result is the CNN reading the **cue**, not the imagery |
+| 11 | `regime_decomposition.py` | Decomposes rung 10's confounded third regime. The "EEGNet wins" result is the CNN reading the **cue**, not the imagery. Includes the pre-cue control |
+
+Two more scripts exist that are controls on the repo rather than rungs of the ladder:
+
+| Script | Does |
+|---|---|
+| `ablate_channels.py` | Produces the artifact-ablation table above, and asserts every reported accuracy lands on the k/45 lattice |
+| `check_provenance.py` | Extracts every number from README.md and EXPLAINER.md and fails if one is not printed by some script's stdout |
+
+`check_provenance.py` exists because of the defect the ablation table turned out to
+be: a specific figure, published as a headline control, produced by no code. It is
+the guard that makes that class of error loud instead of silent.
+
+Two things about it are worth knowing before you run it. It has a **WEAK** bucket for
+a number whose only backing line reads as a retraction — without that, a script
+printing "95.9% and 47.4% are off this lattice" *in order to withdraw them* would have
+marked the fabricated originals as sourced, defeating the whole point on this repo. And
+it will always flag the handful of **withdrawn** figures that this project quotes inside
+its retraction passages, because by construction no script produces them any more. That
+is the intended state: the figure is gone from every live claim and kept only in the
+record of its own withdrawal.
 
 ## Next
 
@@ -159,5 +238,6 @@ is actually left:
   anatomy.
 - **ICA-based artifact rejection**, and a paradigm that records EOG.
 
-See [EXPLAINER.md](EXPLAINER.md) §12 for the full scoreboard, including the five claims this
-project published and later retracted.
+See [EXPLAINER.md](EXPLAINER.md) §12 for the full scoreboard, including the complete list of
+claims this project published and later retracted. That list only grows — corrections are added
+to it, never swapped in over the record of the claim they correct.

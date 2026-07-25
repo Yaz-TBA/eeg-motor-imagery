@@ -145,11 +145,42 @@ print(f"Pooled chance: {chance:.1%}\n")
 
 results = {}
 for name, (pipe, X) in PIPELINES.items():
-    scores = cross_val_score(pipe, X, y_all, groups=groups, cv=logo, n_jobs=-1)
+    # error_score="raise" matters more here than anywhere else in the repo. A
+    # Riemannian pipeline estimates a 64x64 covariance from 161 samples, and a
+    # singular or non-SPD matrix makes the manifold operations throw. sklearn's
+    # default catches that, scores the fold NaN, and averages it in -- so a
+    # method that failed outright on some subjects would come back as a plausible
+    # mean with a nan-poisoned std, and the paired comparison below would be
+    # comparing a real pipeline against a partly-crashed one. Raise instead.
+    scores = cross_val_score(pipe, X, y_all, groups=groups, cv=logo, n_jobs=-1,
+                             error_score="raise")
     results[name] = scores
     print(f"{name:<24} {scores.mean():.1%} +/- {scores.std():.1%}  "
           f"(median {np.median(scores):.1%}, "
           f"{(scores > chance).sum()}/{len(scores)} above chance)")
+
+# --- positive control on the BASELINE ONLY, and not as an assert --------------
+# Two reasons this is a warning and scoped to one pipeline.
+#
+# It is scoped to the baseline because a Riemannian pipeline landing at chance is
+# the RESULT this rung reports -- Cov+MDM on 64 channels sits barely above the
+# line, and that is the under-determination point the comment above makes, not a
+# malfunction. Asserting every pipeline beats chance would abort on the finding.
+#
+# It is not an assert because this is cross-subject, where near-chance is honest
+# (see cross_subject.py for the same argument at length). But the baseline is the
+# ruler every delta below is measured against: if IT were at chance, "Riemannian
+# loses to CSP" would be a statement about two flavours of noise. So the run
+# continues and says so, loudly, rather than crashing.
+# TOL for the same float-tie reason documented in decode_csp.py: a model scoring
+# exactly the majority-class rate can compare as strictly greater.
+TOL = 1e-9
+base_mean = float(results["CSP + LDA (baseline)"].mean())
+if base_mean <= chance + TOL:
+    print(f"\n!! POSITIVE CONTROL: the CSP+LDA baseline scored {base_mean:.1%}, at "
+          f"or below the pooled majority-class rate of {chance:.1%}.")
+    print("   Every 'mean change' below is measured against that baseline, so the")
+    print("   paired comparison is not interpretable. Fix the ruler first.")
 
 # --- the paired comparison, including where Riemannian loses ------------------
 base = results["CSP + LDA (baseline)"]

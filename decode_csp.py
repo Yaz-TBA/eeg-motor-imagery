@@ -66,15 +66,50 @@ clf = Pipeline([("CSP", csp), ("LDA", LinearDiscriminantAnalysis())])
 # keeps class balance steady across folds. See evaluate_honestly.py for why the
 # original 10x80/20 split overstated both the accuracy and its precision.
 cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
-scores = cross_val_score(clf, train_data, labels, cv=cv)
+# error_score="raise", because sklearn's default is to CATCH a fold that throws,
+# score it NaN, and hand back a mean that is quietly wrong. CSP inverts a
+# covariance matrix, so a near-singular fold is a real failure mode here, not a
+# hypothetical one. A pipeline that breaks should break loudly.
+scores = cross_val_score(clf, train_data, labels, cv=cv, error_score="raise")
+
+chance = max(np.mean(labels == 2), np.mean(labels == 3))
+
+# POSITIVE CONTROL, and it runs BEFORE the permutation test on purpose. The
+# permutation test is a negative control: it asks whether the score beats what
+# SHUFFLED labels produce. This asks the other half -- is the model alive at all?
+# A pipeline that silently degrades to predicting one class every time still
+# returns a number, and that number is the majority-class rate. Checking it first
+# means a dead model fails in a second instead of after 1000 permutations.
+#
+# Chance is 24/45 = 53.3%, NOT 50%. The classes are imbalanced 21 hands / 24
+# feet, so "always guess feet" already scores 53.3%; beating 50% would prove
+# nothing at all. This is the same imbalance the whole repo computes chance from.
+#
+# TOL, and it is NOT decoration. A majority-class DummyClassifier on these folds
+# scores exactly 24/45, the same value as chance -- but the two are computed by
+# different float paths (a mean of k/9 fold scores vs a single 24/45), and the
+# dummy lands 1.1e-16 ABOVE. So a bare `> chance` passes a model that has learned
+# nothing, which is precisely the failure this control exists to catch. Verified
+# by substituting DummyClassifier for the pipeline. sweep_subjects.py hits the
+# same trap and uses the same 1e-9 tolerance.
+TOL = 1e-9
+assert scores.mean() > chance + TOL, (
+    f"Positive control failed: CSP+LDA scored {scores.mean():.1%}, which does not "
+    f"beat the majority-class rate of {chance:.1%} "
+    f"({int((labels == 2).sum())} hands / {int((labels == 3).sum())} feet). "
+    "A constant predictor would do this well, so the model is not decoding "
+    "anything and every number below would be meaningless."
+)
 
 # Shuffle the labels 1000x and re-run: does the real result stand outside chance?
+# No error_score here because permutation_test_score does not take one -- it calls
+# estimator.fit directly with nothing catching it, so a failing fold already
+# propagates instead of being scored NaN. The knob is only needed on cross_val_score.
 observed, null_scores, p_value = permutation_test_score(
     clf, train_data, labels, scoring="accuracy", cv=cv,
     n_permutations=N_PERMUTATIONS, random_state=42, n_jobs=-1,
 )
 
-chance = max(np.mean(labels == 2), np.mean(labels == 3))
 print(f"\nCSP+LDA accuracy: {scores.mean():.1%}  (+/- {scores.std():.1%})")
 print(f"Chance (majority class): {chance:.1%}")
 print(f"Per-fold: {np.round(scores, 2)}")
