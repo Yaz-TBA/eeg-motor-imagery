@@ -17,10 +17,28 @@ How it works:
      reruns are free until the script changes.
   3. Assert every claim appears somewhere in some captured stdout, allowing for
      rounding (91.1 in the docs matches 91.11111 in the output).
-  4. Print BACKED / ALLOWLISTED / WEAK / UNBACKED and exit nonzero on any
-     UNBACKED. WEAK means the only stdout line carrying that number reads like
-     a retraction ("the two numbers the old README table carried"), which is
-     not the same as the number being produced -- see RETRACTION_HINT.
+  4. Print BACKED / ALLOWLISTED / WEAK / UNBACKED. WEAK means the only stdout
+     line carrying that number reads like a retraction ("the two numbers the old
+     README table carried"), which is not the same as the number being produced
+     -- see RETRACTION_HINT.
+
+The exit contract, stated exactly, because an overstated one is worse than none:
+
+  exit 1  any UNBACKED claim, OR any analysis script on disk that the registry
+          does not list (its output is checked by nobody), OR -- on a FULL run
+          only -- any registered script that produced no output, because a
+          crashed or timed-out script would otherwise turn a FAIL into a pass.
+  exit 0  everything else, including INCOMPLETE.
+
+  INCOMPLETE is reachable ONLY under --fast, where skipped slow scripts are
+  expected to contribute nothing.
+
+  WEAK IS ADVISORY AND NEVER AFFECTS THE EXIT CODE. It cannot: this repo keeps
+  corrected claims visible inside retraction passages, and RETRACTION_HINT also
+  fires on innocent lines (it matches the word "retracted" inside an estimator
+  LABEL, so live figures land in WEAK). Every WEAK entry needs a human to decide
+  whether the doc is quoting a retracted number or republishing it. A green exit
+  code does not mean the WEAK list was reviewed.
 
 Known limits, stated plainly: matching is by value, not by meaning, so a small
 integer can be backed by coincidence, and a script that prints a number for any
@@ -57,14 +75,90 @@ REGISTRY = {
     "epoch_trials.py":          (10,    False),
     "filter_and_epoch.py":      (10,    False),
     "decode_csp.py":            (90,    False),
-    "ablate_channels.py":       (180,   False),
+    # Six channel conditions at seed 42, a ten-seed sweep over five of them, a
+    # secondary arm that rebuilds from the EDFs to re-reference inside 47
+    # channels, and a 1000-shuffle permutation test on the complement. The old
+    # 180 was a guess carried from when this script ran four single-seed
+    # conditions. Runtime MEASURED 2026-07-25 on this machine, EEGBCI files
+    # already fetched, permutation test at n_jobs=-1: 15.48 s and 15.65 s wall,
+    # identical stdout on both except for an edit made between them. 20 is the
+    # higher measurement rounded up, giving an 80 s timeout at the 4x rule above.
+    # It is LOWER than the number it replaces because the old one was never
+    # measured, not because the script got faster.
+    #
+    # RAISED 20 -> 60 on 2026-07-26. Three arms were added after an adversarial
+    # pass: the exact McNemar re-run on all ten sweep seeds (two extra
+    # cross_val_predict calls per seed), a rank and identity check on the
+    # re-referenced secondary arm, and POST-REGISTRATION arm 10, a 50-draw
+    # random-17-channel-deletion null swept over the same ten seeds, which is 500
+    # extra 47-channel CV fits on its own. Runtime MEASURED on this machine after
+    # those additions: 52.19 s and 53.36 s wall, stdout byte-identical across
+    # both. 60 is the higher measurement rounded up, giving a 240 s timeout at
+    # the 4x rule above.
+    "ablate_channels.py":       (60,    False),
+    # The EMG probe: the pipeline refit on 40-75 Hz at the temporal ring, which
+    # is the arm ablate_channels.py structurally CANNOT run, because the
+    # published pipeline band-passes to 8-30 Hz and discards the band an EMG
+    # probe needs before any covariance is computed. Pre-registered in
+    # neuro-canon/measurements/prereg-emg-proxy.md. Cheap despite four 1000-shuffle
+    # permutation tests and a 400-run injection ladder, because every channel set
+    # except ALL64 is 8 or 17 channels wide. Runtime MEASURED 2026-07-25 on this
+    # machine, EEGBCI files already fetched, permutation tests at n_jobs=-1:
+    # 32.69 s and 35.21 s wall, stdout byte-identical across both runs apart from
+    # the line that prints the runtime itself. 40 is the higher measurement
+    # rounded up, giving a 160 s timeout at the 4x rule above.
+    #
+    # RAISED 40 -> 90 on 2026-07-26. The script grew four post-registration arms
+    # after an adversarial pass: a 100-CV-seed sweep of the primary cell, the
+    # ladder over two extra focal topographies, an intermittent-injection ladder
+    # over all four shapes and both directions, and a bursty saturation probe at
+    # three amplitudes past the top rung. Runtime MEASURED on this machine after
+    # those additions: 69.2 s and 75.8 s wall. 80 is the higher measurement
+    # rounded up; 90 leaves headroom for the machine being busy, giving a 360 s
+    # timeout at the 4x rule. It is HIGHER than the number it replaces because
+    # the script does more, not because anything got slower.
+    "emg_proxy.py":             (90,    False),
     "harder_contrast.py":       (120,   False),
     "evaluate_honestly.py":     (300,   True),   # 100-seed x 2-estimator sweep
     "sweep_subjects.py":        (1800,  True),   # all 109 subjects
     "cross_subject.py":         (900,   True),   # leave-one-subject-out, n=20
-    "riemannian.py":            (900,   True),   # 20 subjects, 3 pipelines
+    # 5 pipeline arms: 2 methods (MDM, TangentSpace+LR) x 2 montages (64 ch,
+    # sensorimotor subset) + the CSP+LDA baseline they are paired against.
+    "riemannian.py":            (900,   True),   # 20 subjects, 5 pipeline arms
     "eegnet_compare.py":        (3600,  True),   # CNN training, 3 regimes
-    "regime_decomposition.py":  (3600,  True),   # CNN training, 2x2 factorial
+    # 7 cells, not 4: the 2x2 band x crop factorial plus original-C, cue-only and
+    # pre-cue. The pre-cue control is the one rung 11's conclusion rests on, so a
+    # comment that says "2x2" understates what this script has to run.
+    "regime_decomposition.py":  (3600,  True),   # CNN training, 7 cells
+    # Re-analysis of arrays already on disk, plus three small measurements on
+    # subject 1. Cheap because it trains nothing it does not have to, so it is
+    # NOT slow: --fast runs it rather than falling back to a cache. Runtime
+    # MEASURED 2026-07-25 on this machine, EEGBCI files already fetched:
+    # 11.90 s and 12.18 s wall, byte-identical stdout both times. 15 is that
+    # measurement rounded up, giving a 60 s timeout at the 4x rule above.
+    "inferential_stats.py":     (15,    False),
+    # Arm A: 3 subjects x 4 cells x 10,000 permutation replicates, each one a
+    # full 5-fold CSP+LDA refit, plus 2 exact label-free cells at N=2,000 and a
+    # 6-rule x 3-subject exactness study (200 H0 vectors x 199 inner
+    # permutations). Arm B: 2 cells x 2,000 replicates of a 20-fold LOSO over
+    # 900 pooled trials, which is the expensive half by an order of magnitude.
+    #
+    # TWO RUNTIMES, MEASURED, and the registry has to carry the LARGER one
+    # because the smaller one is only available to a machine that has already
+    # paid for it. The script checkpoints each block of replicates to
+    # .permutation_design_cache/, stamped with a fingerprint of every input, so
+    # a re-run reuses completed blocks:
+    #   COLD  (no cache): 20:44:01 -> 01:33:11 on 2026-07-25/26, i.e. 17,350 s
+    #                     wall, read off the script's own timestamped stderr.
+    #   WARM  (all blocks cached): 159.99 s wall, MEASURED 2026-07-26.
+    # 17400 is the cold measurement rounded up. That gives a 69,600 s timeout at
+    # the 4x rule, which is absurdly generous for a warm run and is exactly
+    # right for a cold one -- and a cold run is what a fresh clone gets. Marked
+    # SLOW so --fast skips it and uses the cache, like the other multi-hour
+    # scripts. Do NOT lower this to the warm number: deleting the cache would
+    # then turn a working script into a timeout, which check_provenance.py
+    # reports as FAIL on a full run.
+    "permutation_design.py":    (17400, True),
 }
 
 # ---------------------------------------------------------------------------
@@ -76,8 +170,23 @@ REGISTRY = {
 #   pct    91.1%          any percentage
 #   stat   p <= 0.001     p-values and correlations, r = 0.57
 #   count  45 trials      integers bound to a result-bearing noun
-# Everything else in the prose (Hz, seconds, run numbers, section numbers,
-# electrode names) is ignored by construction -- see UNIT_SUFFIX and ALLOWLIST.
+# Everything else in the prose is INVISIBLE to this tool, and not all of it is
+# harmless. Two different things get conflated here, so keep them apart:
+#
+#   Ignored on purpose, and safe: Hz, seconds, run numbers, section numbers,
+#   electrode names. These are settings and structure, not results.
+#
+#   ALSO INVISIBLE, AND THESE ARE RESULTS: point-differences ("0.2 points",
+#   "3.5 points", "17.8 points"), multipliers ("53x", "4500x"), microvolts
+#   ("+11.89 uV"), t-statistics ("t = +7.71"), k/45 fractions, parameter counts
+#   ("2,290 parameters"), and scientific notation ("1.3e-5", "1.6e-10").
+#
+# None of that second group is excluded by UNIT_SUFFIX or ALLOWLIST. It is
+# excluded because PATTERNS below simply never matches it. A fabricated
+# point-difference or multiplier passes this tool in silence -- which is how a
+# retracted causal claim, expressed entirely as a point-difference, survived
+# several review rounds without this checker ever seeing it. Extending PATTERNS to
+# point-differences and multipliers would close the largest part of the gap.
 PATTERNS = [
     ("pct",   re.compile(r"(?<![\w.])(\d[\d,]*(?:\.\d+)?)\s*%")),
     ("stat",  re.compile(r"\b(?:p|r)\s*(?:=|<=|<|≤)\s*(\d*\.\d+)")),
@@ -105,16 +214,32 @@ ALLOWLIST = {
     "count:1000": "permutation shuffle count -- a knob, not a result",
     "count:100": "seed-sweep size -- a knob, not a result",
     "count:5":   "k in stratified 5-fold -- a knob, not a result",
-    "count:10":  "k in the retired 10-fold estimator -- a knob",
+    "count:10":  "n_splits in the retired ShuffleSplit(10, 0.2) estimator -- a "
+                 "knob, not a result. NOT a 10-fold: that framing is retracted, "
+                 "ShuffleSplit is not a partition (see evaluate_honestly.py 2)",
     "count:20":  "subject subset size for LOSO -- a knob, not a result",
     # Forward-looking prose in README "Next" / EXPLAINER roadmap. These describe
     # corpora this project has NOT run, so no script can back them.
     "count:2000": "aspirational trial count for other public corpora",
     "count:5000": "aspirational trial count for other public corpora",
-    # Textbook / literature values cited with attribution, not produced here.
-    "pct:50.0":  "theoretical chance for a balanced two-class problem",
-    "pct:100.0": "rhetorical ceiling ('100% of the time'), not a measurement",
-    "pct:0.0":   "rhetorical floor, not a measurement",
+    # NO percentage is allowlisted, deliberately. This block used to carry
+    # "pct:50.0", "pct:100.0" and "pct:0.0", and both halves of that were wrong:
+    #
+    #   1. They never fired. Claim.key renders a whole-number value as "pct:50",
+    #      not "pct:50.0" (see the int() in Claim.key), so those three strings
+    #      could not match an extracted claim. They read as active policy while
+    #      exempting nothing.
+    #   2. The policy itself was unsafe, because these keys exempt by VALUE, with
+    #      no regard for context:
+    #        - 50.0 is not only "theoretical chance". regime_decomposition.py
+    #          tests against 0.5 while EXPLAINER.md describes a pooled
+    #          majority-class floor of 50.1%. Exempting every 50.0% would hide
+    #          exactly that mismatch.
+    #        - 100.0 is not only a rhetorical ceiling. It is a MEASURED maximum
+    #          here: sweep_subjects.py prints "max 100.0% (S070)", a clean 45/45.
+    #
+    # If a percentage ever genuinely needs exemption, exempt it by CONTEXT the way
+    # CONTEXT_EXEMPT handles "95% CI", not by value.
 }
 
 
@@ -406,10 +531,21 @@ def main() -> int:
 
     if missing:
         print(f"\nNOTE: {len(missing)} script(s) contributed no output, so some "
-              f"UNBACKED entries\n      above may simply be unverified. Run "
-              f"without --fast to settle them.")
-        print("Result: INCOMPLETE (exit 0 -- --fast cannot fail the build)")
-        return 0
+              f"UNBACKED entries\n      above may simply be unverified.")
+        # Gated on --fast. Under --fast, missing output is EXPECTED (slow scripts
+        # are skipped by design) and an incomplete run must not fail the build.
+        # On a FULL run it means a registered script crashed, timed out, or is not
+        # on disk -- and returning 0 there would let a broken script convert a
+        # genuine FAIL into a pass, which is the exact failure this tool exists to
+        # catch.
+        if args.fast:
+            print("      Run without --fast to settle them.")
+            print("Result: INCOMPLETE (exit 0 -- --fast cannot fail the build)")
+            return 0
+        print("      This is a FULL run, so that is a broken script, not a "
+              "skipped one.")
+        print("Result: FAIL (registered script produced no output on a full run)")
+        return 1
 
     bad = bool(unbacked) or bool(stray)
     print(f"\nResult: {'FAIL' if bad else 'PASS'}")

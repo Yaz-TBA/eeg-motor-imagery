@@ -55,6 +55,19 @@ was killed mid-run and left nothing behind, so a multi-hour job produced zero
 recoverable results. Every cell here appends to regime_decomposition.json the
 moment it finishes. Kill this script at any point and every completed cell
 survives; re-running skips what is already on disk.
+
+WHAT THAT COSTS, AND IT IS NOT SMALL. Resuming means this script can print a
+complete report without computing anything. If regime_decomposition.json exists,
+every cell reports "cached, skipping" and the tables below are whatever was in
+that file, however old. The 2026-07-25 provenance run did exactly that: its
+captured stdout opens "Resuming: 7 cell(s) already on disk", every cell says
+cached, and regime_decomposition.json is dated 2026-07-23. So rung 11's
+published figures are a 2026-07-23 checkpoint and were NOT freshly reproduced by
+that run, and nothing downstream may describe them as newly reproduced while
+that file predates the run. check_provenance.py cannot detect this: it hashes
+sources and stdout, and a cached cell produces the same stdout a computed one
+would. TO REPRODUCE COLD, DELETE regime_decomposition.json FIRST. A resumed run
+now says so in its own output, immediately under the "Resuming" line.
 """
 
 import matplotlib
@@ -116,8 +129,29 @@ CELLS = {
     # with temporal convolutions can read a phase-locked cue-evoked response
     # while CSP's log-variance band power is close to blind to it. That is an
     # interpretation, not a measurement, so this cell measures it: decode the
-    # CUE WINDOW ALONE, containing no imagery at all. If the explanation is
-    # right, EEGNet should score above chance here and CSP should not.
+    # 0-1 s window ALONE. The prediction, kept here verbatim as it was written:
+    # "EEGNet should score above chance here and CSP should not."
+    #
+    # OUTCOME, RECORDED 2026-07-25: HALF OF THAT PREDICTION FAILED, and the
+    # failure went unreported for two days. Across the 20 LOSO folds CSP scores
+    # 53.7% with p = 0.023 against 0.5. CSP IS above chance in the cue window.
+    # EEGNet scores 61.1%. Paired against pre-cue on the same folds, CSP gains
+    # +6.0 points (p = 0.0103) and EEGNet +9.3 (p = 0.0000): CSP follows the cue
+    # effect LESS than EEGNet does, which is a difference of degree, not the
+    # presence-versus-absence this comment predicted. The rung's conclusion, that
+    # regime C's ranking flip is cue-locked rather than better imagery decoding,
+    # rests on the pre-cue control and the paired deltas and is untouched. The
+    # MECHANISM sentence above -- that CSP's log-variance band power is "close
+    # to blind" to a phase-locked response -- is not supported by this grid and
+    # must not be repeated as if it were. The failure is now printed by the script itself,
+    # under the cue/pre-cue table, so it cannot be lost again.
+    #
+    # ALSO WITHDRAWN, kept visible: this comment used to describe the 0-1 s
+    # window as "containing no imagery at all." It does not. Imagery begins AT
+    # the cue, as the docstring above and the pre-cue cell below both say, so
+    # 0-1 s holds the evoked response AND the first second of imagery. That was
+    # the mechanism story invented in the same breath as the number, in the one
+    # comment that defines what the cell is for.
     "cue-only":     dict(l_freq=4.0, h_freq=38.0, crop=(0.0, 1.0), band="wide",   window="cue only"),
     # The control for the cell above, and the only cell here where chance is the
     # right answer. "cue-only" is misnamed if taken literally: imagery starts AT
@@ -314,6 +348,12 @@ results = load_checkpoint()
 if results:
     print(f"Resuming: {len(results)} cell(s) already on disk "
           f"({', '.join(results)})", flush=True)
+    # Say it in the stdout, because the stdout is what gets captured and cited.
+    mtime = time.strftime("%Y-%m-%d %H:%M", time.localtime(os.path.getmtime(CHECKPOINT)))
+    print(f"  THIS IS NOT A COLD RUN. Every cached cell below is READ FROM "
+          f"{CHECKPOINT}\n  (last written {mtime}), not recomputed, and the "
+          f"tables at the end are that file's\n  numbers. Delete "
+          f"{CHECKPOINT} to reproduce from the data.", flush=True)
 
 for name, cell in CELLS.items():
     if name in results:
@@ -363,6 +403,21 @@ if "cue-only" in results and "pre-cue" in results:
     # "At chance" is a claim about a distribution, so it gets a test rather than
     # an eyeball. One-sample t across the 20 LOSO folds against 0.5, and a
     # paired t between the two windows on the SAME folds.
+    #
+    # TWO CAVEATS THAT APPLY TO EVERY p PRINTED BELOW, and they both push the
+    # same way.
+    # (1) LOSO folds are NOT independent observations. Any two training sets
+    #     share 19 of their 20 subjects, so fold-to-fold variance underestimates
+    #     sampling variance and every p here is anti-conservative. README.md and
+    #     EXPLAINER.md flag exactly this hazard for the Wilson interval on n=45;
+    #     it applies with more force to a 20-fold t-test.
+    # (2) The null is 0.5, not the pooled majority-class rate. On the same 20
+    #     subjects, cross_subject.py and eegnet_compare.py both print a pooled
+    #     chance of 50.1%, so a test against 0.5 is testing against a floor
+    #     slightly below the one the write-up quotes.
+    #     The gap is small here and it is not zero; the tests are left against
+    #     0.5 so the printed numbers keep matching the checkpoint they came
+    #     from, and the discrepancy is named instead of quietly closed.
     def _vs_chance(scores):
         s = np.asarray(scores)
         t, p = stats.ttest_1samp(s, 0.5)
@@ -390,6 +445,27 @@ if "cue-only" in results and "pre-cue" in results:
     print("It does NOT say which post-cue thing: see the LIMITATION note next")
     print("to the cell definitions -- EEGBCI's cue is position-confounded with")
     print("the class, so cue flash and imagery onset cannot be separated here.")
+
+    # HALF THE STATED PREDICTION FAILED, and this block exists so the script
+    # says so itself instead of leaving it to a reader who recomputes the JSON.
+    _csp_cue = np.asarray(cue["csp"])
+    _t_cue, _p_cue = stats.ttest_1samp(_csp_cue, 0.5)
+    if _csp_cue.mean() > 0.5 and _p_cue < 0.05:
+        print("\nAND HALF THE PREDICTION THIS CELL WAS BUILT ON FAILED.")
+        print("The cue-only cell was written to predict that EEGNet would score")
+        print("above chance in the cue window and that CSP would NOT. CSP scores")
+        print(f"{_csp_cue.mean():.1%} there (p={_p_cue:.3f}), which is above chance.")
+        print("So CSP is not blind to whatever the cue window carries; it simply")
+        print("follows it less than EEGNet does. The cue-locking conclusion above")
+        print("stands, because it rests on the pre-cue control and the paired")
+        print("deltas. The MECHANISM story -- 'CSP's log-variance features cannot")
+        print("see a phase-locked evoked response' -- does not, and should not be")
+        print("repeated anywhere downstream.")
+
+    print("\nEvery p in this block is a t-test across 20 leave-one-subject-out")
+    print("folds treated as independent draws. They overlap in 19/20 of their")
+    print("training data, so these p-values are anti-conservative. Read them as")
+    print("ordering evidence, not as calibrated tail probabilities.")
 
 # --- figure ------------------------------------------------------------------
 order = ["narrow-short", "wide-short", "narrow-long", "wide-long", "original-C",

@@ -14,10 +14,22 @@ that controls that body part changes its electrical rhythm. This project records
 electrical activity from the scalp (EEG), isolates the relevant rhythms, and trains a simple
 machine-learning model to guess **which** movement a person imagined: *both fists* or *both
 feet*. On one clean subject it reaches **91% accuracy** (chance is 53%, permutation p <= 0.001),
-and it establishes that the signal is motor by **ablation**: restricted to 17 sensorimotor channels
+and it **bounds** the ocular contribution by **ablation**: restricted to 17 sensorimotor channels
 the decoder holds at 95.6%, restricted to 8 frontopolar channels it falls to 51.1% — *below* the
-53.3% majority-class floor. This is the canonical "hello world" of brain-computer interfaces
+53.3% majority-class floor. That bounds the artifact rather than proving the signal is motor.
+This is the canonical "hello world" of brain-computer interfaces
 (BCIs), done honestly and reproducibly.
+
+**And the sharpest test of that story has now been run, and it came back the wrong way.** This
+paragraph used to end with the concession *"no condition deletes sensorimotor cortex while
+keeping the rest of the montage,"* which is kept here as the record of what was owed. That
+condition now exists. Deleting the 17-channel sensorimotor strip and refitting on the remaining
+47 electrodes leaves the decoder at **77.8% (35/45)**, far above the 53.3% floor and significant
+against its own 1000-shuffle null at p <= 0.001. The falsifiable form of the artifact defence,
+*if it reads sensorimotor cortex then deleting sensorimotor cortex must break it*, did not
+produce a break. The pre-registered verdict is *a loss is suggested and not established at
+n = 45*, because the paired McNemar that had to confirm it came in at p = 0.0703 on eight
+discordant trials. Read §10.5 before quoting the 95.6% anywhere.
 
 ---
 
@@ -161,10 +173,19 @@ standard hygiene so the repo stays just source + results.
 ## 6. The architecture: a ladder of eleven rungs
 
 The defining design choice of this repo is that it's built **rung by rung**. Each script is a
-complete, runnable checkpoint that adds exactly one new idea on top of the previous one. The
-git history mirrors this — one commit per rung. This is deliberate and worth articulating to a
-mentor: *it makes the pipeline debuggable and teachable, because every stage can be run and
-inspected in isolation before the next stage is added.*
+complete, runnable checkpoint that adds exactly one new idea on top of the previous one. This is
+deliberate and worth articulating to a mentor: *it makes the pipeline debuggable and teachable,
+because every stage can be run and inspected in isolation before the next stage is added.*
+
+**The git history does not mirror it, and this document used to say it did.** That claim
+("one commit per rung") is withdrawn: `git log --oneline extensions | wc -l` returns **26**
+commits for eleven rungs, and it is wrong in both directions. Commit `d3edb50` adds
+`sweep_subjects.py`, `harder_contrast.py`, `cross_subject.py` and `riemannian.py` in one go —
+**four rungs in one commit**, while its message names only the left-vs-right contrast. Rung 11
+spans **three** (`e07f209`, `57f4d03`, `c8e3326`), and both guard scripts land together in
+`7b6fe9a`. Only rungs 1–3 were introduced in one commit and never touched again. The *scripts*
+are one-idea-per-rung; the *history* is not, and since this section invites you to verify the
+claim in the history, it had to be the history that gave way.
 
 ```
 BUILD IT
@@ -183,19 +204,42 @@ ATTACK IT
 11  regime_decomposition.py   What did rung 10's third experiment actually measure?
 
 GUARD IT  (controls on the repo, not rungs of the ladder)
-    ablate_channels.py       Produces the artifact-ablation table, and asserts the k/45 lattice
-    check_provenance.py      Fails if any number in README/EXPLAINER is printed by no script
+    ablate_channels.py       Produces the artifact-ablation table, and asserts the k/45 lattice.
+                             Now includes the sensorimotor-DELETED arm the docs owed
+    emg_proxy.py             Refits the pipeline at 40-75 Hz on the temporal ring, and turns
+                             the null into a numeric sensitivity bound with an injection ladder
+    permutation_design.py    Tests the tests. Measures each permutation null's false-positive
+                             rate on data with provably zero information
+    check_provenance.py      Fails on a percentage, p-value, r, or result-bearing count in
+                             README/EXPLAINER that no script's stdout prints. Multipliers,
+                             point-differences, µV and t-statistics are invisible to it.
 ```
+
+The bottom block grew by three on 2026-07-25 and 2026-07-26, and the reason is worth stating
+plainly because it is the criticism that produced them. A reviewer read the finished corpus and
+said: *this project is trained to concede exposures with great precision and is not trained to
+measure them.* Nine of ten findings named a hazard, named the exact test that would close it,
+and then did not run the test. The three scripts above are three of those tests. Two came back
+against the framing they were built to defend. That is what the section is for.
 
 `decode_csp.py` is the *only* script you need to run to reproduce the headline result; it
 re-does the work of rungs 1–3 internally. Every file is standalone — nothing imports anything
 else — so any rung can be run and read on its own.
 
-**The shape of that list is the point.** Four rungs build the result and seven try to break it.
-Three of them succeeded: rung 7 found a gaze confound in this project's own data, rung 10 was
-measuring a network that turned out to be dead, and rung 6's headline inference was backwards.
-A project that only climbs is a demo. The rungs that found something wrong are the ones worth
-talking about, and §12 reports what each one actually returned.
+**The shape of that list is the point.** Four rungs build the result and seven try to break it,
+and **at least five of the seven succeeded**: rung 6's headline inference was backwards (the "27%
+BCI illiteracy" reading), rung 7 found a gaze confound in this project's own data, rung 9 showed
+no method dominates, rung 10 was measuring a network that turned out to be dead, and rung 11
+found that rung 10's regime C was reading cue onset rather than imagery. A sixth retraction came
+from rung 4's own topography claim, which is not an attack rung at all. A project that only
+climbs is a demo. The rungs that found something wrong are the ones worth talking about, and §12
+reports what each one actually returned.
+
+> **This paragraph used to say "three of them succeeded."** That was an undercount, and it
+> undersold the part of the project worth showing. Cross-checked against §12.1's round-one list,
+> which contains six entries traceable to five distinct attack rungs plus the §8.3 topography
+> retraction. Round two added nine more and round three twelve, but those came from auditing the
+> documents rather than from running a rung, so they are not counted here.
 
 The next sections walk each rung in depth.
 
@@ -372,11 +416,28 @@ seeds** through both estimators:
 | ShuffleSplit (retracted) | 93.6% | 87.8–98.9% | 49th percentile |
 | **StratifiedKFold (published)** | **93.8%** | 88.9–97.8% | **3rd percentile** |
 
-The two estimators **agree in expectation to about 0.2 points**. So the 94.4 → 91.1 drop is
-roughly **2.7 points of seed luck and 0.6 points of real estimator change**. The switch is still
-correct, for coverage and stratification reasons, but presenting it as an integrity correction
-would be its own small dishonesty. The published 91.1% is a **conservative draw** from an
-88.9–97.8% distribution, and that is how it should be described out loud.
+The two estimators **agree in expectation to about 0.2 points**, and stratified k-fold is the
+*higher* of the two: over 100 seeds ShuffleSplit averages 93.6% and StratifiedKFold averages
+93.8%. So the switch of estimator did not lower the headline. In expectation it raises it
+slightly. The 94.4 to 91.1 move is **seed placement**: seed 42 lands at the 49th percentile of
+the retracted estimator (94.4%) and at the 3rd percentile of the published one (91.1%), 2.7
+points below that estimator's own 93.8% mean. Seed placement accounts for 0.8 + 2.7 = 3.5
+points; the estimator offsets 0.2 in the opposite direction, leaving the 3.3-point drop on the
+page. The switch is still the right call, for coverage and stratification reasons, but
+presenting it as an integrity correction would be its own small dishonesty. The published 91.1%
+is a **conservative draw** from an 88.9–97.8% distribution, and that is how it should be
+described out loud.
+
+> **Withdrawn, 2026-07-25.** This paragraph used to read *"So the 94.4 → 91.1 drop is roughly
+> **2.7 points of seed luck and 0.6 points of real estimator change**."* That decomposition is
+> wrong and is withdrawn. The 0.6 came from `94.4 − 93.8`, which differences seed 42's
+> **ShuffleSplit draw** against StratifiedKFold's **mean**. That silently moves 0.8 points of
+> old-estimator seed luck onto the estimator's account and flips the estimator term's sign: the
+> estimator is worth −0.2 points, i.e. it *raises* the expectation, and cannot have contributed a
+> positive share of a drop. It survived review because `0.6 + 2.7 = 3.3` sums to the observed
+> total. The total was right; the split was wrong. The corrected decomposition is seed placement
+> 3.5 points, estimator −0.2 points. Backing: `evaluate_honestly.py` section 6, cached at
+> `.provenance_cache/evaluate_honestly.py.txt:38-43`.
 
 > **One caveat on the percentile column, which is this rung demonstrating its own thesis.** Those
 > ranks count seeds *strictly below* seed 42. Because both estimators are quantized — the
@@ -426,7 +487,13 @@ replication. Both halves were wrong:
 
 - **The direction.** This pipeline's own permutation null is 50.7% ± 8.5%. Under a **global null
   in which nobody has any signal**, the expected fraction landing at or below their own chance
-  line is **~55% (59/109)**. Observed: **30/109 (28%)**. Seeing *half* the noise-only rate is
+  line is **~55% (59/109)**. Observed: **30/109 = 27.5%**, which `sweep_subjects.py` prints at
+  zero decimals as **28%** — the same count, not a second measurement, and worth writing out
+  because the claim being refuted is stated as "27%" and 27.5 straddles the two roundings.
+  (`inferential_stats.py` §10 recomputes the null per subject as an exact binomial rather than a
+  simulation and gets **54.0%, 58.8/109**, a point below the simulated figure quoted here; the
+  approximation is stated there, since 5-fold folds are not independent Bernoulli draws.)
+  Seeing *half* the noise-only rate is
   **evidence of signal across the population**, not a measure of failure.
 - **The comparison.** The literature's 15–30% describes users who cannot achieve control *after
   training with online feedback*. These are naive, single-session, offline subjects. By the
@@ -593,19 +660,70 @@ run against the CSP+LDA baseline on **identical LOSO folds**.
 | TS-motor | 0.330 |
 
 Only MDM-64 is significant; the other three confidence intervals span zero. The minimum
-detectable difference at 80% power with n=20 is roughly **6 to 8 points** depending on the
-comparison, and three of the four deltas are smaller than that.
+detectable difference at 80% power with n=20 runs **5.7 to 7.9 points** depending on the
+comparison (MDM-mot 5.68, TSLR-64 6.83, MDM-64 7.17, TSLR-mot 7.88), and three of the four deltas
+are smaller than that. Only MDM-64 survives Holm across the family of four (0.005 → 0.019); the
+p-values above are the uncorrected ones this rung publishes.
 
 > Two caveats on that MDE. It was previously quoted as "about 5–6 points," which is optimistic —
-> only one of the four comparisons is that tight, and rung 8's is nearly 10. And like the four
-> paired p-values above, it is **computed in this prose and by no committed script**: `riemannian.py`
-> persists nothing but a PNG and prints no test, so reproducing this table currently requires
-> editing the source. That is a real provenance gap, listed in §12.2.
+> only one of the four comparisons is that tight, and rung 8's is nearly 10 (9.92). A later
+> revision quoted "roughly **6 to 8** points," which rounds the low end up: the tightest is 5.68.
+> And like the four paired p-values above, this was for two rounds **computed in prose and by no
+> committed script** — `riemannian.py` persists nothing but a PNG and prints no test.
+> `inferential_stats.py` §2 now computes all of it from `riemannian_perfold.json`, a captured copy
+> of the per-fold scores; the remaining gap is that `riemannian.py` itself still persists nothing,
+> so the copy cannot be regenerated without editing the source (§12.2 item 7).
 
 **Retracted:** "no method dominates, and the best method is subject-specific." Per-subject
-optimality requires a **subject × method interaction**, and none is **detectable** here
-(χ²₁₉ = 13.0, **p = 0.84**) — a test with low power against the effect sizes in play, so "no
-interaction" and "cannot tell" are again indistinguishable, and only the second is claimed. The
+optimality requires a **crossover** subject × method interaction — the *ranking* of methods has to
+change from subject to subject. Non-additivity in this 20 × 5 layout **is** detectable
+(Tukey 1-df **F = 13.4627 on 1 and 75 df, p = 0.0005**), but it is a *fan* rather than a crossover,
+and it is produced by one arm: leave MDM-64 out and it collapses to **F = 1.17, p = 0.2847**, while
+leaving out any of the other three barely moves it (11.47 to 13.81). A fan magnifies an ordering;
+it does not reverse one. The homogeneity test that *can* see a crossover — on the
+CSP-vs-MDM-motor difference the "no method dominates" line is actually about — is null and
+underpowered: **χ² = 13.33 on 19 df, p = 0.821**, MDE **5.68 points**. Neither result supports
+per-subject optimality, so the positive claim stays withdrawn.
+
+> **Correction to that χ², 2026-07-25 (second pass).** This line used to read
+> *"none is **detectable** here (χ²₁₉ = **13.0**, **p = 0.84**)."* Both figures are withdrawn.
+> `inferential_stats.py` §4 now computes the family: the pooled-binomial Cochran form gives
+> **13.33**, the per-arm form **13.58**, and neither is 13.0. The published pair was at least
+> self-consistent — `chi2.sf(13.0, 19) = 0.839` — which is exactly how an unproduced statistic
+> survives review. More importantly the *sentence* was wrong, not just its digits: the
+> design-appropriate omnibus test for an unreplicated 20 × 5 layout is Tukey's 1-df
+> non-additivity — with one observation per cell the full 76-df interaction is confounded with
+> error and cannot be tested at all — and it **rejects** additivity, p = 0.0005. "No interaction
+> is detectable" was false for the five-arm design and true only for the one pair the 19-df test
+> looks at.
+> **The retraction is not in play either way.** "The best method is subject-specific" was a
+> positive claim withdrawn for want of support, and a significant *fan* is not that support: what
+> the leave-one-out rows locate is a single arm, MDM-64, whose per-subject scores do not track the
+> others, so method differences widen on the subjects where anything works at all. That is a floor
+> effect on one pipeline, not per-subject method selection. A reader who wants the stronger
+> statement — that the fan is not merely a link-function artifact — should note that no committed
+> script yet runs the test on transformed accuracies, so it is not asserted here.
+
+> **A flag on that χ², added 2026-07-25 and RESOLVED the same day by `inferential_stats.py`.**
+> Its **df = 19 = n − 1** over the 20 subjects. A subject × method interaction across **five**
+> pipelines and 20 subjects
+> would carry **df = (20 − 1)(5 − 1) = 76**. So whatever this statistic tests, the degrees of
+> freedom say it is not a five-way interaction, and it therefore cannot license the sentence
+> "no subject × method interaction is detectable" **across all five methods** — at most across a
+> two-way contrast. Which test produced it cannot be determined, because no committed script
+> computes it and `riemannian.py` persists no per-fold array. The retraction it supports stands on
+> other grounds — a positive claim ("the best method is subject-specific") is withdrawn for want
+> of evidence, which does not require this test to be right. But the statistic itself should not
+> be quoted anywhere until a script produces it. See §12.2 item 7.
+>
+> **The flag was right and is now discharged.** `inferential_stats.py` §4 computes both families
+> from `riemannian_perfold.json` and prints them side by side. The df objection holds exactly as
+> stated: the 19-df statistic is a two-arm homogeneity test, and the five-way question needs the
+> 1-df Tukey test, which is what an unreplicated 20 × 5 layout affords. What the flag did not
+> anticipate is that running the right test would *reject* rather than fail to reject — the flag
+> assumed the conclusion would survive a better statistic and only the citation needed fixing.
+
+The
 9-8-3 win/loss/tie split is consistent with a *uniform* −2.6-point difference plus 45-trial noise. "No method dominates" is indistinguishable here from "this
 experiment cannot tell these methods apart," and only the second is supported.
 
@@ -616,8 +734,12 @@ comparison as "2080 parameters versus a classical baseline" ignored that
 regime, while the CSP baseline it loses to runs with `reg=None`.
 
 **That asymmetry runs the opposite way to charity, and it is worth stating plainly.** Shrinkage
-sits on the **Riemannian** side only (`riemannian.py:121/126/131/135`); the CSP baseline is
-`reg=None` (`riemannian.py:117`). Regularizing only one arm favours **that** arm. So the baseline
+sits on the **Riemannian** side only (`riemannian.py:131/135/140/144`); the CSP baseline is
+`reg=None` (`riemannian.py:127`). *(Locators re-derived 2026-07-25 18:0x by re-running
+`grep -n 'Covariances(' riemannian.py`. This line previously read `121/125/130/134` and `:117`,
+which were correct until `riemannian.py` gained a docstring at 17:36 and everything below it
+shifted by ten lines. The set before that was `121/126/131/135`, withdrawn earlier. The fact has
+not changed once; the locator has changed three times.)* Regularizing only one arm favours **that** arm. So the baseline
 won a comparison that was tilted against it. Shrinkage is not a nicety on the Riemannian side
 either — `raw.set_eeg_reference("average")` costs one degree of freedom, which makes every 64×64
 covariance rank-63 and singular by construction, so the two 64-channel Riemannian pipelines cannot
@@ -638,12 +760,27 @@ learns a spatial filter per temporal filter — except end to end.
 
 At n=45 the CNN loses by **8.9 points**. Pooled across 20 subjects the two are level.
 
-**Two things keep that from being the "learned filters need volume" result it was written up as.**
+**Three things keep that from being the "learned filters need volume" result it was written up as.**
 
-First, 8.9 points on 45 trials is **41/45 against 37/45 — four trials**, and this rung runs no
-significance test on it. Four discordant trials out of 45 is not a distinguishable difference, and
-the Wilson intervals overlap across most of their range. The defensible statement is directional:
+First, 8.9 points on 45 trials is **41/45 against 37/45 — four trials of net difference**, and
+this rung runs no significance test on it. `inferential_stats.py` §6 re-runs experiment A to
+recover the per-trial predictions and does run one: the two models disagree on **10** trials, not
+four — CSP-only correct on **7**, EEGNet-only on **3** — and exact two-sided McNemar on that split
+gives **p = 0.344**. The Wilson intervals also overlap across most of their range
+(**[79.3%, 96.5%]** against **[68.7%, 90.7%]**). The defensible statement is directional:
 *CSP scores higher, by an amount this experiment cannot resolve.*
+
+> **Correction, 2026-07-25.** This paragraph used to read *"**Four discordant trials** out of 45
+> is not a distinguishable difference."* Four is the **net** difference, `b − c`; the discordant
+> count is `b + c` and it is 10. The two are not interchangeable and the p-value depends on the
+> split rather than on the difference: any `(b, c)` with `b − c = 4` is consistent with 41/45
+> against 37/45, and the maximally nested split `b = 4, c = 0` would give **p = 0.125** while the
+> measured 7/3 split gives **0.344**. Deriving a McNemar p from two accuracies is arithmetic on an
+> assumption about agreement that only the predictions can settle — which is why no such p was
+> quoted here before one existed. The conclusion is unchanged and slightly strengthened: the
+> difference is even less resolvable than the wording implied. One caveat on the table itself,
+> which `inferential_stats.py` states in its own output: MPS kernels are not bit-reproducible, so
+> the EEGNet half of the 2×2 can shift by a trial or two between runs. The CSP half cannot.
 
 Second, **sample size and optimisation budget are confounded across the two regimes.** `N_EPOCHS`
 is a fixed 100 with `BATCH_SIZE = 32`, so regime A's 36-trial training fold yields one batch per
@@ -665,21 +802,86 @@ about **1.6e-10**. braindecode's EEGNet normalises with `BatchNorm2d(eps=1e-3)` 
 about **4500× too small** where it should come out at 1. Normalisation never engages.
 
 Batch norm does not do *nothing*, though, and getting this right matters for saying it out loud.
-Each of the three BN stages multiplies by ~31.6×, so the deficit decays geometrically down the
-stack and the **end-to-end logits are only about 53× too small**. The network still cannot train
-out of it: closing a 53× gap means growing the final layer's weights from an init standard
-deviation of ~0.065 to ~3.4 — a travel of about 3.3 — while 100 epochs of AdamW at lr=1e-3 on a
-36-trial fold moves them by roughly 0.1. The budget is set by the optimizer, not by the data
-scale.
+Each BN stage renormalises, so the deficit decays down the stack rather than compounding. **The
+figure that is actually established is the deficit at the first BN: ~4500×.** Everything past
+that point depends on a recovery model this repo never measured, and the model it used does not
+produce the number it reported. Under that model — each of the three BN stages recovering ~31.6× —
+the deficit runs 4500× at the input to BN1, **142×** after one stage, **4.5×** after two, and
+**0.14×** after three, which would mean the logits end up about 7× too *large*. There is no
+integer number of stages at which the chain lands on the "53×" this section used to claim
+(solving `4500 / 31.6ˣ = 53` needs x = 1.29 stages). So the defensible statement stops at the
+first BN, and the end-to-end figure is withdrawn.
 
-> **Correction to the mechanism, not to the conclusion.** This paragraph used to say activations
-> "stay near 1e-8" and that recovery "would require final-layer weights around 1e8." Both are
-> wrong by about six orders of magnitude — nothing in the network is anywhere near 1e-8; the
-> smallest activation standard deviation is ~7e-6. The 1e-8 was the *variance* of the first BN's
-> output being mistaken for an activation magnitude, and `1e-8 × 1e8 = 1` then generated the bogus
-> weight figure. One error, stated twice. The **"seven orders of magnitude"** headline was always
-> right, and so was the conclusion; the arithmetic in between was invented. Since this is the part
-> a reviewer would hear spoken aloud, it is corrected in place rather than softened.
+**The stage count is no longer a guess — it is measured, and the recovery model was wrong.**
+`inferential_stats.py` §7 puts forward hooks on every `BatchNorm2d` and reads the scale off a
+real no-grad forward pass, five seeds, dropout disabled. The per-stage deficits are **4744×**
+(sd 378) at `bnorm_temporal`, **459×** at `bnorm_1` and **59×** at `bnorm_2`, and end to end the
+classifier input is **84×** (sd 11) too small with the **logits 102×** too small. So recovery per
+stage is roughly 10× and then 8×, not 31.6×, and the chain does not keep decaying to nothing: it
+flattens around two orders of magnitude. The first-BN figure survives the measurement — ~4500× by
+hand against 4744× measured, inside one seed-to-seed sd — and the end-to-end figure is now a
+measurement rather than a model.
+
+Against the measured gap the training argument is much stronger than the version below it.
+`inferential_stats.py` §8 trains one fold of experiment A and reads the final layer at both ends:
+init sd **0.0645**, and after 100 epochs of AdamW at lr=1e-3 the weight sd has moved **0.0468**
+while the mean absolute per-weight change is **0.1020** — two quantities that have both been
+called "the travel" and that differ by **2.2×**, so a margin quoted without naming its definition
+cannot be checked. Closing the measured deficit at the logits needs a final-layer sd of **6.568**,
+a required travel of **6.504**: a **64×** shortfall on the mean-|dw| definition, **139×** on the
+sd definition.
+
+> **Correction, 2026-07-25 (third layer on this passage).** This paragraph used to read
+> *"Closing a **4.5×** gap means growing the final layer's weights from an init standard deviation
+> of ~0.065 to ~**0.29**, a travel of about **0.23** … a **~2.3× shortfall**, which makes 'the
+> network cannot train out of it' **plausible but not established**."* Every figure in that
+> sentence is withdrawn. The arithmetic was right — 0.0645 × 4.5 = 0.290, travel 0.226, and
+> 0.226 / 0.102 = **2.2** (the published 2.3 came from rounding the inputs first) — but it was
+> arithmetic on the **31.6×-per-stage recovery model**, and that model is now measured and does
+> not hold. The residual gap is ~102×, not 4.5×, so the shortfall is 64× rather than 2.3×.
+> Note which way this cuts: the previous layer of correction *downgraded* "the network cannot
+> train out of it" from established to plausible on the strength of an assumed 4.5×, and the
+> measurement puts the margin back into the same order as the withdrawn 53× chain implied. The
+> conclusion is not thereby restored, because the reason it was downgraded stands independently:
+> **a scale argument is not a training experiment.** This bounds the optimizer's reach over 100
+> epochs; it does not prove no other route exists, and the direct evidence — the degenerate
+> single-class prediction — is what the guard at `eegnet_compare.py:190` now refuses to reproduce.
+
+> **Correction to the mechanism, layer two, 2026-07-25.** This paragraph used to say activations
+> "stay near 1e-8" and that recovery "would require final-layer weights around 1e8." Both figures
+> are wrong and both are withdrawn: nothing in the network is anywhere near 1e-8, and the smallest
+> activation standard deviation is ~7e-6. The 1e-8 was the *variance* of the first BN's output
+> being mistaken for an activation magnitude, and `1e-8 × 1e8 = 1` then generated the bogus weight
+> figure. One error, stated twice.
+>
+> **The correction block that replaced them was itself wrong twice, and that is withdrawn too.**
+> It said the two figures were *"wrong by about six orders of magnitude."* Neither is: the
+> activation error is `log10(7e-6 / 1e-8)` = **2.85 orders**, and the weight error is
+> `log10(1e8 / 3.4)` = **7.47 orders**. One number, "six", was asserted for two different errors
+> that are four and a half orders apart. And the block's own explanation cannot hold together with
+> its own premise: if the activation standard deviation is 7e-6 then that layer's variance is
+> **4.9e-11**, not 1e-8, so the 1e-8 cannot be "the variance of the first BN's output" either.
+>
+> The block also said *"so was the conclusion."* That was premature, for the reason set out
+> above: the conclusion was computed from the 53× that is now withdrawn, and at the model's own
+> 4.5× it is a 2.3× shortfall rather than a 33× one. The **"seven orders of magnitude"** headline
+> (`1e-3 / 1.6e-10 ≈ 6e6`) and the **4500×** deficit at the first BN (`0.0316 / 7e-6 ≈ 4517`) are
+> the two figures in this section that check out, and they are the only two stated as findings.
+>
+> **None of these numbers was produced by any script, and that is what let this section be wrong
+> for two rounds.** `grep` for `4500`, `31.6`, `1.6e-10`, `1.3e-5` and `7e-6` across all 12 files
+> in `.provenance_cache/` returns zero hits, and `check_provenance.py` cannot see multipliers at
+> all (see the blind-spot table at the end of §12.1), so this whole section was hand-arithmetic
+> that the repo's own guard is structurally unable to check.
+>
+> **Closed 2026-07-25 by `inferential_stats.py` §§7–8**, which measures the scale chain instead of
+> modelling it: signal sd **1.265e-05**, variance **1.599e-10**, eps/variance **6.25e+06**, and
+> per-stage deficits **4744× / 459× / 59×** with **84×** at the classifier input and **102×** at
+> the logits. **Both figures this block certified as checking out survive** — the seven orders of
+> magnitude (measured 6.25e+06) and the ~4500× at the first BN (measured 4744×, sd 378 over five
+> seeds) — and the 31.6×-per-stage recovery model that everything downstream rested on does not.
+> The remaining hand-arithmetic here is now checkable against printed output rather than only by
+> redoing it.
 
 The failure was **silent, and it looked like a result**:
 
@@ -687,6 +889,15 @@ The failure was **silent, and it looked like a result**:
 |---|---|---|
 | as originally committed (volts) | 53.3% | **[0, 45]** |
 | rescaled to microvolts | **82.2%** | [21, 24] — matches truth exactly |
+
+> **The first row is a historical record, not a reproducible measurement.** That configuration is
+> **no longer reachable**: `eegnet_compare.py:190` now asserts `var > 1e3 * BN_EPS` before
+> training and halts if the units are wrong, which is the guard described two paragraphs down. No
+> script on disk can produce the 53.3% / [0, 45] row today, and `check_provenance.py` cannot
+> distinguish it from a live claim because 53.3% is *also* subject 1's majority-class rate and so
+> matches other stdout for an unrelated reason. It is kept because deleting the evidence of a
+> failure to make a provenance check pass would be exactly the move this repo exists to argue
+> against. Read it as: *this is what the rung printed before the bug was found.*
 
 The dead model **predicted a single class for all 45 trials**. Its 53.3% was the *majority-class
 rate*, not chance performance — and "a CNN performs at chance on small data" is an entirely
@@ -747,6 +958,26 @@ rung 10's claim.
 > runs, seed, epoch count, batch size, CSP and LDA settings. Agreement therefore demonstrates that
 > the plumbing did not perturb the measurement — a regression check — and **not** validity. A
 > shared bug would reproduce perfectly.
+>
+> **A second layer, 2026-07-25: the control cell reproduces and the audited cell does not.**
+> `narrow-short` matches regime B exactly, as stated. But the `original-C` cell is the one this
+> whole rung exists to audit, and it does **not** match rung 10: this table's **63.0%** against
+> `.provenance_cache/eegnet_compare.py.txt:30`'s **63.8%** for the identical configuration, a gap
+> of 0.8 points, roughly 7 trials of 900. CSP agrees to the digit (51.4% in both), so the
+> disagreement is the CNN's, not the data's or the folds'. The cold provenance run lists this
+> document's `63.0` as **UNBACKED** for exactly that reason: no current stdout prints it. Nothing
+> in the rung's *conclusion* turns on 0.8 points — regime C is the cue-window effect either way —
+> but the sentence above licenses reading the cross-cell deltas on the strength of a control that
+> holds in the cell nobody was worried about and fails in the cell under audit, and that ordering
+> is worth stating rather than leaving for a reader to find.
+>
+> **Where these numbers came from, which is not the 2026-07-25 cold run.** `original-C` and every
+> other cell in the table were read from `regime_decomposition.json`, dated **2026-07-23**. The
+> 07-25 run of this rung printed *"Resuming: 7 cell(s) already on disk"* and skipped every cell as
+> cached, so **rung 11's figures throughout this section are 2026-07-23 checkpoint values and were
+> not freshly reproduced.** The checkpointing that makes this rung killable and resumable (§13)
+> also lets it defeat `check_provenance.py`'s source-hash cache invalidation. Rerunning it cold
+> means deleting `regime_decomposition.json` first.
 
 **The result.** Paired across the same 20 subjects, EEGNet does not significantly beat CSP
 anywhere in the 2×2. It only does so in the cell with the undocumented crop start:
@@ -783,21 +1014,64 @@ credited.* The obvious explanation — a CNN's temporal convolutions can exploit
 cue-evoked response, while CSP's log-variance band power is close to blind to one — is an
 **interpretation, and this project's recurring failure has been inventing the mechanism in the
 same breath as the number.** So rung 11 tests it instead of asserting it, with a sixth cell that
-decodes the **cue window alone (0–1 s), which contains no imagery at all.**
+decodes the **cue window alone (0–1 s)**.
 
-**The confirmation.** Decoding the cue window on its own — 0–1 s, containing no motor imagery at
-all — against the pooled majority-class floor of **50.1%** (pooling 20 subjects balances the
-classes, unlike subject 1's 53.3%):
+> **What that window does and does not contain, corrected 2026-07-25.** This document used to call
+> 0–1 s "the cue window, **which contains no imagery at all**," three times over. That is an
+> assumption, not a measurement, and the script that produced the cell says so in its own docstring
+> (`regime_decomposition.py:35-39`): *"Calling 0-1 s 'the cue window, no imagery in it' is an
+> assumption, not a measurement: the subject begins imagining AT the cue, so 0-1 s holds the visual
+> evoked response AND the first second of imagery, and either one could be carrying the score."*
+> The honest description is **cue-onset window**: it contains the visual evoked response *and* the
+> first second of imagery, and this design cannot separate them, because in EEGBCI both begin at
+> the same instant. The false version is what reached the prose while the true one sat in the code
+> the prose was describing.
 
-| model | cue window alone | against chance |
+**The confirmation.** Decoding the cue-onset window on its own (0–1 s). Pooling 20 subjects
+balances the classes, so the reference here is near 50% rather than subject 1's 53.3%:
+
+| model | cue-onset window alone | against chance |
 |---|---|---|
-| CSP + LDA | 53.7% | 95% CI [50.6%, 56.8%], p = 0.027 |
+| CSP + LDA | 53.7% | 95% CI [50.6%, 56.8%], p = 0.023 |
 | **EEGNet** | **61.1%** | 95% CI [57.3%, 64.9%], **p < 0.0001** |
 
-EEGNet decodes a window with no imagery in it at **61.1%**. And the decisive comparison: adding
-the entire three-second imagery window on top of the cue buys it **+1.9 points, 95% CI
-[−2.8, +6.6], p = 0.41** — indistinguishable from nothing. CSP is not helped either (−2.2 points,
-p = 0.20).
+> **Two caveats on every p-value and interval in this rung, both of which push the same way.**
+> This document used to state neither, while the script that computes them stated both in its own
+> comments. That is backwards, so they are lifted into the prose here.
+>
+> **(a) The null is 0.5, not 50.1%.** `regime_decomposition.py:423` is `ttest_1samp(s, 0.5)`. An
+> earlier version of this section told the reader the tests ran against the pooled majority-class
+> floor of **50.1%**. They do not. The gap is a tenth of a point and it changes no conclusion in
+> this rung, but a document that says which reference a test used should be right about it, and
+> `check_provenance.py` allowlists `pct:50.0` by *value*, so the exemption applies regardless of
+> whether 50% was the correct floor in context. The script names the discrepancy rather than
+> quietly closing it, and so does this note.
+>
+> **(b) Twenty LOSO folds are not twenty independent observations.** Every pair of training sets
+> shares 19 of their 20 subjects, so fold-to-fold variance underestimates sampling variance and
+> **every p-value and every confidence interval in this rung is anti-conservative.** That applies
+> to roughly fifteen tests across §7's rung 11 and the tables in this section. This repo already
+> flags exactly this hazard for the Wilson interval on n=45 — *"it treats 45 cross-validated
+> predictions as independent draws from one model when they come from five"* (§10.2, `README.md:47`)
+> — and the same objection applies with more force to a 20-fold t-test on overlapping training
+> sets. Read these numbers as **ordering evidence, not as calibrated tail probabilities.** No
+> correction for this is applied anywhere in the repo, and applying one properly would need a
+> resampling scheme this project has not built.
+
+> **The rung's own stated prediction half-failed, and this document did not say so.**
+> `regime_decomposition.py:133` keeps the prediction verbatim as it was written: *"EEGNet should
+> score above chance here **and CSP should not**."* CSP scores **53.7%, p = 0.023 against 0.5** —
+> above chance. The script now reports this itself (`:448-462`, *"AND HALF THE PREDICTION THIS
+> CELL WAS BUILT ON FAILED"*); the prose here had not caught up, which is the wrong direction for
+> that gap to run. The finding that survives is comparative, not categorical: **both** models read
+> the cue onset, EEGNet far more of it. That is enough to relocate regime C's effect, and it is
+> not the clean dissociation the prediction asked for.
+
+EEGNet decodes the first second after cue onset at **61.1%**. And the decisive comparison: adding
+the entire three-second imagery window on top of it buys **+1.9 points, 95% CI [−2.8, +6.6],
+p = 0.41** — indistinguishable from nothing. CSP is not helped either (−2.2 points, p = 0.20).
+That is the finding: **the imagery window adds nothing the cue-onset second did not already
+carry.**
 
 So EEGNet's 63.0% in regime C is, within measurement error, **entirely available from the cue
 period alone**.
@@ -814,8 +1088,30 @@ are 8.3 s apart with a 4.2 s rest before each.
 | **cue** (0.0–1.0 s) | 53.7% (t = +2.48, p = 0.023) | 61.1% (t = +6.18, p < 0.0001) |
 | paired difference, same 20 folds | **+6.0 pts** (t = +2.85, p = 0.0103) | **+9.3 pts** (t = +5.43, p < 0.0001) |
 
-Both models sit at chance before the cue and above it after, so the effect is genuinely
-**post-cue** rather than subject leakage, drift, or a harness bug. The control passes.
+Neither model reaches significance before the cue, and both clear it after, so the effect is
+located **post-cue** rather than in subject leakage, drift, or a harness bug. What licenses that
+reading is the **paired** row, not the pre-cue row: +6.0 points for CSP and +9.3 for EEGNet across
+the same 20 folds.
+
+> **"The control passes" was too strong, and it is withdrawn.** This paragraph used to end *"Both
+> models sit at chance before the cue and above it after ... **The control passes**."* A failure
+> to reject is not a pass, and here the gap between the two is large enough to matter. The pre-cue
+> EEGNet interval is **95% CI [49.1%, 54.5%]** (point estimate 51.8%, p = 0.181). **Provenance,
+> stated because this document has been burned by not stating it:** that interval is computed in
+> this prose, not by any committed script. It was derived from the 20 per-fold values stored in
+> `regime_decomposition.json` under `pre-cue.eegnet`, as a t-interval on the fold mean, and the
+> point estimate and p-value it sits with *are* printed by `regime_decomposition.py`. It belongs
+> to the class §12.2 item 7 tracks, and closing that item means having the script print the
+> interval alongside the p-value it already prints. **Its upper bound of 54.5% is above the
+> cue-window CSP point
+> estimate of 53.7%, which the table two rows up reports as significant at p = 0.023.** So the
+> control cannot exclude a pre-cue effect the size of an effect the same rung reports as a
+> finding. That interval appeared nowhere in this document until now, no power analysis was run,
+> and no equivalence test was run — and an equivalence test is what "at chance" actually requires.
+> §14 item 6 already warns against exactly this move, asserting a null the experiment has too
+> little power to establish, and this control was doing it three sections earlier. The honest
+> statement is the narrower one now in the paragraph above: **the paired increase is what carries
+> the conclusion; the pre-cue cell is consistent with chance and underpowered to establish it.**
 
 > Two limits on what it establishes, both of which the code now carries as comments. **(a)** A
 > pre-cue null localises the effect to *after* the cue; it cannot split "cue flash" from "imagery
@@ -831,10 +1127,25 @@ Both models sit at chance before the cue and above it after, so the effect is ge
 > not proof of a true null.
 
 The interpretation is now a measurement: regime C's "the ranking flips" is the
-CNN reading the **cue-evoked response**, not learning motor imagery better than CSP does. The
-reason CSP cannot follow it there is structural — a phase-locked evoked deflection is a
-*temporal* pattern, and CSP's log-variance features throw timing away by construction, keeping
-only band power.
+CNN reading something **time-locked to cue onset**, not learning motor imagery better than CSP
+does. What it is *not* is a story about CSP being blind.
+
+> **The mechanism story is withdrawn, 2026-07-25.** This passage used to continue: *"The reason
+> CSP cannot follow it there is structural — a phase-locked evoked deflection is a temporal
+> pattern, and **CSP's log-variance features throw timing away by construction**, keeping only
+> band power."* The rung's own data refutes it. CSP's paired post-cue-minus-pre-cue gain is
+> **+6.0 points, p = 0.0103** across the same 20 folds, against EEGNet's +9.3. CSP follows the cue
+> effect **less** than EEGNet does; it does not fail to follow it. "Cannot" was the wrong verb for
+> a 6-point significant gain. The script says the same thing in its own output (`:457-462`): *"the
+> MECHANISM story ... does not [stand], and should not be repeated anywhere downstream."*
+>
+> This is the project's signature error appearing inside the very rung built to catch it: the
+> mechanism arrived in the same breath as the number, in a section whose opening paragraph names
+> that exact failure mode and promises to test the interpretation rather than assert it. It tested
+> the *effect* and asserted the *explanation*. The surviving claim is comparative and carries no
+> mechanism: **both models read cue onset, EEGNet reads more of it, and this design cannot say
+> what "it" is** — EEGBCI's cue position is confounded with the class, so a cue flash and imagery
+> onset cannot be separated here at all.
 
 This is the same shape of finding as rung 7's gaze confound, and it earns the same framing: build
 a rung, believe it, then find the confound in your own result. **Two of the eleven rungs turned
@@ -897,34 +1208,87 @@ color heatmap).
 > It claimed the learned patterns were "focal over central / sensorimotor cortex" and offered that
 > as proof the model found motor sources. Checking the actual channel weights: component 0 *is*
 > sensorimotor (FC3/C3/FC1), component 1 mixes sensorimotor weights (FC4/FC2/C4) with occipital
-> ones, and the component this document showcased peaks at **POz, PO4, Oz** — parieto-occipital,
-> and alpha-like. In MNE topomaps posterior is at the **bottom**, and a lower-central blob was
-> misread as the vertex. **Reading a topography by eye is not a control.**
+> ones, and the component this document showcased peaks at **POz, PO4, Oz** — parieto-occipital
+> *electrode positions*. In MNE topomaps posterior is at the **bottom**, and a lower-central blob
+> was misread as the vertex. **Reading a topography by eye is not a control.**
 >
 > **A later layer on this same correction.** The sentence above used to end "…and correlates
 > **r = 0.57** with the subject's own eyes-closed alpha map." That figure is withdrawn: no script
 > in this repo computes any correlation, and it did not reproduce under the obvious definitions of
 > one. It was load-bearing prose *inside a retraction*, which makes it the worst possible place for
 > an unproduced number — the honest-self-correction section was itself resting on one. The
-> qualitative claim survives on the channel weights alone; the figure does not survive at all.
+> **location** claim, that the component is posterior, survives on the channel weights alone; its
+> **oscillatory** character was never measured, because no script in this repo computes a
+> per-component spectrum, so "alpha-like" is withdrawn along with the figure.
 
 **Why this matters enormously:** a model can hit 91% by cheating — locking onto an eye-blink
 artifact, a neck-muscle tension that happens to correlate with the cue, or a per-run drift. The
-control that actually catches this is an **ablation**: remove the cortex that should carry the
-signal and see whether the decoder dies. Here it does — frontopolar-only lands at **51.1%
-(23/45)**, one trial *below* the 53.3% majority-class floor — while keeping only the 17
-sensorimotor channels holds accuracy at **95.6% (43/45)**.
+control that gets closest to catching this is an **ablation**: restrict the montage to channels
+that should *not* carry motor imagery and see whether the decoder survives. It does not.
+Frontopolar-only lands at **51.1% (23/45)**, one trial *below* the 53.3% majority-class floor,
+while keeping only the 17 sensorimotor channels holds accuracy at **95.6% (43/45)**.
+
+> **Read that as a bound, not a proof, and here is exactly why.** ~~`ablate_channels.py:153-158`
+> builds four conditions and only four: all-64, sensorimotor-only (17 ch), frontopolar-only
+> (8 ch), and all-64 leave-one-run-out. **There is no arm that deletes sensorimotor cortex and
+> keeps the rest of the montage.**~~ **The struck sentences were true until 2026-07-26 and are
+> now false: the script builds six conditions, and two of them are the missing arm and a stricter
+> version of it. They are kept visible because they are the record of the gap.** Frontopolar-only
+> is still not that arm: it deletes 56 of 64
+> channels — occipital, parietal, temporal *and* central — so its collapse to 51.1% is confounded
+> with an eightfold reduction in channel count and feature dimension. A degenerate 8-channel
+> decoder is what you would expect from that shrinkage alone. The script says the rest itself, in
+> its own printed output: *"BOUND, NOT PROOF:
+> the average reference is computed over all 64 channels before picking, so the subsets are not
+> electrically independent, and EEGMMIDB ships no EOG channel to regress out. This ablation
+> **bounds** the ocular contribution; **it cannot measure it**."* That sentence survives the new
+> arms untouched, and the new arms add a second one to stand beside it: no channel-deletion
+> experiment on a scalp montage can falsify a source hypothesis in *either* direction, because
+> deleting the electrodes nearest a source does not delete the source from the ones that remain.
 The intuition people reach for is: if CSP had learned an artifact, the scalp maps would light up at
 the *edges* of the head (eyes, temples, neck) rather than the center, so centered patterns prove
 motor sources. **That intuition is too weak to rely on, and this project is a worked example of why.**
 Occipital alpha sits at the back of the head, not the edge; it is large, it is inside the 8-30 Hz
 band, and at a glance in a topomap it is easy to mistake for something central.
 
-**Accuracy alone never proves the signal is neural, and neither does a scalp map.** What proves it is
-an ablation, because it makes a falsifiable prediction: if the decoder is reading sensorimotor cortex,
-then deleting sensorimotor cortex must break it. Here that prediction holds, sharply. Being able to
-say *"here is the control I ran, and here is what would have falsified it"* is what separates a
-credible BCI result from a lucky number.
+**Accuracy alone never proves the signal is neural, and neither does a scalp map.** The ablation is
+the strongest control this repo has, and it **bounds** rather than proves. The falsifiable prediction
+it would take to prove the point is *"if the decoder is reading sensorimotor cortex, then deleting
+sensorimotor cortex and keeping the rest of the montage must break it."*
+
+**That experiment was run on 2026-07-26, and the prediction did not hold.** Until that date this
+paragraph read *"**That experiment has not been run.** What has been run is the converse and a
+shrinkage-confounded complement, which together bound the ocular contribution without measuring
+it."* The concession is kept above as the record of what was owed, and here is what replaces it.
+Delete the 17-channel FC/C/CP strip, keep the other 47 electrodes, refit the published pipeline
+unchanged, and the decoder lands at **77.8% (35/45)**, ten-seed mean 79.3% over the range
+[75.6%, 84.4%], against a majority floor of 53.3% and its own permutation null of
+51.0% ± 8.8% at p <= 0.001. Nothing broke. §10.5 carries the full arm, the pre-registered decision
+rule, and the four separate things that keep it from being read as strongly in either direction.
+
+Being able to say *"here is the control I ran, here is what would have falsified it, and here is
+the arm I have not built yet"* is what separates a credible BCI result from a lucky number. Being
+able to say *"here is the arm I finally built, and it went against me"* is the next thing after
+that, and it is the state this section is now in.
+
+> **Withdrawn, 2026-07-25.** This paragraph used to read *"What proves it is an ablation, because it
+> makes a falsifiable prediction: if the decoder is reading sensorimotor cortex, then deleting
+> sensorimotor cortex must break it. **Here that prediction holds, sharply.**"* It does not hold,
+> because the experiment was never run: `ablate_channels.py:153-158` contains no
+> sensorimotor-deleted arm, and the condition the sentence treated as one (frontopolar-only) drops
+> 56 of 64 channels. The script's own stdout says *"BOUND, NOT PROOF ... it cannot measure it"* — so
+> the document was asserting "proves" over an artifact that prints the opposite. The two nearby
+> sentences that carried the same overclaim ("remove the cortex that should carry the signal and see
+> whether the decoder dies. Here it does") are corrected above. Adding the missing arm was listed
+> as §12.2 item 8.
+>
+> **A layer on that withdrawal, 2026-07-26.** The 2025 correction was right that the prediction had
+> not been tested and right to downgrade *proves* to *bounds*. It was silently optimistic about
+> what the missing arm would return: §12.2 item 8 called it "cheap" and predicted it would be
+> "partially confounded", both of which are true, and neither of which prepared a reader for the
+> arm failing to break the decoder at all. The register now records the outcome and not just the
+> promise, because "the test I have not run yet" is a comfortable sentence and this project has
+> written it more often than it has written "the test I ran, which cost me something."
 
 ---
 
@@ -1005,34 +1369,292 @@ Two honesty notes about the reported p-value:
 - scikit-learn counts permutations scoring **≥** the observed value, so the correct phrasing is
   "no shuffle matched or exceeded the real result," not "none beat it."
 
+### 10.4b Testing the tests: `permutation_design.py`
+
+Two objections were lodged against the nulls in this repo and conceded here in prose, for weeks,
+without either being measured.
+
+**Objection (a), the partition.** `permutation_test_score` loops `for train, test in
+cv.split(X, y, ...)` with the *permuted* labels as `y`, so `StratifiedKFold` re-derives the folds
+from every shuffled vector. Each replicate is scored on a different partition, while the observed
+91.1% is scored on the partition stratified on the **true** labels. The stated fix was to freeze
+the partition at that true-label split, called P0.
+
+**Objection (b), the reference set.** The labels are shuffled i.i.d. across all 45 trials, which
+treats runs 6, 10 and 14 as one exchangeable pool. Run is a blocking factor with its own electrode
+settling and drift, so the weaker and more defensible assumption is exchangeability *within* run
+only. The within-run reference set is 14.2 times smaller than the i.i.d. one, and a smaller
+reference set is a weaker assumption, not a stronger one.
+
+`permutation_design.py` runs the full 2x2 of those two corrections at 10,000 draws per cell on
+three subjects (1, plus 17 and 19 picked by a fixed median rule from `sweep_results.csv`). One list
+of permuted label vectors feeds both partition rules, so the partition contrast is genuinely
+paired and isolates the rule.
+
+**Then it does the thing that made the run worth having: it tests the tests.** A permutation rule
+is exact only if, when the null is true *by construction*, it rejects at most at its nominal rate.
+That is checkable with no EEG at all. Run a majority-class classifier on an all-zero feature
+matrix, where there is provably nothing to decode, draw 200 null label vectors, run 199 inner
+permutations under each rule, and count how often each rule calls that classifier significant.
+Every rejection it earns is a false one.
+
+| rule | what it is | P(p ≤ 0.05), subject 1 |
+|---|---|---|
+| C1: i.i.d. shuffle, folds re-stratified | **the published null** | 0.0000 |
+| C3: within-run shuffle, re-stratified | correction (b) alone | 0.0000 |
+| C2: i.i.d. shuffle, folds frozen at P0 | correction (a) alone | **0.6550**, 13.1x nominal |
+| C4: within-run shuffle, frozen at P0 | *"fully corrected"* | **0.6600**, 13.2x nominal |
+| `KF_free`: i.i.d. shuffle, frozen at a **label-free** `KFold` partition | one valid version of (a); this is C5's rule | 0.0250 |
+| `WITHIN`: labels permuted **inside each fold** of P0 | the other valid version of (a) | 0.0000 |
+
+**The error runs the opposite way from the objection.** The cells this project built as "the
+correction" are the ones that are not tests, and the published null is exact. The reason is one
+line: P0 is `StratifiedKFold(...).split(X, y_true)`, so it is *a function of the labels being
+permuted*. Freezing it makes the observed vector the unique point in the reference set whose fold
+margins are balanced with respect to its own labels, while every replicate is scored on a partition
+its labels did not produce. Computing the observed value and the replicates "the same way" is
+necessary but **not sufficient**; the conditioning quantity must also be ancillary. Under
+re-stratification the statistic is one function `S(y) = CV(X, y; SKF(y))` applied identically to
+every vector including the observed one, so C1 and C3 are exact. sklearn was already right for its
+own reference set.
+
+Across the three subjects, 4 of 6 frozen-at-P0 cells are anti-conservative and **0 of 12**
+re-stratified or label-free cells are. The defect does not bite at every class marginal, which is
+worse rather than better: an analyst does not get to know which marginal they have before choosing
+a rule. On the real pipeline the same defect appears as a size of 0.0752 against C1's 0.0444 at
+nominal 0.05, and as rejecting at 29/45 where the exact partner needs 30/45.
+
+**So everything derived from C2 and C4 is withdrawn**, including their p-values, their tail counts,
+and the n_eff-corrected Wilson interval this project had recomputed from C4. The exact re-analysis
+is smaller and it is the one that stands:
+
+| subject | C1 (published, exact) | C3 (within-run, exact) | change at 0.05 |
+|---|---|---|---|
+| 1 (headline) | p ≤ 9.999e-05, C = 0 | p ≤ 9.999e-05, C = 0 | none |
+| 17 (median) | p = 0.11529 | p = 0.052795 | none; factor 2.18, no crossing |
+| 19 (median) | p = 0.055494 | **p = 0.044496** | crosses **downward** |
+
+One objection of the two survives, then, and for one of the two median subjects: **run blocking is
+a real correction and it moved one verdict.** Under C3 the two median subjects *disagree* at 0.05,
+which is precisely the pre-registered neutral outcome, and nothing is concluded from a disagreement
+between two subjects at 45 trials each. Subject 1's arm was uninformative **by construction** and
+was registered as such in advance: at roughly 4.7 null standard deviations its p is pinned at the
+resolution floor in every cell, so "unchanged" there is a resolution floor being read, not a
+measurement, and it is **not** evidence the original design was right.
+
+The one number the headline gains is a variance-corrected interval. The exact null's spread is
+wider than binomial, VIF 1.323, so 45 cross-validated predictions are worth about 34 independent
+ones and the Wilson interval widens from [79.3%, 96.5%] to **[77.0%, 96.9%]**. That is the
+quantified version of the caveat §10.2 has always carried in words.
+
+The valid form of objection (a) is worth seeing, because it shows why the shortcut was tempting.
+Freeze the partition at a `KFold(shuffle=True)` split built **without** the labels and it *is*
+ancillary, so the resulting cells (C5 with the i.i.d. shuffle, C6 with the within-run one) are
+exact by construction, and the empirical check above confirms the i.i.d. version at 0.0250.
+**But the observed value moves when the partition moves**, and by a lot: subject 1 goes from 41/45
+to 42/45, subject 17 from 28/45 to 25/45, and subject 19 from 29/45 all the way down to 21/45. So
+C5 and C6 are exact tests of a *different statistic*, accuracy on an unstratified partition, and
+their p-values are not interchangeable with C1's and are not a correction to the published number.
+That is the trap in miniature: the only way to freeze the partition validly is to freeze one the
+published result was never computed on.
+
+> **A registered falsification gate fired on this run and was overridden.** Assert 9 required every
+> cell's null mean inside 0.45 to 0.55; subject 17's C4 centres at 0.4380, and the pre-registration
+> says that makes the whole arm unreportable. It is reported anyway, on an argument added *after* a
+> smoke run tripped the assert. The defence is a control rather than an argument: the same all-zero
+> dummy classifier drops from exactly the majority rate with zero variance under re-stratification
+> to 40.67% under a fixed partition, with no EEG involved, so sub-0.45 centring is a property of
+> the partition rule. The exact label-free cells centre below the band too, which independently
+> confirms the diagnosis. The pre-registration was internally inconsistent and the run found it:
+> its own registered mechanism predicts a fixed-partition null centred below 0.50, and its assert 9
+> declares exactly that fatal. Both cannot be right. **What the override does not buy** is a defence
+> of C2 and C4, whose defect turned out to be exchangeability rather than centring. Right diagnosis,
+> wrong problem, and fixing the first did not fix the second. A reader who rejects the override
+> should treat this whole subsection as unreported.
+
+**The cross-subject arm is where the objection holds cleanly**, because the defect there is the
+reference set rather than the partition, and `LeaveOneGroupOut` is already label-invariant.
+`cross_subject.py` draws one global permutation of all 900 pooled labels, which can deal a
+45-trial subject a class split the protocol could not produce; one draw reached a 80.0% majority
+rate. Under within-subject block permutation the observed 59.4% (535/900) survives at
+p ≤ 0.00049975 with zero exceedances, and the global null is measurably inflated,
+sd(global)/sd(block) = 1.5730, which is 16.3 Monte Carlo standard errors from 1. The deliverable is
+a replacement for that script's hard-coded and underived `SHUFFLE_MAX = 0.60` leakage guard: the
+block null's 99th percentile, **53.1% (478/900)**, or 53.4% (481/900) at the 99.5th. The existing
+0.60 sits at the 100th percentile of the correct null, so it is *looser* than the null justifies
+rather than tighter. Note the limit: no quantile here was ever validated against a **real** leak,
+and `cross_subject.py` already discloses that its guard has never fired. Replacing an underived
+threshold with a derived one does not measure its false-alarm rate against an actual defect.
+
+That arm also corrected a stated fact about the corpus: the pooled class marginal is **not**
+uniform across the 20 subjects. Six of them (1, 2, 3, 14, 16, 17) are 24/45 and fourteen are 23/45,
+and that heterogeneity is exactly the structure a global shuffle destroys.
+
+**This run was not blind**, and its own output says so first. A pilot had run both arms and its
+numbers were read before the pre-registration was written. Agreement is confirmation at higher
+resolution with a paired design, never independent discovery, and the pilot reproduced exactly, 4
+of 4 cells.
+
 ### 10.5 The ablation — the control that actually rules out artifacts
 
 A permutation test proves the model found *structure*. It cannot prove that structure is
 **motor**. A decoder riding an eye-movement artifact that correlates with the cue would pass a
 permutation test comfortably.
 
-The control that discriminates is an **ablation**, because it makes a falsifiable prediction: if
-the decoder is reading sensorimotor cortex, then removing sensorimotor cortex must break it.
+The control that discriminates is an **ablation**: refit the whole pipeline on the channel subset
+where blinks and saccades are loudest, and see whether the result survives there. It now also runs
+in the opposite direction, deleting the strip that should carry the signal. Both are **bounds
+rather than proofs**, for reasons given below the table.
+
+> **The framing sentence this section carried until 2026-07-26, kept as the record of what was
+> owed.** It read: *"**No condition here deletes sensorimotor cortex while keeping the rest of the
+> montage**, so the falsifiable form 'if it reads sensorimotor cortex, deleting sensorimotor cortex
+> must break it' is **not tested and must not be attributed to this table**."* It is tested now.
+> The result is rows 4 and 5, and it did not go the way the sentence implied it might.
 
 Every row below is printed by **`ablate_channels.py`**, which reuses `decode_csp.py`'s
-preprocessing verbatim — one seed (42), one splitter, one pipeline, the same 45 trials. The
-all-64 row reproducing the published 91.1% exactly is the fidelity check that the pipeline was
-*reused* rather than reimplemented.
+preprocessing verbatim — one seed (42), one pipeline, the same 45 trials, and **two splitters**:
+stratified 5-fold for the first five rows, leave-one-run-out for the sixth, which is why that row
+reports three per-fold values and the others report five. The all-64 row reproducing the published
+91.1% exactly is the fidelity check that the pipeline was *reused* rather than reimplemented.
 
 | channels used | ch | accuracy | trials | per-fold |
 |---|---|---|---|---|
 | sensorimotor only — FC3/1/z/2/4, C5…C6, CP3/1/z/2/4 | 17 | **95.6%** | 43/45 | 1.00 .89 1.00 .89 1.00 |
 | all 64 | 64 | 91.1% | 41/45 | .89 .89 .89 .89 1.00 |
 | frontopolar only — Fp1/z/2, AF7/3/z/4/8 | 8 | **51.1%** | 23/45 | .56 .78 .33 .56 .33 |
+| **sensorimotor DELETED**, 47 kept | 47 | **77.8%** | 35/45 | .67 .89 .78 .78 .78 |
+| wide FC/C/CP deleted, 43 kept | 43 | 71.1% | 32/45 | .67 .78 .67 .67 .78 |
 | leave-one-run-out, all 64 | 64 | 93.3% | 42/45 | .87 .93 1.00 |
 
-Delete the cortex that should carry the signal and the decoder falls to the **majority-class
-floor**: 51.1% is 23/45 against the 24/45 you get by ignoring the EEG entirely and always
-answering "feet." The per-fold spread — 0.33 to 0.78 — is the other tell; folds that wide are a
-coin, not a decoder. Leave-one-run-out at 93.3% holds with no trial sharing a run with its
-training set, so the headline is not a within-session drift artifact. That is a control. Reading
-a scalp map by eye — which is what this document used to offer here — is not, and §8.3 is the
-full account of why.
+Restrict the montage to electrodes with no motor cortex under them and the decoder falls to the
+**majority-class floor**: 51.1% is 23/45 against the 24/45 you get by ignoring the EEG entirely
+and always answering "feet." The per-fold spread — 0.33 to 0.78 — is the other tell; folds that
+wide are a coin, not a decoder. Leave-one-run-out at 93.3% holds with no trial sharing a run with
+its training set. That is a control. Reading a scalp map by eye — which is what this document
+used to offer here — is not, and §8.3 is the full account of why.
+
+> **Two words of scope on each of those, because both were stated more strongly than the design
+> supports.** The first sentence used to open *"Delete the cortex that should carry the signal"*
+> — the frontopolar arm does not do that; it keeps 8 of 64 channels and deletes everything else,
+> sensorimotor cortex included. What it demonstrates is that an 8-electrode ring over the orbits
+> carries no usable signal for this contrast, which is a real and useful negative control, and
+> which is confounded with an eightfold cut in feature dimension. See §8.3.
+>
+> **A third sentence, missed by the edit above and corrected 2026-07-25.** The framing sentence
+> introducing this table used to read *"because it makes a falsifiable prediction: if the decoder is
+> reading sensorimotor cortex, then removing sensorimotor cortex must break it."* Same retracted
+> inference as §1 and §12.1 round three, and it survived the first pass because that pass only fixed
+> the sentence *below* the table. It now states the ocular hypothesis and the bound. The same edit
+> withdrew *"one splitter"* from the provenance line: `ablate_channels.py:176-177` constructs a
+> `StratifiedKFold` **and** a `LeaveOneGroupOut`, and the fourth row's three per-fold values against
+> the others' five was the visible tell all along.
+>
+> The leave-one-run-out sentence used to end *"so the headline is not a **within-session** drift
+> artifact."* That is withdrawn as stated. Runs 6, 10 and 14 are three recordings from **one
+> session**, concatenated at `ablate_channels.py:132`. Holding one out removes the sharing of
+> *within-run* drift between train and test; it cannot remove a session-level trend that runs
+> monotonically across all three, because there is no second session to hold out. **EEGMMIDB is
+> single-session, so nothing in this repo can test across-session stability at all.** The 93.3%
+> (42/45) is sound and the control is worth having. The inference drawn from it was one level
+> stronger than the design. The same overreaching sentence is printed by the script itself at
+> `ablate_channels.py:213-214` and should be corrected there too.
+
+#### Rows 4 and 5: the arm this document owed for three revisions
+
+This is the arm §8.3 and §12.2 item 8 promised. Delete the 17 sensorimotor channels, keep the
+other 47, and refit everything: average reference over all 64 before the pick, 8–30 Hz firwin,
+epochs −1.0 to 4.0 cropped to 1.0–2.0 s, `CSP(n_components=4, log=True)` and LDA inside a fresh
+`Pipeline` so CSP refits inside every training fold, `StratifiedKFold(5, shuffle=True)`. Seed 42
+is primary, with a ten-seed sweep beside it.
+
+**The decoder does not break.** 77.8% (35/45) at seed 42, 79.3% over ten seeds across the range
+[75.6%, 84.4%], permutation p <= 0.001 against a null of 51.0% ± 8.8%, Wilson 95% interval
+[63.7%, 87.5%] whose lower bound clears the 53.3% majority floor by more than ten points. The
+stricter deletion that also removes FC5/FC6/CP5/CP6 lands at 71.1% (32/45) at seed 42 and 76.7%
+over ten seeds, so the four peri-Rolandic electrodes the 17-channel list happens to omit are not
+what is carrying it.
+
+**What the pre-registration allows to be said, which is less than the paragraph above suggests in
+both directions.** The decision statistic was fixed before the run: G = (all-64 ten-seed mean)
+minus (complement ten-seed mean), with a real loss requiring **both** G > 10.0 points **and** an
+exact McNemar at p < 0.05 on the paired per-trial predictions. G is 94.0 − 79.3 = +14.7 points,
+which clears its half. The McNemar is p = 0.0703 on a 2x2 of 34 both correct, 7 all-64 only, 1
+complement only, 3 neither, which does not. The registered rule requires both halves and forbids
+upgrading on whichever reads better, so:
+
+> **REGISTERED VERDICT: a loss is suggested and not established at n = 45.** Undecided, leaned
+> neither way. The sentence *"the sensorimotor strip is sufficient but not necessary"* is
+> therefore **not written**, even though G points at it.
+
+Read that p with its discordant count or not at all. At `n_disc = 8` the observed 7-vs-1 split
+**is** the most lopsided split that still misses p < 0.05; only a clean 8-0 would have reached
+it. The two arms agree on 34 of 45 trials and both miss 3 more, which is what keeps the count
+small. *Not established* here means **underpowered**, not *evidence of no difference*, and the
+pairing was verified rather than assumed: `StratifiedKFold(random_state=42)` returns identical
+folds on repeated calls, and each arm's pooled `cross_val_predict` count equals its
+`cross_val_score` fold mean.
+
+**The rule could not have fired at its own threshold, and the script proves it from the design
+alone.** In a paired 2x2 on the same 45 trials, `b − c` is identically the accuracy gap in trials,
+so enumerating every attainable (b, c) shows the smallest gap that reaches p < 0.05 at *any*
+discordant count is 6 trials, which is 13.3 points. The G half fires at 10.0 points, or 4.50
+trials. Between 10.0 and 13.3 points the conjunction is unreachable no matter what the recording
+does. That refutes the pre-registration's own stated justification for the rule, *"at a gap of 10
+or more points the McNemar should fire comfortably"*, and it was checkable with two lines of
+arithmetic before the run. The pre-registration was **not** edited to match; it is refuted, and
+the refutation is recorded in its results section.
+
+Three further facts, printed alongside, and two of them cut against the unflattering reading:
+
+1. **The average-reference leak, now quantified.** The reference is computed over all 64
+   electrodes *before* the 47 are picked, so every surviving channel carries −1/64 of every
+   deleted one. Re-referencing inside the complement's own 47 costs it **6.0 points** over ten
+   seeds (79.3% to 73.3%, and 35/45 to 31/45 at seed 42). Part of the complement's score is what
+   volume conduction plus a 64-channel average reference *predicts*. This arm therefore **bounds**
+   the strip's necessity and cannot establish it. The script also refuses to assign those 6.0
+   points to the leak alone, because re-referencing removes one spatial dimension that mixes the
+   strip's contribution with the complement's own global component, and that decomposition is not
+   identified.
+2. **Channel count is not the explanation, for this comparison only.** Deleting 17 channels *at
+   random*, 50 times, moves the ten-seed mean to 93.5% with a G null centred at +0.5 points over
+   the range [−1.8, +3.3]. Zero of 50 draws reached the observed +14.7, which sits 12.4 null
+   standard deviations out. So the declared channel-count confound does not explain this arm's
+   deficit. It is **not** retired for the 17-channel and 8-channel rows, which keep far fewer
+   channels than this control ever does. That arm was added post-registration with the answer
+   visible, and it is labelled as such.
+3. **The verdict is not robust to which integer was typed as `random_state`.** Seed 42 gives
+   p = 0.0703. The same exact test on the ten registered sweep seeds gives a median of 0.0391 with
+   6 of 10 reaching p < 0.05, so seed 42 is worse for the loss than seven of those ten. And the two
+   halves of the rule are evaluated on disjoint seed sets: G is a mean over seeds 0 through 9 and
+   the McNemar sits at 42. None of that flips the verdict, because ten re-splits of the same 45
+   trials are not ten samples. What it establishes is that the registered rule cannot certify band
+   C at n = 45 and that the reported outcome is a property of the rule at least as much as a
+   reading of the recording.
+
+**What this arm is forbidden from saying.** The 47 retained electrodes include T7, T8, T9, T10,
+TP7 and TP8, which is temporalis territory, so *"posterior cortex also decodes"* is blocked; the
+permitted sentence is *"the 47 non-strip electrodes decode above the floor."* They also include
+POz, PO4 and Oz, the peak of the strongest retained CSP component, so this arm sits on top of the
+unresolved posterior question rather than resolving it. And the instrument limit is true in every
+direction and outranks everything above: **no channel-deletion experiment on a 64-channel scalp
+montage can falsify a source hypothesis**, because deleting the electrodes nearest a source does
+not delete the source from the ones that remain. Forward-is-not-inverse refutes a negative source
+claim exactly as hard as a positive one. Every row of that table is a sensor-space claim.
+
+**One process note, because it changed whether the run was reportable.** The tenth registered
+analysis-falsifier was first implemented too widely, firing whenever G >= 10.0 and the McNemar
+missed, so the first run printed `1 FIRED`. The pre-registration scopes that falsifier to bands A
+and B only, and band C registers the failed McNemar as its own downgrade path, which is the path
+that was taken. The check was corrected to the registered scope **after** the first run, with the
+answer visible. It changed no measured value, verified by diffing the two runs, but it changed
+whether anything here is quotable, so it is recorded rather than quietly fixed.
+
+**The accuracy half of this arm was not blind.** It had been run once, uncommitted, before the
+pre-registration was written, and this run reproduced it to 0.0 points at both seed 42 and the
+ten-seed mean. That is a replication of a known number and must not be reported as a confirmed
+prediction. Only the permutation test, the Wilson interval and the McNemar were blind, and the
+McNemar is the half that decided the verdict.
 
 **The other direction is much weaker than this document claimed, and the distinction matters.**
 Sensorimotor-only is 43/45 against all-64's 41/45. That is a **two-trial** difference on n=45,
@@ -1040,7 +1662,9 @@ well inside noise, and it is mostly a dimensionality effect anyway — a 64×64 
 from 45 trials overfits, so almost any well-chosen small subset avoids that. The claim the
 artifact control actually needs is *"removing 47 non-motor channels does not hurt,"* which the
 data fully supports. *"The sensorimotor subset is better"* is not supported and is no longer
-claimed.
+claimed. Note that rows 1 and 4 now sit awkwardly beside each other: keeping only the strip gives
+95.6% and deleting only the strip gives 77.8%, and both are far above the floor. The strip is
+richer than its complement and neither is empty.
 
 > ### The correction that produced this script
 >
@@ -1060,15 +1684,29 @@ claimed.
 >
 > | published | actual | reason |
 > |---|---|---|
-> | 95.9% | **95.6%** (43/45) | off-lattice; almost certainly a transcription slip of 95.6 |
+> | 95.9% | **95.6%** (43/45) | off-lattice, so it cannot have been measured on a 45-trial partition. Origin unknown; see the note below. |
 > | 47.4%, "i.e. chance" | **51.1%** (23/45) | off-lattice, *and* the wrong reference — chance here is the 53.3% majority-class rate, not 50% |
 > | 91.1% | 91.1% (41/45) | already correct |
 > | 93.3% | 93.3% (42/45) | already correct |
 >
 > This is the same failure mode §12.1 names five times over — *the number and the story arrived
 > together* — except here the number arrived without even a run behind it. It is why
-> `check_provenance.py` now exists: it extracts every figure from this document and the README and
-> fails if no script's stdout contains it.
+> `check_provenance.py` now exists: it extracts the **percentages, p-values, correlations and a
+> narrow class of counts** from this document and the README, and fails if no script's stdout
+> contains one of them. That is narrower than "every figure", and the gap matters — see the note
+> on what the guard cannot see, at the end of §12.1.
+>
+> **"A transcription slip of 95.6" is withdrawn, 2026-07-25.** That was an unbacked causal story
+> about where the bad number came from, offered inside a retraction, which is the one place this
+> project has learned to be most careful. It is also not the best-fitting reconstruction: a
+> 20-seed mean over a 21-channel sensorimotor set lands on **0.9589 → 95.9%**, and an 8-channel
+> frontopolar set on **0.4744 → 47.4%**, both on the 1/900 lattice a 20-seed mean lives on — which
+> would make the pair a coherent readout of a *different, unrecorded experiment* rather than two
+> independent typos. That reconstruction is itself unverified and is offered only to show the slip
+> story is not the only account available. **What is established and what the retraction rests on
+> is unchanged: on a 45-trial partition accuracy must be a multiple of 1/45, neither 95.9% nor
+> 47.4% is, so neither can have been measured the way it was published.** How they got onto the
+> page is not known, and the honest thing is to say so rather than to supply a tidy reason.
 >
 > **One limit on what any of this bounds.** The average reference is computed over all 64 channels
 > *before* a subset is picked, which is what `decode_csp.py` does, so the subsets are not
@@ -1077,6 +1715,99 @@ claimed.
 > ablation therefore **bounds** the ocular contribution rather than eliminating it. It is also
 > **band-conditional**: at 8–30 Hz it says nothing about low-frequency ocular contamination, which
 > is where rung 7's gaze confound lives.
+
+### 10.5b The muscle probe: `emg_proxy.py`, and why an ablation could not do this
+
+The ablation above cannot bound muscle, and it is important to see *why* rather than to take it
+on trust. Surface EMG from temporalis or jaw is **broadband**, with most of its power well above
+the mu/beta band. The published pipeline band-passes to 8–30 Hz on the continuous signal, before
+any covariance is computed, so the frequencies where muscle is loudest are discarded before CSP
+ever sees them. No arrangement of channel subsets inside that pipeline can probe them. A separate
+instrument is required, and that is what this script is.
+
+**Design, pre-registered before it was written.** Refit the *unmodified* CSP+LDA pipeline, same
+splitter and same seed 42, on **40–75 Hz with a 60 Hz notch**, restricted to the eight-channel
+temporal ring (T7 T8 T9 T10 TP7 TP8 FT7 FT8). If class information rides on muscle, a muscle-band
+decoder at muscle-territory electrodes should find it. A positive control runs first and must
+reproduce the published number: 8–30 Hz on all 64 channels returns 91.1% (41/45), so the harness
+is the published pipeline and not a lookalike.
+
+**Result: nothing there.**
+
+| channel set | ch | accuracy | permutation p |
+|---|---|---|---|
+| temporal ring (**primary cell**) | 8 | **51.1%** (23/45) | 0.5175 |
+| all 64 | 64 | 40.0% (18/45) | 0.9141 |
+| sensorimotor | 17 | 37.8% (17/45) | 0.8941 |
+| frontopolar | 8 | 33.3% (15/45) | 0.9810 |
+| *floor* | | *53.3% (24/45)* | |
+
+A univariate arm agrees: mean log high-band power does not differ by class on the ring
+(Welch t p = 0.6922, Mann-Whitney U p = 0.7074, and 0 of 8 channels survive Holm-Bonferroni).
+Robustness bands land within noise of the primary (40–55 Hz at 55.6%, 65–75 Hz at 57.8%, the
+greedy 32–75 Hz at 51.1%), and their pre-registered role forbids them from promoting a null
+primary in any case.
+
+**Two readings of "below the floor" and only one of them is right.** The floor is what a *constant*
+predictor scores, and this pipeline is not a constant predictor even on random labels: each
+channel set's own permutation null has a median of 22 to 23 of 45. Against its own null the
+temporal ring sits at the 48th to 57th percentile, which is *at chance*, not below it. The other
+three sets sit in the lower tail of their own nulls, which is a different phenomenon that this run
+explicitly declines to explain, because naming a mechanism in the same breath as a number is this
+project's round-one failure mode and it gets its own registration or it gets nothing.
+
+**The part that turns a null into a measurement.** A null is worth exactly what the instrument's
+sensitivity is worth, so the script plants a synthetic class-correlated source in the ring at a
+ladder of amplitudes and finds the smallest one it can detect. Detection is the smallest amplitude
+whose median accuracy across ten injection seeds reaches 31/45, chosen over 30/45 because 30/45
+sits at binomial p = 0.0490 and a criterion should not rest on a knife edge. Amplitude `a` is the
+source's contribution to T8 as a fraction of T8's own measured high-band standard deviation.
+
+Over four source shapes and both class directions the *worst* threshold is **a = 0.600**, against
+0.150 in the easiest cell. That worst case is the bound, and it has three named holes:
+
+- **Spectral.** The probe covers 40–75 Hz minus the notch, out of a recorded 0–80 Hz. 160 Hz
+  sampling discards everything above the 80 Hz Nyquist, where temporalis EMG has real power, and
+  the probe itself declines the 40 Hz below its own lower edge. **Nothing at all is bounded inside
+  the decoder's own 8–30 Hz passband, which is the only band the headline can be contaminated
+  in.** The measured PSD makes that worse, not better: the recorded high band is steeply
+  attenuated, so any EMG present shows up preferentially where this probe is not looking.
+- **Temporal.** Every rung injects a constant amplitude into *every* trial of a class, which is
+  the shifted distribution the script's own text calls unrealistic. A bursty source in 25% of
+  trials is **not bounded at any amplitude tested**, including ten times the ladder's top rung,
+  because the registered criterion cannot adjudicate that duty cycle at all. That is an open
+  exposure, not a larger bound.
+- **Statistical.** 45 trials buys a large-effect bound and nothing finer: the univariate arm
+  excludes Cohen's d at or above 0.837 aggregate and 1.069 per channel, both large.
+
+**One pre-registered falsifier partially fired and it must not be buried.** Falsifier 7 pinned the
+notch at 89 taps. MNE splits `trans_bandwidth=6.0` into 3.0 Hz per side, so the realised notch is
+177 taps and the cascade half-length is 1.375 s rather than the pinned 1.100 s. The *frequency*
+design is exactly as pinned; only the time-domain prediction was wrong. Two printed statements had
+to be recomputed: the 1.0–2.0 s feature window can draw energy from as early as −0.375 s, and the
+pre-cue diagnostic window is now **entirely** filter-contaminated, so its null (t p = 0.4140) is
+uninformative exactly as pre-declared and says nothing about pre-cue high-band power. The
+conclusion is unaffected because filter smear can only push a score *up*, so a null stays
+conservative. The notch parameters were not re-tuned to make the pinned tap count come true; the
+pre-registration pinned the *call*, and the tap count was a prediction about it that the script
+was written to check rather than trust.
+
+> **Withdrawn on 2026-07-26, one day after it was published, and kept visible.** This section
+> first reported the bound as *"a = 0.300 of T8's own high-band SD"* and stated that *"the corpus
+> line 'nothing in the repo bounds an EMG contribution' is now false."* Both overstated, in the
+> same direction, three times over. The 0.300 was the worst of **two** registered shapes, both
+> diffuse; adding the canonical focal one-electrode source doubles it, and a focal source at
+> a = 0.500 sits *inside* this recording's tolerance while sitting *outside* the number that was
+> published. The claim is also band-scoped and continuous-source-scoped as above. The corpus line
+> is false **for 40–75 Hz only** and remains true inside 8–30 Hz. The failure mode is the
+> familiar one wearing new clothes: a max over a convenience sample of two was written as a max.
+
+**What is not run, stated because a conjunction with one arm run is not satisfied.** The closure
+condition has two parts: (i) a temporal-channel-*deleted* ablation inside 8–30 Hz that should not
+hurt appreciably, and (ii) this high-band probe landing at or below the floor. Only (ii) exists.
+And EEGMMIDB ships no EMG reference channel, so there is no ground truth for "this is muscle" at
+all: the probe measures high-band power at muscle-adjacent scalp sites. The word it is licensed to
+use is **bounds**, never *eliminates*.
 
 ### 10.6 How to read the final printout
 ```
@@ -1104,7 +1835,7 @@ if you turn it:
 | CSP `n_components` | 4 | # spatial filters | 6 or 8 — more filters can help or overfit; cross-validate to decide. Untested here. |
 | CSP `reg` | None | Covariance shrinkage | `'ledoit_wolf'` — stabilizes CSP when trials are few or channels many. Untested on this baseline. Worth noting that rung 9's Riemannian arm ran with OAS shrinkage while its CSP baseline ran `reg=None` — an asymmetry that favours the **Riemannian** arm, not the baseline. The baseline won anyway. |
 | crop `1.0–2.0 s` | 1 s window | Which slice becomes features | Sliding it on the left/right contrast gave **66.7 / 55.6 / 73.3 / 64.4 / 46.7%** for starts at 0.0 / 0.5 / 1.0 / 1.5 / 2.0 s — a **26.7-point** range across *overlapping* windows of the same trials. Treat this knob as a **noise source**, not a tuning surface. |
-| `cv` | `StratifiedKFold(5, shuffle=True)` | Evaluation rigor | **Leave-one-subject-out** once you go multi-subject (rungs 8–10 do). Leave-one-**run**-out is the cheaper session-level check: it holds at 93.3%. |
+| `cv` | `StratifiedKFold(5, shuffle=True)` | Evaluation rigor | **Leave-one-subject-out** once you go multi-subject (rungs 8–10 do). Leave-one-**run**-out is the cheaper *within*-session check: it holds at 93.3%. It is **not** a session-level check, which this document used to call it — runs 6/10/14 are three recordings from one session, and EEGMMIDB has no second session to hold out. |
 | `random_state` | 42 | Reproducibility seed | Rung 5 already swept 100 seeds: 88.9–97.8%, mean **93.8%**, with 42 at the **3rd percentile** — so the published number understates its own estimator by ~2.7 points. That "3rd" is a *strictly-below* rank; the estimator is quantized to 1/45, many seeds tie exactly on 91.1%, and a tie-aware rank puts 42 higher. The 2.7-point gap does not depend on the convention; the word "3rd" does. Worth knowing that 42 was **inherited from MNE's CSP tutorial, not chosen** — which makes "the seed wasn't cherry-picked" true but vacuous. |
 
 > **On that last row.** This baseline is MNE's CSP tutorial almost verbatim: the runs, the
@@ -1122,14 +1853,17 @@ already built**. Here is the real state instead.
 | Rung | Question | Answer |
 |---|---|---|
 | 4 | Can I decode imagined fists vs. feet? | **91.1%** vs. 53.3% chance, permutation **p ≤ 0.001** |
-| 5 | Is that number an artifact of the estimator? | Partly. The estimator change was worth ~0.6 points; ~2.7 points were **seed luck** |
+| 5 | Is that number an artifact of the estimator? | No. The estimator change *raises* the expectation by ~0.2 points (ShuffleSplit mean 93.6% vs. StratifiedKFold mean 93.8% over 100 seeds). The whole 3.3-point move is **seed placement**: seed 42 sits 2.7 points below the published estimator's own 93.8% mean |
 | 6 | Does it hold across 109 people? | Median **60.0%**, IQR 52.8–75.6%. Subject 1 is the **91st percentile** |
 | 7 | What does a harder contrast cost? | **Unanswerable as run** — the left/right rung is **gaze-confounded**, and overlapping crop windows of the same trials disagree by 26.7 points |
 | 8 | Does it transfer to an unseen person? | Near-parity, 95% CI **[−1.9, +11.2]**, p = 0.181. Cannot distinguish a drop from no drop |
-| 9 | Does a Riemannian method beat it? | No, but only **MDM-64 is significant** (p = 0.005); the rest is underpowered — and the comparison was tilted *toward* Riemannian by shrinkage |
-| 10 | Does a CNN beat it? | Scores lower by **4 of 45 trials** at n=45 (reported as 8.9 points, untested), level at ~900 trials |
-| 11 | What did rung 10's regime C measure? | **The cue, not the imagery.** EEGNet scores 61.1% on the cue window alone and **51.8% on the second before it**; adding the whole imagery window buys +1.9 (p = 0.41) |
+| 9 | Does a Riemannian method beat it? | No, but only **MDM-64 is significant** (p = 0.005, Holm 0.019); the rest is underpowered — and the comparison was tilted *toward* Riemannian by shrinkage. These p-values used to be computed in prose by no committed script; `inferential_stats.py` §2 now produces them |
+| 10 | Does a CNN beat it? | Scores lower by **4 of 45 trials** net at n=45 (8.9 points; 10 discordant trials, exact McNemar **p = 0.344**), level at ~900 trials |
+| 11 | What did rung 10's regime C measure? | **Cue onset, not the imagery window.** EEGNet scores 61.1% on the 0–1 s window alone against 51.8% on the second before it, and adding the whole imagery window buys +1.9 (p = 0.41). CSP is also above chance in that window (53.7%, p = 0.023), so this is a difference of degree, not a dissociation. Figures are 2026-07-23 checkpoint values (§7 rung 11) |
 | — | Is the artifact ablation real? | **It is now.** `ablate_channels.py` produces it; two of its four published values were unreachable and are corrected below |
+| guard | Does deleting sensorimotor cortex break it? | **No.** 47 electrodes with the FC/C/CP strip removed reach **77.8% (35/45)**, ten-seed 79.3%, permutation p ≤ 0.001. G = +14.7 points clears its threshold; the paired McNemar (p = 0.0703, 8 discordant) does not. Registered verdict: *a loss is suggested and not established at n = 45* (§10.5) |
+| guard | Is class information riding on muscle? | **Not in 40–75 Hz, and unbounded in 8–30 Hz.** A muscle-band decoder at the temporal ring lands at **51.1% (23/45)**, below the 53.3% floor, permutation p = 0.5175, univariate arm null. Sensitivity bound a = 0.600 of T8's high-band SD; a bursty source is not bounded at all (§10.5b) |
+| guard | Is the permutation null itself correctly built? | **The within-subject one already was.** The published re-stratified null is exact; the "correction" this project favoured is anti-conservative to 13x nominal on zero-information data and is withdrawn. Run blocking is real and moved one median subject across 0.05. Cross-subject, the block null replaces `SHUFFLE_MAX = 0.60` with **53.1% (478/900)** (§10.4b) |
 
 ### 12.1 What is retracted, and why that list matters
 
@@ -1146,14 +1880,31 @@ record rewritten.
 - **"The ranking flips once both models get a wider band and a longer window."** Three factors
   moved at once, and the effect turns out to belong to none of the two that were credited. Rung
   11 traces it to an undocumented crop-start change, shows the stated band mechanism is
-  backwards, and confirms by measurement that EEGNet scores **61.1% on a window containing no
-  imagery at all**.
-- **"73.3% is what a harder contrast costs."** Group value is ~7 points, and the rung is
-  gaze-confounded.
-- **"No method dominates / the best method is subject-specific."** No subject × method
-  interaction is **detectable** (p = 0.84), and per-subject optimality requires one. (An earlier
-  version of this line said no interaction *exists*, which asserts a null this experiment has too
-  little power to establish — the same move §14 item 6 warns against.)
+  backwards, and confirms by measurement that EEGNet scores **61.1% on the cue-onset window
+  alone**. (This bullet used to say "on a window containing no imagery at all." That phrase is
+  itself withdrawn in round three below: the 0–1 s window contains the cue *and* the first second
+  of imagery, and this design cannot separate them.)
+- **"73.3% is what a harder contrast costs."** The rung is **gaze-confounded**, and five
+  overlapping 1-second windows of the *same* trials disagree by **26.7 points**
+  (`harder_contrast.py`, cached stdout `:25`), so 73.3% is a window draw and not a cost of
+  contrast at all.
+  > **A second layer on this bullet, 2026-07-25.** It used to read *"**Group value is ~7 points**,
+  > and the rung is gaze-confounded."* That "~7 points" is the 16-subject figure withdrawn at §7
+  > rung 7 for lack of provenance — no script in this repo computes it and the unexplained *n* = 16
+  > matches no other multi-subject rung. It was withdrawn there and survived here, in the very list
+  > that is supposed to govern withdrawn claims. Withdrawn again, and named as the specific failure
+  > it is: a retraction register that still asserts a retracted number is not doing its job. The
+  > retraction stands on the window sweep, which is produced by code.
+- **"No method dominates / the best method is subject-specific."** Per-subject optimality requires
+  a **crossover** subject × method interaction, and none is demonstrated: the pairwise homogeneity
+  test that could show one is null and underpowered (**χ² = 13.33 on 19 df, p = 0.821**, MDE 5.68
+  points). (An earlier version of this line said no interaction *exists*, which asserts a null
+  this experiment has too little power to establish — the same move §14 item 6 warns against.
+  A second version said *"no subject × method interaction is detectable (p = 0.84)"*; that p and
+  its χ² of 13.0 are withdrawn as unproduced, **and the sentence was wrong as well as unsourced** —
+  the design-appropriate omnibus, Tukey's 1-df test on the 20 × 5 layout, **does** reject
+  additivity at F = 13.4627, p = 0.0005. What it detects is a fan driven by MDM-64, not a
+  crossover, so the retraction is unaffected. See §7 rung 9.)
 - **"CSP patterns are focal over sensorimotor cortex, which is my evidence against artifacts."**
   False for the showcased component, which is parieto-occipital (§8.3).
 
@@ -1206,8 +1957,184 @@ invented mechanisms for real measurements; round two published measurements that
 **The round-two pattern has its own name, and it is the one worth carrying forward:** *a number
 whose provenance you cannot state is not a result, however true it turns out to be.* Two of the
 figures above (91.1%, 93.3%) were correct all along, which is precisely why the defect survived
-review — a table that is half right reads as sourced. `check_provenance.py` now extracts every
-figure from this document and the README and fails if no script's stdout contains it.
+review — a table that is half right reads as sourced.
+
+**Round three — 2026-07-25, twelve entries, found by auditing the round-two corrections
+themselves.** Three of these sat *inside* a passage whose job was to correct something else
+("six orders of magnitude", "repeated runs have come back identical", and the "~7 points" that
+outlived its own withdrawal two sections earlier), and a fourth is a correction block's
+downstream conclusion. A retraction is prose like any other, and this project had been treating
+its own retractions as trustworthy because of where they sat on the page rather than because
+anyone had rechecked them.
+
+- **"Roughly 2.7 points of seed luck and 0.6 points of real estimator change."** The 94.4 → 91.1
+  decomposition, wrong in its *split* while right in its *total*, which is why it survived. The
+  0.6 differences seed 42's ShuffleSplit **draw** against StratifiedKFold's **mean**, moving 0.8
+  points of old-estimator seed luck onto the estimator's account and flipping that term's sign.
+  The estimator is worth **−0.2 points**: it *raises* the expectation and cannot have contributed
+  any share of a drop. Corrected to seed placement 3.5, estimator −0.2 (§7 rung 5).
+- **"The end-to-end logits are only about 53× too small."** Unreachable from the document's own
+  premises: under its stated ~31.6×-per-stage recovery the chain runs 4500 → 142 → 4.5 → 0.14, and
+  `4500 / 31.6ˣ = 53` needs x = 1.29 stages. Withdrawn; the deficit at the first BN (~4500×) is
+  what survives. The "cannot train out of it" conclusion was computed *from* the 53× and is
+  downgraded from established to plausible (§7 rung 10).
+  > **And the replacement was wrong too, measured 2026-07-25.** The correction above swapped the
+  > unreachable 53× for the model's own **4.5×** and recomputed the training margin as a **2.3×
+  > shortfall**. `inferential_stats.py` §§7–8 measures the chain with forward hooks instead of
+  > modelling it: the per-stage deficits are **4744× / 459× / 59×** and the logits are **102×** too
+  > small, so per-stage recovery is ~10× and ~8×, not 31.6×, and the margin is a **64×** shortfall
+  > (mean-|dw| travel) or **139×** (sd travel), not 2.3×. Both the withdrawn 53× and its
+  > replacement 4.5× are wrong; the measured value sits between them and closer to the former.
+  > Note the shape of this one: it is the **fourth** consecutive layer on the same passage, and
+  > every layer before this one was arithmetic on an unmeasured model.
+- **"Both are wrong by about six orders of magnitude."** A correction block wrong twice about its
+  own arithmetic: the two errors it describes are **2.85** and **7.47** orders, four and a half
+  orders apart, and its explanation of the 1e-8 cannot coexist with its own stated 7e-6 activation
+  scale (variance 4.9e-11). Withdrawn (§7 rung 10).
+- **"What proves it is an ablation ... deleting sensorimotor cortex must break it. Here that
+  prediction holds."** The experiment does not exist. `ablate_channels.py` builds four conditions
+  and none of them deletes sensorimotor cortex while keeping the montage; the arm treated as that
+  one drops 56 of 64 channels. The script's own stdout says **"BOUND, NOT PROOF ... it cannot
+  measure it."** Downgraded from proves to bounds (§8.3).
+- **"The fists-vs-feet headline passes both its ocular checks."** There are none. Every ocular
+  analysis in `harder_contrast.py` runs on the **left-vs-right** runs 4/8/12; the fists-vs-feet
+  reference gets only an accuracy and a permutation test. The headline has **one** artifact
+  control, the channel ablation, and it bounds rather than checks. The claim also falsified §14's
+  own universal six lines above it, which is demoted to a rule (§14 items 4 and 5).
+- **"CSP's log-variance features throw timing away by construction."** The mechanism story
+  attached to rung 11's finding, refuted by rung 11's own data: CSP's paired post-cue gain is
+  **+6.0 points, p = 0.0103**. CSP follows the cue effect *less* than EEGNet, not not-at-all.
+  Withdrawn, and it is the round-one failure mode reappearing inside the rung built to catch it
+  (§7 rung 11).
+- **"The cue window, which contains no imagery at all."** An assumption stated as a measurement,
+  three times, while the script producing the cell said in its own docstring that it was an
+  assumption. The subject begins imagining *at* the cue. Renamed the **cue-onset window** (§7
+  rung 11).
+- **"Both models sit at chance before the cue. The control passes."** A failure to reject sold as
+  a pass. The pre-cue EEGNet interval is **[49.1%, 54.5%]**, whose upper bound exceeds the
+  cue-window CSP estimate of 53.7% that the same rung calls significant. No power analysis, no
+  equivalence test, and the interval was never shown. Rewritten onto the paired comparison, which
+  is what actually carries the conclusion (§7 rung 11).
+- **"Repeated runs on this machine have come back identical."** The round-one correction chose the
+  wrong side: it retracted an accurate note about CNN non-determinism and replaced it with an
+  unmeasured claim of determinism. Two runs of a byte-identical regime-C configuration disagree by
+  **0.8 points** (63.0% vs 63.8%) while CSP reproduces exactly. Restored, with the measurement
+  attached (§13).
+- **"One commit per rung."** 26 commits for 11 rungs, one commit introducing four rungs, and rung
+  11 spanning three. Wrong in both directions, in a sentence inviting the reader to check it
+  against the history (§6).
+- **"`check_provenance.py` extracts every number in the docs."** Stated in four places; the script
+  never claimed it. It cannot see multipliers, point-differences, µV, t-statistics or parameter
+  counts — which is exactly where the two worst defects above live. Corrected to the docstring's
+  own scope, with the blind spots tabulated below.
+- **"Group value is ~7 points"** (round one, rung 7 bullet). A figure already withdrawn in §7 for
+  having no script behind it and an unexplained *n* = 16, which then went on living in the
+  retraction list itself. Withdrawn a second time. This is the entry that motivated auditing the
+  corrections rather than the claims, and it is left visible in round one above with its own
+  withdrawal note attached.
+
+**What round three should change about how this repo is read.** Rounds one and two each had a
+single-sentence lesson. This one's is narrower and less comfortable: **a retraction is not
+evidence, and marking a passage as a correction does not make its arithmetic true.** Every defect
+in this batch sat inside prose whose function was to be trustworthy. The mitigation is the same
+one the project already applies to results, applied one level up: a correction has to state what
+it recomputed and from which artifact, or it is just a confident paragraph in a different font.
+
+**Round four, 2026-07-25 into 2026-07-26: six entries, found by running three tests this corpus
+had only conceded.** These come from a different place than the first three rounds. A reviewer
+read the finished corpus and returned one sentence: *this project is trained to concede exposures
+with great precision and is not trained to measure them; nine of ten findings name a hazard, name
+exactly what test would close it, and then do not run the test.* Three of those tests were then
+built and run under pre-registration. Rounds one and three were about claims that were wrong.
+**This round is mostly about claims that were merely unmade, plus two the measurements actively
+refuted**, and the entries are ordered with the costly ones first.
+
+- **"No condition here deletes sensorimotor cortex while keeping the rest of the montage."**
+  Withdrawn as a *state of affairs*, not as an error: the condition now exists, and the finding is
+  that it **does not break the decoder**. 47 electrodes with the strip removed reach 77.8%
+  (35/45), ten-seed 79.3%, permutation p ≤ 0.001. This entry is in the register because the
+  concession was load-bearing everywhere it appeared, in §1, §8.3, §10.5, §14 and the README, and
+  because the result it was concealing is the one that costs this project the most. The registered
+  verdict is *suggested, not established*, and the sentence "the strip is sufficient but not
+  necessary" is not written. See §10.5.
+- **"The published permutation null marginalises over partitions the observed value conditions on,
+  so it is the wrong null."** Conceded in this document and treated as a defect awaiting repair.
+  **Measured, and the concession was wrong in its conclusion.** The published re-stratified null is
+  an exact test. The repair this project favoured, freezing the folds at the true-label partition,
+  is **not** a test: on data with provably zero information it rejects at 0.6550 against a nominal
+  0.05, 13.1x, because the frozen partition is itself a function of the labels being permuted.
+  Every number computed from those cells is withdrawn, including a variance-inflation factor and an
+  n_eff-corrected Wilson interval this document had already published from them. What survives of
+  the objection is run blocking, which is real and moved one of two median subjects across 0.05.
+  See §10.4b.
+- **"Nothing in this repo bounds an EMG contribution."** True when written, false now, and the
+  scope matters more than the reversal: it is false **for 40–75 Hz only** and remains true inside
+  the decoder's own 8–30 Hz passband, which is the only band the headline can be contaminated in.
+  §10.5b carries the probe and its three named holes.
+- **"This recording contains no class-correlated broadband temporal source as large as a = 0.300
+  of T8's high-band SD."** Published 2026-07-25, withdrawn 2026-07-26, one day of life. The 0.300
+  was the worst of **two** shapes, both diffuse, and was written as though it were a maximum over
+  topographies. Over four shapes including the canonical focal one-electrode source the worst
+  threshold is **a = 0.600**, so a focal source at a = 0.500 sits inside this recording's tolerance
+  and outside the published bound. The same sentence was also silently continuous-source-scoped: a
+  bursty source at a 25% duty cycle is not bounded at any amplitude tested. Three scope failures,
+  all in the direction that overstates coverage.
+- **"At a gap of 10 or more points the McNemar should fire comfortably."** A pre-registration's own
+  justification for its two-part decision rule, refuted by arithmetic available before the run. In
+  a paired 2x2 on 45 trials the accuracy gap fixes `b − c`, so the smallest gap that can reach
+  p < 0.05 at *any* discordant count is 6 trials, or 13.3 points. The rule's other half fires at
+  10.0 points. Between those two the conjunction cannot fire whatever the data does. The
+  pre-registration was not edited to match; it is refuted on the record.
+- **"`ablate_channels.py` builds four conditions and only four."** A factual statement about the
+  code, true when written and false now that the script builds six. Listed because this document
+  has twice been caught describing its own scripts from memory, and a correction that leaves the
+  old line unmarked is how the next reader gets misled.
+
+**What round four should change about how this repo is read, and it is the least comfortable
+lesson of the four.** The first three rounds were about numbers that were wrong. This one is about
+a *habit* that reads as rigour and functions as avoidance: naming a hazard precisely, naming the
+test that would settle it, and stopping there. A conceded exposure and a measured one are not the
+same object, and this corpus had been treating them as though they were, because the concession is
+written in the same confident voice as a result and sits in the same section. Two of the three
+tests came back against the framing they were built to defend. **A disclosure is a promissory note,
+and this round is what it costs to redeem three of them.** The remaining exposures listed in §12.2
+should now be read as debts with a known price rather than as evidence of thoroughness.
+
+`check_provenance.py` now extracts the
+percentages, p-values, correlations and result-bearing counts from this document and the README
+and fails if no script's stdout contains one of them.
+
+**What the guard cannot see, stated so nobody trusts it further than it goes.** Four places in
+this repo used to describe `check_provenance.py` as extracting *"every number"* or *"every
+figure."* It does not, and the script's own docstring never claimed it did — `:13-14` says
+"percentages, p-values, correlations, and a narrow class of counts," and `:25-27` states the
+value-matching limit plainly. The docs overstated what the code says about itself. Concretely,
+`PATTERNS` (`check_provenance.py:81-86`) matches only `N%`, `p`/`r` compared to a decimal, and
+integers glued to `trials|subjects|shuffles|seeds|folds`. Everything else is invisible:
+
+| class | example in these docs | seen by the guard? |
+|---|---|---|
+| multipliers | `4500×`, `31.6×` (§7, rung 10) | no |
+| point-differences | `0.2 points`, `2.7 points` (§7, rung 5) | no |
+| microvolts and t-statistics | `+11.89 µV`, `t = +7.71` (§8) | no |
+| parameter counts | `2,290 parameters` (§7, rung 10) | no |
+| scientific notation | `1.3e-5`, `1.6e-10` (§7, rung 10) | no |
+| anything inside a code fence | the ladder block in §6 | no, by design |
+
+**This is not a cosmetic gap.** The two worst defects this project has had to withdraw — the
+"0.6 points of real estimator change" decomposition in rung 5, and the "53× too small" chain in
+rung 10 — are both in classes the extractor structurally cannot match. The guard could run every
+day for a year and never see either. Two further limits were verified in the source, and **one of them has since been closed, so this
+paragraph is half-withdrawn**. ~~The `INCOMPLETE` branch at `:407-412` returns exit 0 and blames
+`--fast` **without checking whether `--fast` was passed**, so a full run in which one registered
+script crashes reports pass.~~ **WITHDRAWN 2026-07-25 18:0x: that hole was closed at 17:40:43 and
+the wording is kept visible only as the record of what it used to do.** On disk the branch is
+gated: `:468 if missing:`, `:477 if args.fast:`, `:479` prints `INCOMPLETE` and returns 0 **only
+under `--fast`**, and a full run falls past that gate to
+`Result: FAIL (registered script produced no output on a full run)` and returns 1. `:407-412` is
+now the unrelated `--list` branch. **The second limit stands, at a new address:** `:486` computes
+`bad = bool(unbacked) or bool(stray)`, so the WEAK bucket is advisory and never fails the build.
+Absence from the UNBACKED list means *not checked*, not *checked and passed*.
 
 ### 12.2 What is genuinely next
 
@@ -1226,6 +2153,9 @@ figure from this document and the README and fails if no script's stdout contain
    isolated data point.
 5. **Artifact rejection.** ICA-based ocular cleaning, and a paradigm with EOG channels. Rung 7
    demonstrated this project cannot currently monitor the confound it found, let alone remove it.
+   The muscle half of this item moved from "unmonitored" to "bounded in one band" on 2026-07-25
+   (§10.5b); the ocular half did not move at all, and both still lack a reference electrode of any
+   kind, which is what would turn a bound into a measurement.
 6. **Trial-count QC, and a live bug inside it.** 12 of 109 subjects reach the sweep with
    non-standard trial counts (36–57 instead of 45), and three record at 128 Hz rather than 160.
    The sweep reports the sampling-rate anomaly and not the timing one. More importantly, **most
@@ -1239,10 +2169,70 @@ figure from this document and the README and fails if no script's stdout contain
    prints, and changing the script and the prose in the same pass is how a repo loses track of
    which is which.
 7. **Statistics that live only in prose.** Several inferential figures in rungs 7–9 — the
-   cross-subject CI, rung 9's paired p-values and its subject × method interaction — are correct
-   but are computed by no committed script, and rungs 8 and 9 persist no per-fold arrays, so a
-   reader must edit the source to re-derive them. `check_provenance.py` flags this class; closing
-   it means printing the tests from the scripts that own them.
+   cross-subject CI, rung 9's paired p-values and its subject × method interaction — are computed
+   by no committed script, and rungs 8 and 9 persist no per-fold arrays, so a reader must edit the
+   source to re-derive them. They were previously described here as "correct but uncomputed"; that
+   overstates what is known, since being uncomputed is exactly the condition under which
+   correctness has not been established. One of them now carries an open flag: rung 9's
+   χ²₁₉ = 13.0 had degrees of freedom that do not match a five-way subject × method interaction
+   (§7 rung 9). Rung 11's pre-cue interval **[49.1%, 54.5%]** joins this class as of 2026-07-25:
+   it is derived in prose from `regime_decomposition.json`'s stored per-fold values, and the
+   script prints the p-value but not the interval. Closing this item means printing the tests, and
+   their intervals, from the scripts that own them.
+   > **Mostly closed, 2026-07-25, by `inferential_stats.py`.** It computes and prints rung 8's gap
+   > and interval, rung 9's four paired tests with Holm alongside them, both families of the
+   > subject × method question, the Wilson and McNemar tests for rung 10, and every rung-11 test
+   > including the pre-cue interval — from persisted arrays, with a ledger of what it still cannot
+   > produce. The unproduced **χ²₁₉ = 13.0 / p = 0.84** is withdrawn and replaced (χ² = 13.33 on
+   > 19 df, p = 0.82, plus the Tukey F = 13.4627, p = 0.0005 that the df objection called for).
+   > What remains open is *ownership*: `riemannian.py` and `cross_subject.py` still persist no
+   > per-fold arrays of their own, so `inferential_stats.py` reads a captured copy rather than a
+   > fresh one, and `regime_decomposition.py` still prints no intervals. Closing the item fully
+   > means each script printing its own tests.
+8. ~~**The ablation arm that would turn a bound into a test.** `ablate_channels.py` has no condition
+   that deletes sensorimotor cortex and keeps the rest of the montage, which is the arm that would
+   make the artifact control a falsifiable prediction rather than a bound (§8.3). It is cheap: one
+   more entry in the `conditions` list, `[c for c in ch_names if c not in SENSORIMOTOR]`, 47
+   channels. It is listed here rather than done in this pass because changing the script and the
+   prose describing it in the same commit is how a repo loses track of which is which. Note in
+   advance that it will be *partially* confounded too — dropping 17 of 64 channels is a
+   dimensionality change like any other — so the honest reading will be a comparison against the
+   frontopolar arm's 8-channel collapse, not a clean proof.~~
+   > **DONE, 2026-07-26, and the item is struck rather than deleted because its own prediction is
+   > part of the record.** It was cheap and it was partially confounded, both as forecast. It did
+   > not go as the item's tone implied. The 47-channel complement reaches 77.8% (35/45), ten-seed
+   > 79.3%: the decoder does not break. The dimensionality worry the item raised was itself
+   > measured and dismissed *for this comparison*, by deleting 17 channels at random 50 times and
+   > watching the ten-seed mean barely move (93.5%). See §10.5. What remains open from this item is
+   > only the thing no montage can close: deleting electrodes near a source does not delete the
+   > source, so no channel ablation falsifies a source hypothesis in either direction.
+9. **The second arm of the muscle check.** `emg_proxy.py` (§10.5b) is one half of a two-part
+   condition. The other half is a temporal-channel-**deleted** ablation *inside* 8–30 Hz, which
+   should not hurt appreciably if the decoder is not riding myogenic activity. It was declared out
+   of scope on purpose so that the probe's pre-registration could not be widened after seeing its
+   own result. A conjunction with one arm run is not satisfied, and no sentence in this document
+   may be written as though it were.
+10. **EMG inside the decoder's own passband.** The probe covers 40–75 Hz minus a notch and is
+    blind at 8–30 Hz by construction, which is the only band that can actually contaminate the
+    headline. The measured spectrum makes this more urgent rather than less: the recorded high
+    band is steeply attenuated, so any myogenic activity present shows up preferentially at the
+    low frequencies the probe excludes. Closing it needs either a recording with an EMG reference
+    channel or a source-separation method this montage cannot support.
+11. **A bursty EMG source is not bounded at all.** The injection ladder plants a constant amplitude
+    into every trial of a class, which the probe's own text calls the unrealistic case. At a 25%
+    duty cycle the registered detection criterion cannot adjudicate any amplitude tested, so this
+    is an open exposure rather than a larger bound. Closing it means recalibrating the criterion
+    for intermittent sources, which is a new pre-registration, not a re-run.
+12. **Re-scoring `sweep_results.csv` on the exact block null.** Run blocking moved one of two
+    median subjects across 0.05 (§10.4b), so per-subject significance across the 109 was computed
+    with a null that is exact but not the best available. Three subjects is an existence proof
+    that the correction *can* move a verdict, never a frequency, and the honest version of rung 6
+    needs all 109 re-scored under C3 rather than an extrapolation from two.
+13. **Validating the replacement leakage guard against a real leak.** The block null's 99th
+    percentile, 53.1% (478/900), replaces an underived 0.60 in `cross_subject.py`. Neither number
+    has ever been tested against an actual injected leak, and that script already discloses its
+    guard has never fired. A derived threshold is better than a round one, and it is still not a
+    measured false-alarm rate.
 
 ---
 
@@ -1260,15 +2250,50 @@ python decode_csp.py        # full pipeline + writes csp_patterns.png
   attacks on the result and each runs standalone.
 - Because `random_state=42` is fixed, `decode_csp.py` prints **91.1% (+/- 4.4%)** and
   **p <= 0.001** exactly. The classical rungs are all deterministic in this way.
-- **The CNN rungs report a single torch seed.** Seeds are fixed for torch, numpy and python, and
-  in practice repeated runs on this machine have come back identical — but run-to-run stability is
-  **not** robustness to seed *choice*, and no seed sweep is run. Treat every EEGNet number as one
-  draw. (An earlier version of this bullet asserted the CNN rungs were "not bit-reproducible" and
-  blamed MPS nondeterminism. That reassured the reader out of noticing the real issue, which is
-  that a single initialisation is being reported as an estimate.)
+- **The CNN rungs report a single torch seed, and they are not bit-reproducible.** Seeds are fixed
+  for torch, numpy and python. That fixes the *initialisation*; it does not fix the *arithmetic*,
+  and on this machine it does not hold. Treat every EEGNet number as one draw, and treat the last
+  decimal place of that draw as noise. Run-to-run stability would not be robustness to seed
+  *choice* in any case, and no seed sweep is run.
+
+  > **This bullet has been wrong twice, in opposite directions, and both layers are kept.**
+  >
+  > **Layer one (retracted).** It originally read *"MPS (Apple GPU) kernels are not guaranteed
+  > bit-reproducible. Expect small run-to-run drift in the CNN numbers."* That was retracted for
+  > reassuring the reader out of noticing the real issue, which is that a single initialisation was
+  > being reported as an estimate.
+  >
+  > **Layer two (retracted, 2026-07-25).** The replacement said *"in practice repeated runs on this
+  > machine have come back identical."* **That is false by measurement, and layer one was right on
+  > the facts even though it was wrong on the emphasis.** Two runs of a byte-identical
+  > configuration disagree: `regime_decomposition.json`'s `original-C` cell (900 trials, 641
+  > samples, 4–38 Hz, 0.0–4.0 s) records EEGNet **0.630000**, while
+  > `.provenance_cache/eegnet_compare.py.txt:30` records **63.8%** for the same regime on the same
+  > data. That is **0.8 points, about 7 trials of 900**. CSP over the same cell reproduces
+  > *exactly* (51.4% both places), which is what isolates the disagreement to the CNN rather than
+  > to the data or the folds.
+  >
+  > The lesson is the one this repo keeps relearning in a new costume: "I ran it twice and it
+  > looked the same" is not a measurement, and it was asserted here without one. The current
+  > bullet claims only what the two artifacts jointly support.
 - Rungs 10 and 11 are the slow ones (LOSO with a CNN at every fold). `regime_decomposition.py`
   checkpoints to `regime_decomposition.json` after each cell, so it can be killed and resumed
   without losing completed work.
+- **The three guard scripts split into two very different cost classes, and the registry records
+  measured runtimes rather than guesses for all of them.** `ablate_channels.py` and
+  `emg_proxy.py` are seconds-to-a-minute jobs despite doing four permutation tests and a
+  400-run injection ladder between them, because every channel set except all-64 is 8 or 17
+  channels wide. `permutation_design.py` is the opposite: a **cold run took about 4 hours
+  50 minutes** on this machine, dominated by arm B, which is 4,000 replicates of a 20-fold LOSO
+  over 900 pooled trials. It checkpoints each block of replicates to `.permutation_design_cache/`,
+  stamped with a fingerprint of every input, so a re-run reuses completed blocks and finishes in
+  under three minutes. `check_provenance.py`'s registry carries the **cold** number, because a
+  fresh clone has no cache and a timeout there would be reported as a crashed script.
+  > **A process note on that script, because it affects what is reproducible.** The first full run
+  > was killed partway into arm B. Block checkpointing was added and the script was re-run from
+  > scratch, detached, with arm A's output compared across both runs to confirm the refactor
+  > changed nothing. The committed script therefore contains caching code the first, discarded run
+  > did not have, and the authoritative stdout is the second run's.
 
 ---
 
@@ -1288,9 +2313,19 @@ in BCI. Be ready to volunteer them:
 4. **No artifact rejection, and no way to monitor it.** There is no ICA and no removal of
    eye-blinks or muscle activity. **This document used to claim the "centered" CSP scalp maps
    gave confidence the model was not riding artifacts. That claim was false** — the showcased
-   component is parieto-occipital and alpha-like (§8.3). The real defence is the ablation in
+   component is parieto-occipital (§8.3). The real defence is the ablation in
    §10.5: on fists-vs-feet, a frontopolar-only decoder lands at **51.1%**, one trial below the
    majority-class floor. For the left/right rung the same kind of check emphatically fails.
+
+   > **Two things have changed here since 2026-07-25, and one of them is bad news.** The
+   > *muscle* half of this item is no longer unmonitored: `emg_proxy.py` refits the pipeline at
+   > 40–75 Hz on the temporal ring and lands at 51.1% (23/45), below the floor, with a null
+   > univariate arm and a measured sensitivity bound (§10.5b). That bound covers 40–75 Hz only and
+   > covers **nothing** inside the decoder's own 8–30 Hz passband. The *ocular* half has not
+   > moved. And the sentence this item leans on, that the ablation is "the real defence", is now
+   > weaker than it reads: the ablation's own falsifiable form was finally run and did not
+   > falsify. Deleting the sensorimotor strip leaves 77.8% (35/45). The frontopolar collapse is
+   > still a real negative control; it is just no longer paired with a positive one.
 
    > **Correction, and it is about vocabulary as much as about numbers.** This item used to read
    > "for fists-vs-feet the ocular checks come back clean (HEOG p = 0.27, VEOG p = 0.44)." Both
@@ -1300,28 +2335,78 @@ in BCI. Be ready to volunteer them:
    > and described with labels that imply electrodes the recording does not have. They were also
    > an underpowered null sold as a clean bill of health: at n=45 that test could not have detected
    > an ocular effect a third the size of the one rung 7 found. The scripted frontopolar ablation
-   > above says the same thing honestly and with provenance. Any ocular statement in this repo is
-   > a **frontal-EEG surrogate** and is named as one.
+   > above says the same thing honestly and with provenance. **The standing rule from here on:
+   > every ocular statement in this repo is a frontal-EEG surrogate and must be named as one.**
+   >
+   > That used to be written as a statement of fact ("Any ocular statement in this repo *is* a
+   > frontal-EEG surrogate and is named as one") and it was false **six lines below itself** —
+   > item 5 said the fists-vs-feet headline "passes both its ocular checks," which is an ocular
+   > statement, unnamed as a surrogate, inside the same bullet list. A universal that its own page
+   > breaks is worse than no universal, so it is demoted to a rule and the counterexample is
+   > corrected below.
 5. **Two confirmed confounds, in rungs 7 and 11.** Rung 7's left/right decoding rides a
    lateralised gaze artifact, and EEGMMIDB ships no EOG channels, so it can be bounded but
    neither removed nor monitored. Rung 11's wide-window CNN comparison turned out to be reading
-   the cue-evoked response: EEGNet scores **61.1% on a window containing no imagery at all**.
-   Neither touches the fists-vs-feet headline, which passes both its ocular checks and its
-   channel ablation — but together they are why this project treats "the accuracy is real" and
-   "the accuracy is measuring what I said it measures" as two separate claims.
+   something time-locked to **cue onset**: EEGNet scores **61.1% on the 0–1 s window alone**, and
+   adding the whole imagery window on top of it buys nothing distinguishable from zero. That
+   window holds the cue flash *and* the first second of imagery, and EEGBCI cannot separate them.
+   Neither touches the fists-vs-feet headline directly, but the headline's own artifact defence is
+   thinner than this item used to claim, and the claim is corrected here.
+
+   > **Withdrawn, 2026-07-25.** This bullet used to end "…which passes **both its ocular checks**
+   > and its channel ablation." There are not two ocular checks on fists-vs-feet, and what exists
+   > is a bound rather than a check. Verified by reading `harder_contrast.py`: every
+   > frontopolar/ocular analysis in that script (`:233-310`) runs on `epochs_low`, built from
+   > `RUNS = [4, 8, 12]` — the **left-vs-right** contrast. The fists-vs-feet reference
+   > (`REFERENCE_RUNS = [6, 10, 14]`, `:198-206`) receives only `csp_accuracy` and a permutation
+   > test. **No ocular analysis is run on the headline contrast anywhere in that rung.** The only
+   > ocular-adjacent evidence on fists-vs-feet in the whole repo is the frontopolar row of
+   > `ablate_channels.py`, which is one control, not two, and which the script itself labels
+   > *"BOUND, NOT PROOF ... it cannot measure it."* The honest version: the headline has **one**
+   > artifact control, a channel ablation that bounds the ocular contribution without measuring
+   > it. Together with the two confirmed confounds above, that is why this project treats "the
+   > accuracy is real" and "the accuracy is measuring what I said it measures" as two separate
+   > claims.
 6. **Underpowered comparisons.** With n=20 subjects the minimum detectable difference is roughly
-   6–10 points depending on the comparison. Several "no difference" results in rungs 8 and 9 are
-   really "this experiment cannot tell," which is a different statement. That includes the
-   subject × method interaction rung 9 leans on: **"no interaction exists"** overstates it, and
-   **"no interaction is detectable here"** is what the test supports. The retraction it backs — that
+   6–10 points depending on the comparison (`inferential_stats.py` §3: noncentral-t MDEs of 5.68
+   to 9.92 points across the five paired tests in rungs 8 and 9). Several "no difference" results
+   in rungs 8 and 9 are really "this experiment cannot tell," which is a different statement.
+   The subject × method interaction rung 9 leans on used to be listed here as one of them; it is
+   not, and the correction runs the other way. **"No interaction exists"** overstated it and
+   **"no interaction is detectable here"** — the wording this item used to endorse — is now
+   withdrawn too: the design-appropriate omnibus test detects one (Tukey 1-df **F = 13.4627,
+   p = 0.0005**). What it detects is a fan localised to the MDM-64 arm rather than the crossover
+   per-subject optimality would need, and the *pairwise* test that could see a crossover is null
+   and underpowered (χ² = 13.33 on 19 df, p = 0.821, MDE 5.68 points). The retraction it backs — that
    the best method is subject-specific — stands either way, because a positive claim is withdrawn
-   for lack of support regardless of the test's power.
+   for lack of support regardless of the test's power, and a fan is not the support it needs.
 7. **Not a real-time system.** This decodes pre-recorded, pre-cut trials offline. A live BCI adds
    continuous decoding, latency, and no clean trial boundaries.
+8. **The artifact control's own falsifiable prediction was run and did not hold.** This is the
+   newest item and it belongs near the top rather than the bottom, so read it that way. The
+   prediction was *if the decoder is reading sensorimotor cortex, deleting sensorimotor cortex
+   must break it*. Deleting the strip and keeping the other 47 electrodes leaves 77.8% (35/45),
+   ten-seed 79.3%, permutation p ≤ 0.001. The registered verdict is *a loss is suggested and not
+   established at n = 45*, because the paired McNemar that had to confirm the loss came in at
+   p = 0.0703 on eight discordant trials, which at that count is the most lopsided split that
+   still misses. So this is an undecided result and not a refutation of the motor story: the
+   average reference leaks the strip into the complement (removing that leak costs 6.0 points),
+   the volume conductor means deleting electrodes near a source does not delete the source, and
+   n = 45 gives the confirming test essentially no power. What is **not** available is the
+   comfortable version, where the ablation is described as a falsifiable test that passed. It was
+   run and it did not pass. §10.5.
+9. **Two of this project's three newest measurements went against it.** The sensorimotor deletion
+   above, and the permutation-null re-analysis, which found that the "correction" this repo
+   favoured is anti-conservative to 13x nominal and that the published null was already exact
+   (§10.4b). Both were pre-registered, both were run anyway, and both are reported at the same
+   volume as the results that flattered the project. That is the point of pre-registration and it
+   is the only reason those two paragraphs are trustworthy.
 
 None of these are bugs; they are the honest scope of a baseline. The project's credibility comes
 precisely from *stating* them, and from the fact that item 4 is written against this document's
-own earlier claim rather than quietly edited out.
+own earlier claim rather than quietly edited out. Items 8 and 9 are the harder version of the same
+thing: stating a limitation costs nothing, and *running the experiment that could create one* is
+what the first seven items were quietly substituting for.
 
 ---
 
@@ -1337,10 +2422,18 @@ If a mentor says *"walk me through it,"* this is the spine:
 > artifacts out of the trials — then use CSP to recombine all 64 electrodes into a few virtual
 > channels whose variance best separates the classes, feed the log-variance into an LDA, and
 > cross-validate. 91% versus a 53% chance baseline on one clean subject, with a thousand-shuffle
-> permutation test at p under 0.001. My evidence that it's motor and not artifact is an ablation:
-> on the 17 sensorimotor channels alone it holds at 95.6%, and on 8 frontopolar channels alone it
-> drops to 51.1% — which is *below* the 53.3% majority-class floor, so that decoder is one trial
-> worse than always guessing feet. The honest caveats are that it's one subject and an easy
+> permutation test at p under 0.001. My artifact control is an ablation, and it bounds rather than
+> proves: on the 17 sensorimotor channels alone it holds at 95.6%, and on the 8 frontopolar channels
+> alone, which is where blinks and saccades are loudest, it drops to 51.1% — which is *below* the
+> 53.3% majority-class floor, so that decoder is one trial worse than always guessing feet. What it
+> rules out is frontopolar variance in the 8 to 30 Hz band as the source. It does not rule out a
+> low-frequency ocular contribution. And I should give you the arm that goes the other way before
+> you ask for it: if I delete the sensorimotor strip and keep the other 47 electrodes, the decoder
+> does *not* die. It sits at 77.8%, which is thirty-five of forty-five, well clear of the floor. So
+> the falsifiable version of my own artifact defence was finally run and it did not falsify. My
+> pre-registered rule says that is undecided rather than a loss, because the paired McNemar came in
+> at p = 0.0703 on eight discordant trials, which at that count is the most lopsided result that
+> still misses significance. The honest caveats are that it's one subject and an easy
 > contrast, and that subject sits in the top decile of the 109 I swept, where the median is 60%."
 
 And when they ask the follow-up that actually matters — *"what did you get wrong?"* — this is the
@@ -1354,8 +2447,11 @@ stronger half of the answer:
 > reported that it wins once
 > you give it a wider band and a longer window. It wasn't the band or the window — I had also
 > moved the crop start without noting it, which let the cue-evoked response into the window. The
-> CNN scores 61% on the cue period alone, with no imagery in it at all, and adding the entire
-> imagery window on top buys it two points I can't distinguish from zero. Both times the model
+> CNN scores 61% on the first second after the cue, and adding the entire imagery window on top
+> buys it two points I can't distinguish from zero. I'd be careful about how I say that second
+> part: that window holds the cue flash and the first second of imagery both, because the subject
+> starts imagining at the cue, so I can't separate them in this dataset. What I can say is that
+> the rest of the imagery window adds nothing. Both times the model
 > was finding real, reproducible structure that survived permutation testing. It was just the
 > wrong structure. The third was a units bug: MNE returns volts, and the network's batch-norm
 > epsilon is **seven orders of magnitude** larger than the signal variance, so normalisation never
@@ -1368,14 +2464,55 @@ stronger half of the answer:
 > accuracy has to be a multiple of one-forty-fifth, and 95.9% and 47.4% aren't on that grid. The
 > real numbers are 95.6% and 51.1%, and 51.1% is *below* the majority-class floor, so the control
 > is actually stronger than the version I'd published. I wrote the script, corrected the table, and
-> then wrote a second script that extracts every number in my docs and fails if no script prints
-> it — because the same defect turned out to be sitting in three other places, including inside one
-> of my own retractions."
+> then wrote a second script that pulls the percentages, p-values and trial counts out of my docs
+> and fails if no script prints them, because the same defect turned out to be sitting in three
+> other places, including inside one of my own retractions. I'd want to say what that guard does
+> not do, before you asked. It matches on value, so it cannot tell a right number from a
+> coincidence, and it cannot see a multiplier or a difference in points at all. Both of the
+> defects I found after building it were in exactly those classes, so it never had a chance at
+> either. Absence from its failure list means not checked, not checked and passed."
 
-That answer is worth more than the 91%. Anyone can report an accuracy; the thing a lab is
-actually screening for is whether you find your own confounds before a reviewer does.
+And there is a third answer now, to the question a good reviewer asks after those two: *"fine, but
+what did you find when you tested your own defence?"*
 
-If you can say both, you own this repo.
+> "The most useful criticism I've had was that I'd got very good at *conceding* problems and had
+> never *measured* one. I'd name a hazard, name the exact experiment that would settle it, and
+> stop. So I pre-registered three of those experiments and ran them, writing down what each
+> possible outcome would mean before the script existed. Two came back against me.
+>
+> "First: my artifact control was an ablation, and its falsifiable form is that deleting
+> sensorimotor cortex should break the decoder. I finally deleted the strip and kept the other
+> forty-seven electrodes. It didn't break. Seventy-eight percent, thirty-five of forty-five, well
+> clear of the floor. My pre-registered rule needed two things to call that a real loss and only
+> one of them fired, so the verdict is *suggested, not established* and I don't get to write the
+> tidy sentence in either direction. I'd also tell you the rule was badly built: the arithmetic
+> says its two halves are calibrated to effect sizes that can't both be met, which I could have
+> checked before the run and didn't.
+>
+> "Second: I'd conceded for weeks that my permutation null was built wrong, because scikit-learn
+> re-derives the folds from every shuffled label vector. I measured it by running each candidate
+> null on data with provably zero information, where every rejection is a false one. My published
+> null is exact. The *fix* I'd been planning to apply rejects sixty-five percent of the time at a
+> nominal five, because freezing the folds at the true-label split freezes something that depends
+> on the labels you're permuting. So I withdrew every number I'd derived from my own correction.
+> One half of the objection survived, blocking the shuffle within run, and it moved one subject
+> across the line.
+>
+> "Third, the one that went my way: I refit the pipeline on forty to seventy-five hertz at the
+> temporal electrodes to look for muscle. It lands below the majority floor and the univariate
+> test is null. But a null is only worth its sensitivity, so I planted synthetic sources until the
+> probe could see them, and the honest bound is the worst shape and worst direction, not the best.
+> And I'd flag the three holes in it myself: it's blind inside my own eight-to-thirty band, which
+> is the only band that can contaminate the headline; it can't adjudicate a bursty source at all;
+> and there's no EMG reference channel in this corpus, so it measures high-band power at
+> muscle-adjacent sites rather than muscle."
+
+That answer is worth more than the 91%, and the third part is worth more than the first two.
+Anyone can report an accuracy. Most careful people can report a limitation. The thing a lab is
+actually screening for is whether you run the experiment that could take your result away from
+you, and then say what it returned.
+
+If you can say all three, you own this repo.
 
 ---
 
@@ -1405,6 +2542,18 @@ If you can say both, you own this repo.
 - **Chance level** — Accuracy of always guessing the majority class (here 53.3%), *not* 50%.
 - **Permutation test** — Shuffle the labels many times, re-run the whole pipeline, and see where
   the real result falls in the resulting null distribution.
+- **Exact test**: a test whose false-positive rate is at most its nominal level when the null is
+  true. Checkable empirically by running it on data with provably no signal, which is what
+  `permutation_design.py` does.
+- **Anti-conservative**: a test that rejects more often than its nominal rate. It looks like extra
+  sensitivity and is actually a broken instrument, because the extra rejections are false ones.
+- **Ancillary**: a quantity you condition on that does not depend on what you are permuting.
+  Freezing a fold partition is only valid if the partition is ancillary; a partition stratified on
+  the true labels is not.
+- **Block permutation**: shuffling labels *within* blocks (here, within run, or within subject)
+  rather than across the whole set. A smaller reference set and therefore a weaker assumption.
+- **McNemar test**: the paired test for two classifiers on the same trials. It looks only at the
+  trials where they disagree, so its power is set by the *discordant* count, not by n.
 - **Ablation** — Removing a part of the input to test whether the model depends on it. The
   artifact control this project relies on.
 - **LOSO (leave-one-subject-out)** — Train on N−1 people, test on the held-out one, rotate.

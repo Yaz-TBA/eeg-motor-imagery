@@ -15,10 +15,22 @@ the within-to-cross gap is the deliverable. It is the honest measure of how far
 this method is from something you could hand to a stranger, and it is what
 motivates the Riemannian rung that follows.
 
+Read that gap with the caveat printed next to it. The within-subject column comes
+from sweep_subjects.py's per-subject StratifiedKFold run, the cross-subject column
+from LeaveOneGroupOut over pooled trials -- two estimators over two fold
+structures, so the difference is not a paired comparison on identical folds and is
+not purely a transfer cost.
+
 Leakage safety: CSP lives inside the sklearn Pipeline, so it refits on only the
 training subjects inside every fold. The held-out subject's data never touches
-filter estimation. There is an explicit assertion below that checks this rather
-than trusting it.
+filter estimation. That is a STRUCTURAL guarantee of where CSP sits, not something
+this file asserts -- and deliberately so: the comment at the structural-checks
+block explains why an assertion on fold disjointness would be theatre, since
+LeaveOneGroupOut makes it definitionally true. What the checks below do verify is
+fold structure (one held-out subject per fold, each subject held out once), array
+alignment, and a label-shuffle control. Note what that control can and cannot see:
+a shuffled-label score that stays elevated indicates LABEL leakage. It does not
+test for FEATURE leakage, which is the thing the Pipeline placement rules out.
 """
 
 import matplotlib
@@ -57,7 +69,11 @@ WITHIN_CSV = "sweep_results.csv"
 
 
 def load_subject(subject):
-    """Preprocess one subject exactly as every other rung does."""
+    """Preprocess one subject exactly as decode_csp.py, evaluate_honestly.py,
+    sweep_subjects.py and riemannian.py do: runs 6/10/14, -1.0 to 4.0 s epochs,
+    8-30 Hz, cropped to 1.0-2.0 s. NOT every rung -- harder_contrast.py (runs
+    4/8/12, plus a 0.5-5.0 Hz ablation band), eegnet_compare.py (4-38 Hz, 0-4 s)
+    and regime_decomposition.py (five band/crop combinations) differ on purpose."""
     mne.set_log_level("ERROR")
     try:
         paths = eegbci.load_data(subjects=subject, runs=RUNS, update_path=True)
@@ -119,12 +135,24 @@ rng = np.random.default_rng(0)
 shuffled = rng.permutation(y_all)
 shuffled_score = cross_val_score(clf, X_all, shuffled, groups=groups,
                                  cv=logo, n_jobs=-1, error_score="raise").mean()
+# The bar is DISCLOSED rather than quietly tightened. 0.60 sits about ten points
+# above the pooled majority-class rate printed further down, so this assert catches
+# a gross leak and would let a subtle one through: a leak that lifted the shuffled
+# score to 58% would pass here and the script would still say "Structural checks
+# passed". It has never fired. Tightening it to chance-plus-noise without ever
+# having tested it against a real leak would trade a known-loose guard for one
+# whose false-alarm rate is unknown, so the wording below states the actual bar
+# instead of implying a stricter guarantee than the code enforces.
+SHUFFLE_MAX = 0.60
 print(f"Structural checks passed ({len(folds)} folds, one subject each).")
 print(f"Label-shuffled control: {shuffled_score:.1%} "
-      f"(must sit near chance; elevated would mean a leak)")
-assert shuffled_score < 0.60, (
-    f"Label-shuffled cross-subject score is {shuffled_score:.1%}, too high. "
-    "Something is leaking."
+      f"(must sit near chance; the bar it is actually held to, SHUFFLE_MAX in the "
+      f"source,\n"
+      f"                        sits about ten points ABOVE pooled chance -- a "
+      f"gross-leak bar, not a near-chance one)")
+assert shuffled_score < SHUFFLE_MAX, (
+    f"Label-shuffled cross-subject score is {shuffled_score:.1%}, at or above the "
+    f"SHUFFLE_MAX bar of {SHUFFLE_MAX:.2f}. Something is leaking."
 )
 
 print("\nRunning leave-one-subject-out...")
@@ -190,6 +218,20 @@ if paired:
     print(f"Cross-subject on the same people   : {c.mean():.1%}")
     print(f"THE GAP                            : {100 * (w.mean() - c.mean()):.1f} points")
     print(f"Cross beats within for {(c > w).sum()}/{len(paired)} subjects.")
+    # What the gap is NOT: a paired comparison on identical folds. The two columns
+    # come from different estimators over different fold structures, so the
+    # difference carries estimator variance as well as transfer cost.
+    print("\nCAVEAT on that gap, and it is not a small one:")
+    print(f"  - The within-subject column is read from {WITHIN_CSV}, which "
+          "sweep_subjects.py")
+    print("    produced with StratifiedKFold per subject on that subject's own trials.")
+    print("    The cross-subject column is LeaveOneGroupOut over pooled trials. Two")
+    print("    estimators, two fold structures -- so this is NOT a paired comparison on")
+    print("    identical folds, and the difference is not purely a transfer cost.")
+    print("  - sweep_subjects.py documents that its epoch tail runs off the end of some")
+    print("    recordings, so MNE silently drops trials and those subjects' accuracies")
+    print("    land off the k/n lattice. Nothing here checks whether any subject in this")
+    print("    subset is one of them.")
 
     fig, ax = plt.subplots(figsize=(10, 5))
     idx = np.arange(len(paired))

@@ -146,17 +146,39 @@ def for_torch(X):
     was already written up. MNE returns data in VOLTS: X.std() is about 1.3e-5,
     so the variance is about 1.6e-10. braindecode's EEGNet normalises with
     BatchNorm2d(eps=1e-3), and a variance SEVEN ORDERS OF MAGNITUDE below eps
-    means the batch-norm denominator is essentially just eps. Normalisation
-    never engages, activations stay near 1e-8, and the network cannot train:
-    reaching useful logits would need final-layer weights around 1e8, which
-    100 AdamW steps at lr=1e-3 cannot travel to.
+    means the batch-norm denominator is essentially just eps: it divides by
+    sqrt(1e-3) = 0.0316 where the signal's own sigma is ~7e-6, so the first
+    BatchNorm's output lands about 4500x too small instead of at unit scale.
+    Normalisation never engages.
 
-    The failure is SILENT and it looks like a result. The network emitted class 1
-    for all 45 trials of subject 1 and scored 53.3%, which is exactly subject 1's
-    majority-class rate -- so it reads as "CNN performs at chance on small data",
-    a completely plausible finding. It was a dead network. Rescaled here, the
-    same code and seed gives 82.2% with predicted class counts [21, 24] matching
-    the true counts exactly.
+    WITHDRAWN 2026-07-25, AND KEPT VISIBLE. This docstring used to continue:
+    "activations stay near 1e-8, and the network cannot train: reaching useful
+    logits would need final-layer weights around 1e8, which 100 AdamW steps at
+    lr=1e-3 cannot travel to." Both figures are wrong and EXPLAINER.md's rung-10
+    section withdraws them. Nothing in the network is near 1e-8; the smallest
+    activation standard deviation is ~7e-6, whose VARIANCE is ~4.9e-11, and it
+    was that variance being read as a magnitude that produced 1e-8, after which
+    1e-8 x 1e8 = 1 produced the weight figure. One error, printed twice.
+
+    WHAT SURVIVES, AND WHERE IT STOPS. The established number is the deficit at
+    the FIRST BatchNorm: ~4500x. What reaches the logits is not established --
+    each BN stage renormalises, so the deficit decays down the stack, and no
+    script in this repo measures the end-to-end scale. Do not restate any
+    end-to-end multiplier from this file. "The network cannot train out of it"
+    is therefore supported by the OBSERVED behaviour below rather than by that
+    arithmetic, and downstream prose should say plausible, not established.
+
+    THE OBSERVED BEHAVIOUR, recorded as history rather than as a live result.
+    Before the rescale the network emitted class 1 for all 45 trials of subject
+    1 and scored 53.3%, exactly subject 1's majority-class rate -- so it read as
+    "CNN performs at chance on small data", a completely plausible finding. It
+    was a dead network. That configuration is NO LONGER REACHABLE from this
+    file: the assert below refuses to run at volts scale, which is the whole
+    point of it, so the 53.3% and the all-one-class prediction cannot be
+    reproduced here and must not be quoted as if a current script produces
+    them. What the file does produce is the rescaled run: experiment A prints
+    82.2% for EEGNet on the same code and seed, with predicted class counts
+    [21, 24] matching the true counts exactly.
 
     Every EEG deep-learning recipe scales to microvolts for this reason. CSP is
     unaffected because it works on variance RATIOS, which are scale-invariant.

@@ -1,4 +1,14 @@
 .venv/
 __pycache__/
 *.pyc
-.provenance_cache/
+# Matches the live cache AND every dated backup beside it (e.g.
+# .provenance_cache.pre-2026-07-25/). The bare `.provenance_cache/` rule did not,
+# so a `git add -A` would have committed a stale evidence pool that check_claims.py
+# could later read by mistake.
+.provenance_cache*/
+
+# permutation_design.py block checkpoints: raw per-replicate scores, regenerable.
+.permutation_design_cache/
+
+# Derived state -- regenerate with status.py. Never commit; that is how state becomes stale history.
+STATUS.json

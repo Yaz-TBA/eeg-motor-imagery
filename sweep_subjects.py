@@ -27,8 +27,28 @@ single-session, offline subjects. By that literature's own operational criterion
 Two rules this script follows:
   1. Chance is computed PER SUBJECT. Class balance differs between people, so
      borrowing subject 1's 53.3% to judge subject 47 would be its own small lie.
-  2. Nothing is dropped silently. Any subject that fails to process is recorded
-     with its reason and reported in the exclusion list.
+  2. No SUBJECT is dropped silently. Any subject that fails to process is
+     recorded with its reason and reported in the exclusion list.
+
+RULE 2 USED TO SAY "NOTHING IS DROPPED SILENTLY", AND AT THE TRIAL LEVEL THAT
+WAS FALSE. It is corrected rather than deleted, because the bug it papered over
+is still live. TMIN/TMAX below open a -1.0 to 4.0 s epoch while only the
+(1.0, 2.0) crop is ever used, so on subjects whose runs end early the unused
+4-second tail runs off the end of the recording and MNE drops those trials
+without raising. The subject still returns a row, is counted "ok", and never
+appears in the exclusion list: 12 of 109 subjects reach the report with
+non-standard trial counts, and the sweep flagged only the sampling-rate anomaly.
+Two consequences, both now printed at the bottom of the report:
+  - With n not divisible by N_SPLITS the folds are UNEQUAL, so mean(fold
+    accuracies) is no longer correct-trials/n and lands off the k/n lattice
+    ablate_channels.py asserts against. Those accuracies are means over folds of
+    different sizes, which is not the quantity the other rungs report.
+  - Right-sizing the epoch to tmin=0.0, tmax=2.0 would recover the trials and
+    would MOVE the published per-subject numbers, including the 60.0% median.
+    Deliberately not done here: EXPLAINER.md 12.2 owns that decision, and
+    changing the script and the prose that quotes it in one pass is how a repo
+    loses track of which is which. This pass makes the bug visible; it does not
+    silently re-baseline the sweep.
 
 First run downloads ~840 MB of EDF files (108 new subjects x 3 runs); MNE caches
 them in ~/mne_data, so later runs are offline and fast.
@@ -96,7 +116,9 @@ def evaluate_subject(subject):
             ("LDA", LinearDiscriminantAnalysis()),
         ])
         cv = StratifiedKFold(n_splits=N_SPLITS, shuffle=True, random_state=42)
-        # error_score="raise" serves rule 2 above ("nothing is dropped silently").
+        # error_score="raise" serves rule 2 above ("no subject is dropped
+        # silently"). It does nothing about the trial-level drop, which happens
+        # earlier, inside mne.Epochs, and never reaches sklearn at all.
         # sklearn's default would catch a broken fold, score it NaN, and return a
         # mean of NaN -- which lands in this table as an ordinary exclusion with
         # no reason attached. Raising instead sends it to the except below, where
@@ -237,6 +259,29 @@ if bad:
         print(f"  S{r['subject']:03d}: {r['status']}")
 else:
     print("\nNo subjects excluded.")
+
+# --- TRIAL-LEVEL LOSSES, which the exclusion list above cannot see ------------
+# See rule 2 in the docstring. A subject whose 4-second tail runs off the end of
+# its recording loses trials inside mne.Epochs and still returns a normal row.
+# Report it here so the loss is visible without changing any accuracy.
+counts = [r["n_trials"] for r in ok]
+modal_n = int(np.bincount(counts).argmax())
+odd_n = [r for r in ok if r["n_trials"] != modal_n]
+if odd_n:
+    print(f"\nNon-standard trial counts ({len(odd_n)}; modal count is {modal_n}):")
+    for r in odd_n:
+        k = r["accuracy"] * r["n_trials"]
+        flag = "" if abs(k - round(k)) < 1e-6 else "  <- accuracy off the k/n lattice"
+        print(f"  S{r['subject']:03d}: {r['n_trials']} trials{flag}")
+    n_off = sum(1 for r in odd_n
+                if abs(r["accuracy"] * r["n_trials"]
+                       - round(r["accuracy"] * r["n_trials"])) >= 1e-6)
+    print(f"  {n_off} of these {len(odd_n)} report an accuracy that is a mean over")
+    print(f"  UNEQUAL folds, so it is not correct-trials/n and sits on no k/n")
+    print(f"  lattice. Most of the shortfalls are this script's own doing: the")
+    print(f"  epoch runs to {TMAX:g} s while only {CROP[0]:g}-{CROP[1]:g} s is used.")
+else:
+    print(f"\nEvery subject has the modal trial count ({modal_n}).")
 
 odd = [r for r in ok if r["sfreq"] != EXPECTED_SFREQ]
 if odd:

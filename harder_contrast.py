@@ -42,9 +42,13 @@ were hardcoded string constants, and the framing around them was wrong:
     shows adjacent windows swinging by tens of points; the published one is the
     peak of that noise.
   - The comparison number was frozen in a print statement. If the baseline moved
-    -- and it did, from 94.4% to 91.1% when rung 5 fixed the estimator -- this
-    file would have kept quoting the stale one. So it is now RECOMPUTED at
-    runtime, from the same pipeline, in this same process.
+    -- and it did, from 94.4% to 91.1% when rung 5 changed the estimator and the
+    seed placement moved with it -- this file would have kept quoting the stale
+    one. So it is now RECOMPUTED at runtime, from the same pipeline, in this same
+    process. Do not read that move as the cost of the estimator: across 100 seeds
+    StratifiedKFold averages 0.2 points ABOVE ShuffleSplit, so the estimator
+    change RAISES the expectation and the drop is where seed 42 happens to land.
+    See evaluate_honestly.py section 6.
 
 And then the real problem, which is the reason this rung is worth keeping. The
 PhysioNet protocol puts the target on the LEFT or RIGHT of the screen and leaves
@@ -89,7 +93,12 @@ SUBJECT = 1
 RUNS = [4, 8, 12]  # imagined LEFT vs RIGHT fist. Not 3/7/11 -- those are executed.
 REFERENCE_RUNS = [6, 10, 14]  # imagined both fists vs both feet -- the rung-4 baseline.
 TMIN, TMAX = -1.0, 4.0
-CROP = (1.0, 2.0)  # the imagery window used by every rung in this repo
+# the imagery window used by every CLASSICAL rung: decode_csp.py,
+# ablate_channels.py, evaluate_honestly.py, sweep_subjects.py, cross_subject.py
+# and riemannian.py. NOT a repo-wide constant -- eegnet_compare.py uses (0.0, 4.0)
+# for its wide regime and regime_decomposition.py deliberately varies it across
+# five windows, including a pre-cue control at (-1.0, 0.0).
+CROP = (1.0, 2.0)
 L_FREQ, H_FREQ = 8.0, 30.0
 LOW_FREQ = (0.5, 5.0)  # the band ocular/gaze drift lives in, not the mu/beta band
 N_PERMUTATIONS = 1000
@@ -288,12 +297,16 @@ for t0, t1 in [(0.0, 1.0), CROP]:
 
 # State the effect in microvolts, not as an accuracy. The summary statistic has to
 # be LEFT-minus-RIGHT: a gaze deviation is antisymmetric across the midline, so
-# averaging all eight channels cancels it (that average gives t = 0.23, p = 0.82 --
-# a null produced entirely by choosing the wrong statistic).
+# averaging all eight channels cancels it -- a null produced entirely by choosing
+# the wrong statistic. (An earlier version of this comment quoted t = 0.23,
+# p = 0.82 for that eight-channel average. NO script in this repo computes that
+# test, so treat those two figures as UNBACKED. The antisymmetry argument does
+# not depend on them.)
 LEFT_FP = ["Fp1", "AF7", "AF3"]
 RIGHT_FP = ["Fp2", "AF8", "AF4"]
 print(f"\nFrontopolar asymmetry, mean({'+'.join(LEFT_FP)}) - "
       f"mean({'+'.join(RIGHT_FP)}), in microvolts:")
+asym_tests = {}  # window -> (t, p), so the commentary below quotes the run, not a constant
 for t0, t1 in [(0.0, 1.0), CROP, (0.0, 4.0)]:
     e = epochs_low.copy().pick(FRONTOPOLAR).crop(tmin=t0, tmax=t1)
     y = e.events[:, -1]
@@ -302,14 +315,19 @@ for t0, t1 in [(0.0, 1.0), CROP, (0.0, 4.0)]:
     ri = [e.ch_names.index(c) for c in RIGHT_FP]
     asym = volts[:, li].mean(axis=1) - volts[:, ri].mean(axis=1)
     t_stat, t_p = stats.ttest_ind(asym[y == 2], asym[y == 3], equal_var=False)
+    asym_tests[(t0, t1)] = (t_stat, t_p)
     print(f"  {t0:.1f}-{t1:.1f} s: left cues {asym[y == 2].mean():+6.2f} uV, "
           f"right cues {asym[y == 3].mean():+6.2f} uV  "
           f"(Welch t = {t_stat:+.2f}, p = {t_p:.2g})")
 
 print("\nThe sign flips with the cue side and the effect is largest in the CUE window,")
-print("on AF7/AF3 vs AF4/AF8 -- the electrodes nearest the eyes. That is the")
-print("signature of the eyes moving to the target, not of sensorimotor cortex.")
-print("Note the 1-2 s row reverses polarity: that row is not significant (p = 0.14),")
+print("on the frontopolar left-minus-right contrast -- the electrodes nearest the")
+print("eyes. (Each side is a 3-channel average, Fp1/AF7/AF3 against Fp2/AF8/AF4, so")
+print("this statistic cannot attribute the effect to any individual electrode.)")
+print("That is the signature of the eyes moving to the target, not of sensorimotor")
+print("cortex.")
+print(f"Note the {CROP[0]:.0f}-{CROP[1]:.0f} s row reverses polarity: that row is not "
+      f"significant (p = {asym_tests[CROP][1]:.2g}),")
 print("so it is noise, and quoting it as a real reversal would be reading a coin flip.")
 print("EEGMMIDB has no EOG channels and this pipeline has no ICA, so this bounds the")
 print("confound; it does not remove it. n = 1 subject -- this is a flag, not a rate.")

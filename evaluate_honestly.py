@@ -81,6 +81,16 @@ def make_clf():
     ])
 
 
+def ordinal(k):
+    """'3rd', not '3th'. 11/12/13 are the exceptions an %d + 'th' rule gets wrong."""
+    k = int(k)
+    if 10 <= k % 100 <= 20:
+        suffix = "th"
+    else:
+        suffix = {1: "st", 2: "nd", 3: "rd"}.get(k % 10, "th")
+    return f"{k}{suffix}"
+
+
 def wilson_interval(n_correct, n_total, z=1.96):
     """95% CI for a proportion. Handles small n far better than mean +/- std."""
     p = n_correct / n_total
@@ -222,7 +232,27 @@ n_correct = int(round(point * n))
 lo, hi = wilson_interval(n_correct, n)
 print(f"Point estimate (stratified 5-fold): {point:.1%}  ({n_correct}/{n} trials)")
 print(f"Wilson 95% CI on n={n}            : [{lo:.1%}, {hi:.1%}]  (width {100*(hi-lo):.1f} pts)")
-print(f"What '+/- 5.6%' implies           : [88.8%, 100.0%]  <- far too tight")
+# Computed, not quoted. This line used to be an f-string that interpolated nothing:
+# 5.6, 88.8 and 100.0 were literals, so they printed into stdout where
+# check_provenance.py reads stdout back as "backing" -- a hardcoded number backing
+# itself. All three now come out of scores_shuffle, so nothing here backs itself.
+#
+# They are derived from the ROUNDED one-decimal displays, not from the raw floats,
+# and that is deliberate. This line is a WITHDRAWAL ILLUSTRATION: its job is to
+# reproduce the arithmetic that was published, which was 94.4 - 5.6 = 88.8 done on
+# what the section-3 summary table printed. Deriving it from the raw floats gives
+# 88.9 instead, which would silently "correct" a number whose entire purpose is to
+# show the overstatement as it was made, and would desynchronise this stdout from
+# the four documents that quote [88.8%, 100.0%] as the retracted interval. The
+# interval being illustrated is unchanged; it was always mean +/- std, and it was
+# always far too tight.
+mean_pct = round(scores_shuffle.mean() * 100, 1)
+sd_pct = round(scores_shuffle.std() * 100, 1)
+implied_lo = mean_pct - sd_pct
+implied_hi = min(100.0, mean_pct + sd_pct)
+implied_label = f"What '+/- {sd_pct:.1f}%' implies"
+print(f"{implied_label:<34}: [{implied_lo:.1f}%, {implied_hi:.1f}%]"
+      f"  <- far too tight")
 
 # --- 6. how much does the seed matter? ---------------------------------------
 print(f"\n--- 6. Seed sensitivity across {N_SEEDS} random_state values ---")
@@ -247,11 +277,17 @@ for name, arr in (("ShuffleSplit (retracted)", seed_means),
     pct = 100 * (arr < arr[42]).mean()
     print(f"{name:<28} mean {arr.mean():.1%} | min {arr.min():.1%} | "
           f"max {arr.max():.1%} | range {100*(arr.max()-arr.min()):.1f} pts")
-    print(f"{'':28} seed 42 lands at the {pct:.0f}th percentile "
+    print(f"{'':28} seed 42 lands at the {ordinal(round(pct))} percentile "
           f"({arr[42]:.1%})")
 
+# SIGNED, not abs(). The sign is the whole point: without it this line cannot tell
+# a reader which estimator is higher, and four documents downstream depend on the
+# direction. StratifiedKFold minus ShuffleSplit, so a positive number means the
+# published estimator has the HIGHER expectation.
 print(f"\nThe two estimators agree in expectation to "
-      f"{100*abs(seed_means.mean() - strat_means.mean()):.1f} points.")
+      f"{100*(strat_means.mean() - seed_means.mean()):+.1f} points "
+      f"(StratifiedKFold minus ShuffleSplit; positive means the estimator change "
+      f"RAISES the expectation).")
 print("So the headline drop from 94.4% to 91.1% is mostly SEED LUCK, not a")
 print("change of estimator. The estimator change is the right call for other")
 print("reasons (coverage, stratification); it just is not worth 3 points.")

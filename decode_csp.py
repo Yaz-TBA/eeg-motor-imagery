@@ -63,8 +63,24 @@ csp = CSP(n_components=4, reg=None, log=True, norm_trace=False)
 clf = Pipeline([("CSP", csp), ("LDA", LinearDiscriminantAnalysis())])
 
 # Stratified k-fold, not ShuffleSplit: it tests every trial exactly once and
-# keeps class balance steady across folds. See evaluate_honestly.py for why the
-# original 10x80/20 split overstated both the accuracy and its precision.
+# keeps class balance steady across folds. Note what it did NOT do: over 100
+# seeds ShuffleSplit averages 93.6% and StratifiedKFold 93.8%, so the switch is
+# worth about +0.2 points in expectation and did not lower the headline. What
+# the original 10x80/20 split overstated was the PRECISION (+/- 5.6% against a
+# Wilson CI 17.2 points wide), plus it left 5 of 45 trials never tested. The
+# 94.4 to 91.1 move is seed placement. See evaluate_honestly.py section 6.
+#
+# WITHDRAWN 2026-07-25, kept visible rather than deleted. This comment used to
+# read "the original 10x80/20 split overstated both the accuracy and its
+# precision." The precision half stands. The accuracy half is refuted by the
+# script it points at: evaluate_honestly.py section 6 sweeps 100 random_state
+# values and prints "The two estimators agree in expectation to 0.2 points",
+# with stratified k-fold the HIGHER of the two. An estimator that raises the
+# expectation cannot have lowered the headline. Seed 42 sits at the 49th
+# percentile of the retracted estimator (94.4%) and the 3rd percentile of the
+# published one (91.1%), which is where the 3.3 points went. The published
+# 91.1% is a conservative draw from an 88.9-97.8% distribution, and the switch
+# is still the right call, for coverage and stratification, not for integrity.
 cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
 # error_score="raise", because sklearn's default is to CATCH a fold that throws,
 # score it NaN, and hand back a mean that is quietly wrong. CSP inverts a
