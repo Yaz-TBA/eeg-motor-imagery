@@ -27,7 +27,7 @@ condition now exists. Deleting the 17-channel sensorimotor strip and refitting o
 47 electrodes leaves the decoder at **77.8% (35/45)**, far above the 53.3% floor and significant
 against its own 1000-shuffle null at p <= 0.001. The falsifiable form of the artifact defence,
 *if it reads sensorimotor cortex then deleting sensorimotor cortex must break it*, did not
-produce a break. The pre-registered verdict is *a loss is suggested and not established at
+hold. The pre-registered verdict is *a loss is suggested and not established at
 n = 45*, because the paired McNemar that had to confirm it came in at p = 0.0703 on eight
 discordant trials. Read §10.5 before quoting the 95.6% anywhere.
 
@@ -1267,7 +1267,7 @@ it."* The concession is kept above as the record of what was owed, and here is w
 Delete the 17-channel FC/C/CP strip, keep the other 47 electrodes, refit the published pipeline
 unchanged, and the decoder lands at **77.8% (35/45)**, ten-seed mean 79.3% over the range
 [75.6%, 84.4%], against a majority floor of 53.3% and its own permutation null of
-51.0% ± 8.8% at p <= 0.001. Nothing broke. §10.5 carries the full arm, the pre-registered decision
+51.0% ± 8.8% at p <= 0.001. §10.5 carries the full arm, the pre-registered decision
 rule, and the four separate things that keep it from being read as strongly in either direction.
 
 Being able to say *"here is the control I ran, here is what would have falsified it, and here is
@@ -1290,7 +1290,7 @@ that, and it is the state this section is now in.
 > not been tested and right to downgrade *proves* to *bounds*. It was silently optimistic about
 > what the missing arm would return: §12.2 item 8 called it "cheap" and predicted it would be
 > "partially confounded", both of which are true, and neither of which prepared a reader for the
-> arm failing to break the decoder at all. The register now records the outcome and not just the
+> prediction failing to hold at all. The register now records the outcome and not just the
 > promise, because "the test I have not run yet" is a comfortable sentence and this project has
 > written it more often than it has written "the test I ran, which cost me something."
 
@@ -1572,7 +1572,7 @@ epochs −1.0 to 4.0 cropped to 1.0–2.0 s, `CSP(n_components=4, log=True)` and
 `Pipeline` so CSP refits inside every training fold, `StratifiedKFold(5, shuffle=True)`. Seed 42
 is primary, with a ten-seed sweep beside it.
 
-**The decoder does not break.** 77.8% (35/45) at seed 42, 79.3% over ten seeds across the range
+**The complement scores well above the majority floor.** 77.8% (35/45) at seed 42, 79.3% over ten seeds across the range
 [75.6%, 84.4%], permutation p <= 0.001 against a null of 51.0% ± 8.8%, Wilson 95% interval
 [63.7%, 87.5%] whose lower bound clears the 53.3% majority floor by more than ten points. The
 stricter deletion that also removes FC5/FC6/CP5/CP6 lands at 71.1% (32/45) at seed 42 and 76.7%
@@ -1865,7 +1865,7 @@ already built**. Here is the real state instead.
 | 10 | Does a CNN beat it? | Scores lower by **4 of 45 trials** net at n=45 (8.9 points; 10 discordant trials, exact McNemar **p = 0.344**), level at ~900 trials |
 | 11 | What did rung 10's regime C measure? | **Cue onset, not the imagery window.** EEGNet scores 61.1% on the 0–1 s window alone against 51.8% on the second before it, and adding the whole imagery window buys +1.9 (p = 0.41). CSP is also above chance in that window (53.7%, p = 0.023), so this is a difference of degree, not a dissociation. Figures are 2026-07-23 checkpoint values (§7 rung 11) |
 | — | Is the artifact ablation real? | **It is now.** `ablate_channels.py` produces it; two of its four published values were unreachable and are corrected below |
-| guard | Does deleting sensorimotor cortex break it? | **No.** 47 electrodes with the FC/C/CP strip removed reach **77.8% (35/45)**, ten-seed 79.3%, permutation p ≤ 0.001. G = +14.7 points clears its threshold; the paired McNemar (p = 0.0703, 8 discordant) does not. Registered verdict: *a loss is suggested and not established at n = 45* (§10.5) |
+| guard | What does deleting the 17-channel sensorimotor strip cost? | **Undecided, leaned neither way.** 47 electrodes with the FC/C/CP strip removed reach **77.8% (35/45)**, ten-seed 79.3%, permutation p ≤ 0.001. G = +14.7 points clears its threshold; the paired McNemar (p = 0.0703, 8 discordant) does not. Registered verdict: *a loss is suggested and not established at n = 45* (§10.5) |
 | guard | Is class information riding on muscle? | **Not in 40–75 Hz, and unbounded in 8–30 Hz.** A muscle-band decoder at the temporal ring lands at **51.1% (23/45)**, below the 53.3% floor, permutation p = 0.5175, univariate arm null. Sensitivity bound a = 0.600 of T8's high-band SD; a bursty source is not bounded at all (§10.5b) |
 | guard | Is the permutation null itself correctly built? | **The within-subject one already was.** The published re-stratified null is exact; the "correction" this project favoured is anti-conservative to 13x nominal on zero-information data and is withdrawn. Run blocking is real and moved one median subject across 0.05. Cross-subject, the block null replaces `SHUFFLE_MAX = 0.60` with **53.1% (478/900)** (§10.4b) |
 
@@ -2056,7 +2056,7 @@ refuted**, and the entries are ordered with the costly ones first.
 
 - **"No condition here deletes sensorimotor cortex while keeping the rest of the montage."**
   Withdrawn as a *state of affairs*, not as an error: the condition now exists, and the finding is
-  that it **does not break the decoder**. 47 electrodes with the strip removed reach 77.8%
+  that the prediction it was shielding **did not hold**. 47 electrodes with the strip removed reach 77.8%
   (35/45), ten-seed 79.3%, permutation p ≤ 0.001. This entry is in the register because the
   concession was load-bearing everywhere it appeared, in §1, §8.3, §10.5, §14 and the README, and
   because the result it was concealing is the one that costs this project the most. The registered
@@ -2206,7 +2206,7 @@ Absence from the UNBACKED list means *not checked*, not *checked and passed*.
    > **DONE, 2026-07-26, and the item is struck rather than deleted because its own prediction is
    > part of the record.** It was cheap and it was partially confounded, both as forecast. It did
    > not go as the item's tone implied. The 47-channel complement reaches 77.8% (35/45), ten-seed
-   > 79.3%: the decoder does not break. The dimensionality worry the item raised was itself
+   > 79.3%, and the prediction did not hold. The dimensionality worry the item raised was itself
    > measured and dismissed *for this comparison*, by deleting 17 channels at random 50 times and
    > watching the ten-seed mean barely move (93.5%). See §10.5. What remains open from this item is
    > only the thing no montage can close: deleting electrodes near a source does not delete the
@@ -2487,7 +2487,7 @@ what did you find when you tested your own defence?"*
 >
 > "First: my artifact control was an ablation, and its falsifiable form is that deleting
 > sensorimotor cortex should break the decoder. I finally deleted the strip and kept the other
-> forty-seven electrodes. It didn't break. Seventy-eight percent, thirty-five of forty-five, well
+> forty-seven electrodes. The prediction didn't hold. Seventy-eight percent, thirty-five of forty-five, well
 > clear of the floor. My pre-registered rule needed two things to call that a real loss and only
 > one of them fired, so the verdict is *suggested, not established* and I don't get to write the
 > tidy sentence in either direction. I'd also tell you the rule was badly built: the arithmetic

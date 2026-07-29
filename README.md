@@ -161,7 +161,7 @@ deletes the other 56, so the collapse is confounded with an eightfold cut in
 feature dimension. It **bounds** the ocular contribution rather
 than proving the signal is motor. That is still a control; a scalp map is not.
 
-### Deleting sensorimotor cortex does not break the decoder
+### Deleting the 17-channel sensorimotor strip: the falsifiable prediction did not hold
 
 Rows four and five are new, and they are the ones that cost something. Until
 2026-07-26 this README said, in bold, that **"no condition here deletes sensorimotor
@@ -178,8 +178,8 @@ points. The stricter deletion, which also removes FC5/FC6/CP5/CP6, still reaches
 71.1% (32/45) at seed 42 and 76.7% over ten seeds.
 
 So the falsifiable form of the artifact defence, *"if it reads sensorimotor cortex,
-deleting sensorimotor cortex must break it,"* was finally run and **it did not produce a
-break**. That is the unflattering result and it is the headline of this section.
+deleting sensorimotor cortex must break it,"* was finally run and **the prediction did not
+hold**. That is the unflattering result and it is the headline of this section.
 
 What the pre-registration allows to be concluded is narrower than that sentence, in both
 directions. The decision statistic was fixed in advance as G = (all-64 ten-seed mean)
@@ -481,7 +481,7 @@ Four more scripts exist that are controls on the repo rather than rungs of the l
 
 The first three are the three exposures this repo used to concede in prose and now
 measures. Two of the three came back **against** the framing they were built to defend:
-the sensorimotor deletion did not break the decoder, and the permutation objection turned
+the sensorimotor-strip deletion left the decoder well above the majority floor, and the permutation objection turned
 out to be right about the cross-subject null and wrong about the within-subject one, in
 the direction that says the project's own "correction" was the invalid test.
 

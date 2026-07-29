@@ -324,6 +324,10 @@ NON_ANALYSIS = {
                  "would be harmful: its stdout carries incidental integers "
                  "that could back a doc claim by coincidence, it shells out "
                  "to `gh` over the network, and it writes a file.",
+    "check_wording.py": "a guard, not analysis. It greps README.md and "
+                        "EXPLAINER.md for outcome wording a pre-registration "
+                        "banned and prints only pass/fail plus offending "
+                        "excerpts. It measures the prose, not the EEG data.",
 }
 
 
