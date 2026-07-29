@@ -33,12 +33,18 @@ INPUTS, and where each comes from:
   regime_decomposition.json   in this repo. 20 per-fold accuracies per model per
                               cell, seven cells. Dated 2026-07-23.
   sweep_results.csv           in this repo. 109 within-subject accuracies.
-  riemannian_perfold.json     20 per-subject LOSO accuracies for five pipelines.
+  riemannian_perfold.json     in this repo, and committed rather than generated.
+                              20 per-subject LOSO accuracies for five pipelines.
                               `riemannian.py` computes these and persists none of
-                              them; this copy was captured by the 2026-07-23 audit
-                              run. Its five pipeline means reproduce
-                              `.provenance_cache/riemannian.py.txt` exactly, which
-                              is the evidence that it is the right run's arrays.
+                              them, so no committed script can rebuild this file;
+                              this copy was captured by the 2026-07-23 audit run.
+                              Its five pipeline means are 59.4 / 51.7 / 57.2 /
+                              56.9 / 56.8 %, which is what `riemannian.py` prints,
+                              and that agreement is the evidence it is the right
+                              run's arrays. Re-check by running riemannian.py; the
+                              old citation here pointed into `.provenance_cache/`,
+                              which .gitignore excludes, so it named nothing a
+                              reader of a clone could open.
   the EEGBCI recordings       re-loaded for subject 1 only, for the three figures
                               that no array can supply.
 
@@ -200,15 +206,19 @@ def load_regime():
 
 
 def load_perfold():
-    """Per-subject LOSO arrays for the five rung-9 pipelines."""
-    local = ROOT / "riemannian_perfold.json"
-    audit = Path("/Users/yaz/Documents/Projects/audits/fable-run-2026-07-23/"
-                 "audit/raw-stdout/riemannian_perfold.json")
-    for path in (local, audit):
-        if path.exists():
-            d = json.loads(path.read_text())
-            return d, path
-    return None, None
+    """Per-subject LOSO arrays for the five rung-9 pipelines.
+
+    Repo-local only, and deliberately so. This used to fall back to an absolute
+    path under ~/Documents/Projects/audits/, which is not a git repository and
+    resolves to nothing in a clone, so the fallback could only ever fire on one
+    machine. The file it named was byte-identical to the committed copy
+    (md5 a7bc94bf7e8271e79cec718c0ea7d271, 2870 bytes), so dropping it loses no
+    data.
+    """
+    path = ROOT / "riemannian_perfold.json"
+    if not path.exists():
+        return None
+    return json.loads(path.read_text())
 
 
 def load_sweep():
@@ -220,7 +230,7 @@ def load_sweep():
 
 
 REGIME = load_regime()
-PERFOLD, PERFOLD_PATH = load_perfold()
+PERFOLD = load_perfold()
 SWEEP = load_sweep()
 
 
@@ -246,11 +256,11 @@ def section_inputs():
         print("                            are checkpoint values, not 07-25 values.")
     if PERFOLD is None:
         cannot("all rung-8 and rung-9 statistics",
-               "riemannian_perfold.json is absent from repo and audit tree",
+               "riemannian_perfold.json is absent from this repo",
                "riemannian.py, edited to persist the per-subject arrays it holds")
     else:
         methods = ", ".join(PERFOLD["scores"].keys())
-        print(f"riemannian_perfold.json     {PERFOLD_PATH}")
+        print("riemannian_perfold.json     in this repo, committed")
         print(f"                            5 pipelines ({methods})")
         print(f"                            {len(PERFOLD['subjects'])} subjects, "
               f"pooled chance {100 * PERFOLD['pooled_chance']:.1f}%")

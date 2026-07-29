@@ -310,14 +310,35 @@ def extract_claims(doc: Path) -> tuple[list[Claim], int]:
 # Running scripts / caching stdout
 # ---------------------------------------------------------------------------
 
+# Scripts on disk that are not analysis: they produce no number this project
+# claims, so the registry must not run them and their stdout must never enter
+# the evidence pool. Exempting by name with a written reason mirrors ALLOWLIST;
+# a pattern-based rule would make "deliberately exempt" indistinguishable from
+# "forgotten". Adding a script here asserts that its stdout backs no doc claim.
+# If that stops being true, register it instead.
+NON_ANALYSIS = {
+    "status.py": "writes STATUS.json, a machine-written account of git state "
+                 "(branch, dirty counts, default-branch SHA, gh visibility). "
+                 "It measures the repo, not the EEG data, and no claim in "
+                 "README.md or EXPLAINER.md comes from it. Registering it "
+                 "would be harmful: its stdout carries incidental integers "
+                 "that could back a doc claim by coincidence, it shells out "
+                 "to `gh` over the network, and it writes a file.",
+}
+
+
 def unregistered_scripts() -> list[str]:
     """Analysis scripts on disk that the registry does not know about.
 
     Half of this tool's value is noticing when the repo grows a script whose
-    output nobody is checking. Ignore this file and any non-analysis helper.
+    output nobody is checking. Two exemptions, both explicit: this file, and
+    anything named in NON_ANALYSIS. There is no implicit exemption -- a helper
+    nobody has justified in writing shows up here and fails the run.
     """
     return sorted(p.name for p in ROOT.glob("*.py")
-                  if p.name not in REGISTRY and p.name != Path(__file__).name)
+                  if p.name not in REGISTRY
+                  and p.name not in NON_ANALYSIS
+                  and p.name != Path(__file__).name)
 
 
 def cache_path(script: str) -> Path:
@@ -476,6 +497,12 @@ def main() -> int:
             print(f"  {s:<28} {mark:<5} ~{b:>5}s  [{hit}]{gone}")
         for s in unregistered_scripts():
             print(f"  {s:<28} NOT IN REGISTRY -- its output is never checked")
+        # Print the exemptions too. An exemption that prints nothing is
+        # indistinguishable from a check that never ran, which is the confusion
+        # this tool exists to remove.
+        for s in sorted(NON_ANALYSIS):
+            gone = "" if (ROOT / s).exists() else "  NOT ON DISK -- stale exemption"
+            print(f"  {s:<28} NOT ANALYSIS -- exempt by name{gone}")
         print(f"\nCLAIMS ({len(claims)} extracted, "
               f"{dropped} digits inside code fences exempted)")
         for c in claims:
