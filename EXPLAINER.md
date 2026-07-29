@@ -436,8 +436,10 @@ described out loud.
 > estimator is worth −0.2 points, i.e. it *raises* the expectation, and cannot have contributed a
 > positive share of a drop. It survived review because `0.6 + 2.7 = 3.3` sums to the observed
 > total. The total was right; the split was wrong. The corrected decomposition is seed placement
-> 3.5 points, estimator −0.2 points. Backing: `evaluate_honestly.py` section 6, cached at
-> `.provenance_cache/evaluate_honestly.py.txt:38-43`.
+> 3.5 points, estimator −0.2 points. Backing: `evaluate_honestly.py` section 6, which prints the
+> two estimator means, seed 42's percentile under each, and the signed estimator term. Run the
+> script to regenerate it; the earlier pointer here named a path under `.provenance_cache/`, which
+> `.gitignore` excludes, so it resolved to nothing in a clone.
 
 > **One caveat on the percentile column, which is this rung demonstrating its own thesis.** Those
 > ranks count seeds *strictly below* seed 42. Because both estimators are quantized — the
@@ -962,11 +964,13 @@ rung 10's claim.
 > **A second layer, 2026-07-25: the control cell reproduces and the audited cell does not.**
 > `narrow-short` matches regime B exactly, as stated. But the `original-C` cell is the one this
 > whole rung exists to audit, and it does **not** match rung 10: this table's **63.0%** against
-> `.provenance_cache/eegnet_compare.py.txt:30`'s **63.8%** for the identical configuration, a gap
-> of 0.8 points, roughly 7 trials of 900. CSP agrees to the digit (51.4% in both), so the
-> disagreement is the CNN's, not the data's or the folds'. The cold provenance run lists this
-> document's `63.0` as **UNBACKED** for exactly that reason: no current stdout prints it. Nothing
-> in the rung's *conclusion* turns on 0.8 points — regime C is the cue-window effect either way —
+> the **63.3%** that `eegnet_compare.py` prints for the identical configuration (section C of its
+> stdout, the `EEGNet (wide)` row), a gap of **0.3 points** — 3 trials of 900, since the mean runs
+> over 20 leave-one-subject-out folds of 45 trials each. CSP agrees to the digit (51.4% in both),
+> so the disagreement is the CNN's, not the data's or the folds'. Do not expect to reproduce
+> either figure exactly: that a byte-identical configuration moves between runs is the finding
+> here, not a fault in the capture. Nothing
+> in the rung's *conclusion* turns on 0.3 points — regime C is the cue-window effect either way —
 > but the sentence above licenses reading the cross-cell deltas on the strength of a control that
 > holds in the cell nobody was worried about and fails in the cell under audit, and that ordering
 > is worth stating rather than leaving for a reader to find.
@@ -2017,8 +2021,9 @@ anyone had rechecked them.
   is what actually carries the conclusion (§7 rung 11).
 - **"Repeated runs on this machine have come back identical."** The round-one correction chose the
   wrong side: it retracted an accurate note about CNN non-determinism and replaced it with an
-  unmeasured claim of determinism. Two runs of a byte-identical regime-C configuration disagree by
-  **0.8 points** (63.0% vs 63.8%) while CSP reproduces exactly. Restored, with the measurement
+  unmeasured claim of determinism. Runs of a byte-identical regime-C configuration disagree by
+  **0.3 points** — 63.0% in the committed `regime_decomposition.json` checkpoint against the 63.3%
+  `eegnet_compare.py` prints for that cell — while CSP reproduces exactly. Restored, with the measurement
   attached (§13).
 - **"One commit per rung."** 26 commits for 11 rungs, one commit introducing four rungs, and rung
   11 spanning three. Wrong in both directions, in a sentence inviting the reader to check it
@@ -2267,9 +2272,9 @@ python decode_csp.py        # full pipeline + writes csp_patterns.png
   > machine have come back identical."* **That is false by measurement, and layer one was right on
   > the facts even though it was wrong on the emphasis.** Two runs of a byte-identical
   > configuration disagree: `regime_decomposition.json`'s `original-C` cell (900 trials, 641
-  > samples, 4–38 Hz, 0.0–4.0 s) records EEGNet **0.630000**, while
-  > `.provenance_cache/eegnet_compare.py.txt:30` records **63.8%** for the same regime on the same
-  > data. That is **0.8 points, about 7 trials of 900**. CSP over the same cell reproduces
+  > samples, 4–38 Hz, 0.0–4.0 s) records EEGNet **0.630000**, while a later run of
+  > `eegnet_compare.py` prints **63.3%** for the same regime on the same
+  > data. That is **0.3 points, 3 trials of 900**. CSP over the same cell reproduces
   > *exactly* (51.4% both places), which is what isolates the disagreement to the CNN rather than
   > to the data or the folds.
   >
