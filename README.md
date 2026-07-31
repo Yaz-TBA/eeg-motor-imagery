@@ -36,9 +36,7 @@ raw EEG  →  average reference  →  band-pass 8–30 Hz  →  epoch around cue
 | CSP+LDA accuracy (stratified 5-fold CV) | **91.1%** |
 | Chance (majority class) | 53.3% |
 | Permutation test (1000 shuffles) | **p ≤ 0.001** (null 50.7% ± 8.5%) |
-| Same test at 10,000 draws, on a null verified exact | **p ≤ 9.999e-05**, zero exceedances |
 | Wilson 95% CI on n=45 | [79.3%, 96.5%] |
-| Wilson at the exact null's n_eff (34.0) | [77.0%, 96.9%] |
 | Per-fold scores | 8/9, 8/9, 8/9, 8/9, 9/9 |
 | Trials | 45 (21 hands, 24 feet), one subject |
 
@@ -46,13 +44,15 @@ The per-fold row appears instead of a ± because a 9-trial test set can only sco
 1/9. A standard deviation over those five values is a step on that ladder, not a spread, which is
 the same objection that retired the earlier "± 5.6%" below. Take the Wilson interval as the
 honest uncertainty, and as mildly optimistic: it treats 45 cross-validated predictions as
-independent draws from one model when they come from five. **That optimism is now quantified
-rather than only named**: the exact permutation null is wider than binomial by a factor of 1.323,
-so those 45 predictions are worth roughly 34 independent ones, and the interval widens to
-[77.0%, 96.9%]. The permutation p is reported as
+independent draws from one model when they come from five. **That optimism is named here and not
+currently quantified.** An earlier revision of this table quantified it, from a variance-inflation
+factor and an `n_eff`-corrected interval computed on the fixed-partition cell C4 — and that cell
+was withdrawn on exchangeability grounds, so every figure derived from it is withdrawn with it.
+The same applies to the 10,000-draw row this table used to carry. See
+`OVERRIDE-RULING-2026-07-30.md` §1.5, which enumerates them. Requantifying the optimism from a
+cell that survives is open work, not a finished result. The permutation p is reported as
 **p ≤ 0.001** rather than `0.0010` because 1/1001 is the resolution floor of a 1000-shuffle test,
-not a measurement; the scripts print the bound directly. The 10,000-draw row is the same bound at
-higher resolution, from a null that was checked for exactness rather than assumed to be one.
+not a measurement; the scripts print the bound directly.
 
 Across 1000 label shuffles, not one matched or exceeded the real result, so the
 decoding is finding real structure rather than fitting noise. ("Matched or
