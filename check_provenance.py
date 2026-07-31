@@ -159,6 +159,15 @@ REGISTRY = {
     # then turn a working script into a timeout, which check_provenance.py
     # reports as FAIL on a full run.
     "permutation_design.py":    (17400, True),
+
+    # The G-S gate registered in prereg-permutation-validity.md §4. Deterministic
+    # and data-free: it instantiates each rule under two observed vectors and
+    # compares the realised partition and permutation group, so there is no
+    # estimator, no Monte Carlo and nothing to cache. Runtime MEASURED 2026-07-30
+    # on this machine: 2.09 s and 2.08 s wall, identical stdout. 10 gives a 40 s
+    # timeout at the 4x rule. NOT slow: --fast runs it rather than reading a cache,
+    # which is the point of a gate that costs two seconds.
+    "validity_gate.py":         (10,    False),
 }
 
 # ---------------------------------------------------------------------------
