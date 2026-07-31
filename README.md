@@ -128,17 +128,25 @@ percentile, **53.1% (478/900)**, or 53.4% (481/900) at the 99.5th.
 
 > **A registered falsification gate fired on this run and was overridden, and that has
 > not changed.** Subject 17's C4 null centres at 43.80%, outside the pre-registered 45%
-> to 55% band, and the pre-registration says that makes the whole arm unreportable. It is
-> reported anyway, on an argument added *after* a smoke run tripped the assert. The
-> justification is a control rather than an argument: the same all-zero dummy classifier
-> shows the identical downward shift under a fixed partition (40.67% for subject 1 against
-> its 53.33% majority rate), so sub-45% centring is a property of the partition rule and
-> not of a mis-specified null. The exact label-free cells C5 and C6 centre below the band
-> too, which is independent confirmation that assert 9 was the wrong assert. Note what
-> that does and does not buy: the band argument was the right diagnosis of the wrong
-> problem, and it was still not a defence of C2 and C4, whose defect turned out to be
-> exchangeability rather than centring. Two separate defects, and fixing the first did
-> not fix the second. A reader who rejects the override should treat arm A as unreported.
+> to 55% band, and the pre-registration's consequence clause then bars reporting anything
+> in its Sections 6.1 to 6.4 from this run — which is both arms, not only the one that
+> tripped it. It is reported anyway, on an argument added *after* a smoke run tripped the
+> assert. The justification is a control rather than an argument: the same all-zero dummy
+> classifier shows the identical downward shift under a fixed partition (40.67% for
+> subject 1 against its 53.33% majority rate), so sub-45% centring is a property of the
+> partition rule and not of a mis-specified null. The exact label-free cells C5 and C6
+> centre below the band too, which is independent confirmation that assert 9 was the wrong
+> assert. Note what that does and does not buy: the band argument was the right diagnosis
+> of the wrong problem, and it was still not a defence of C2 and C4, whose defect turned
+> out to be exchangeability rather than centring. Two separate defects, and fixing the
+> first did not fix the second. **A reader who rejects the override should treat both arms
+> as unreported from this run**: Section 6.4 is arm B, so the cross-subject p, the sd
+> ratio and both replacement thresholds in the paragraph above fall with arm A. That is a
+> wider blast radius than the exchangeability defect has — `LeaveOneGroupOut` reads only
+> `groups`, so arm B never had that defect — and wider than arm B's own centring earns,
+> since neither of its nulls leaves the band. The registered remedy is a run-level halt
+> and it does not ask why a cell is fine. The 59.4% (535/900) itself stands either way:
+> `cross_subject.py` produced it, and this run only re-tested it.
 
 The evidence that this is motor activity and not eye or muscle artifact is an
 **ablation**, not a picture. Every row is printed by `ablate_channels.py`, one

@@ -1464,8 +1464,9 @@ published result was never computed on.
 
 > **A registered falsification gate fired on this run and was overridden.** Assert 9 required every
 > cell's null mean inside 0.45 to 0.55; subject 17's C4 centres at 0.4380, and the pre-registration
-> says that makes the whole arm unreportable. It is reported anyway, on an argument added *after* a
-> smoke run tripped the assert. The defence is a control rather than an argument: the same all-zero
+> then bars reporting anything in its Sections 6.1 to 6.4 from this run, which is both arms and not
+> only the one that tripped it. It is reported anyway, on an argument added *after* a smoke run
+> tripped the assert. The defence is a control rather than an argument: the same all-zero
 > dummy classifier drops from exactly the majority rate with zero variance under re-stratification
 > to 40.67% under a fixed partition, with no EEG involved, so sub-0.45 centring is a property of
 > the partition rule. The exact label-free cells centre below the band too, which independently

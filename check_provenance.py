@@ -444,16 +444,22 @@ def half_up(value: float, digits: int) -> float:
     return math.floor(abs(value) * scale + 0.5) / scale * (1 if value >= 0 else -1)
 
 
-def output_lines(blob: str) -> list[tuple[float, str]]:
-    """Every number in captured stdout, paired with the line it came from."""
-    pairs = []
+def output_lines(blob: str) -> list[tuple[float, str, str]]:
+    """Every number in captured stdout, with its line and what follows it.
+
+    The trailing text is kept because a bare float carries no meaning: "57.5"
+    is an accuracy, a frequency or a millisecond count depending entirely on
+    the characters after the digits, and dropping them makes those the same
+    number.
+    """
+    nums = []
     for line in blob.split("\n"):
         for m in NUM_IN_OUTPUT.finditer(line):
-            pairs.append((float(m.group(1)), line.strip()))
-    return pairs
+            nums.append((float(m.group(1)), line.strip(), line[m.end():]))
+    return nums
 
 
-def find_backing(claim: Claim, pairs: list[tuple[float, str]]) -> str | None:
+def find_backing(claim: Claim, nums: list[tuple[float, str, str]]) -> str | None:
     """Return the best stdout line backing this claim, or None.
 
     Rounding-tolerant: 91.1 in docs matches 91.11111 in stdout. Percentages
@@ -462,10 +468,23 @@ def find_backing(claim: Claim, pairs: list[tuple[float, str]]) -> str | None:
     always wins over a retraction line.
     """
     d, weak = claim.decimals, None
-    for value, line in pairs:
+    for value, line, tail in nums:
         hit = (half_up(value, d) == claim.value or
                (claim.kind == "pct" and half_up(value * 100, d) == claim.value))
         if not hit:
+            continue
+        # A percentage is never backed by a number wearing a physical unit:
+        # "57.5 Hz" is a power-spectrum bin, not an accuracy. UNIT_SUFFIX is the
+        # same rule the doc side already applies at extraction, read here on the
+        # output side.
+        #
+        # The rule is ONE-DIRECTIONAL and its mirror is NOT available: an
+        # explicit disqualifying unit rejects, a missing "%" never does. Scripts
+        # print a bare "91.1" meaning percent, and every fraction-form match two
+        # lines up is a number no "%" can follow. MEASURED 2026-07-30 on this
+        # repo: demanding the sign instead takes BACKED 498 -> 492, unbacking a
+        # CI bound that stdout prints as "[ 50.6,  56.8]" and five more like it.
+        if claim.kind == "pct" and UNIT_SUFFIX.match(tail):
             continue
         if RETRACTION_HINT.search(line):
             weak = weak or line
@@ -517,8 +536,8 @@ def main() -> int:
 
     print(f"Gathering script output{' (--fast)' if args.fast else ''} ...")
     blob, missing = gather_outputs(args.fast)
-    pairs = output_lines(blob)
-    print(f"  {len(pairs)} numbers captured from "
+    nums = output_lines(blob)
+    print(f"  {len(nums)} numbers captured from "
           f"{len(REGISTRY) - len(missing)} scripts")
     for m in missing:
         print(f"  ! no output for {m}")
@@ -528,7 +547,7 @@ def main() -> int:
         if c.key in ALLOWLIST:
             allowed.append(c)
             continue
-        line = find_backing(c, pairs)
+        line = find_backing(c, nums)
         if line is None:
             unbacked.append(c)
         elif RETRACTION_HINT.search(line):
