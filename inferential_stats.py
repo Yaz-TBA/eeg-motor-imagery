@@ -84,6 +84,8 @@ import numpy as np
 from scipy import stats
 from scipy.optimize import brentq
 
+from common import holm as common_holm, wilson_interval as common_wilson
+
 ROOT = Path(__file__).resolve().parent
 
 ALPHA = 0.05
@@ -127,17 +129,17 @@ def normal_interval(x, z=Z_TWO_SIDED):
 
 
 def wilson_interval(n_correct, n_total, z=Z_TWO_SIDED):
-    """95% CI for a proportion.
+    """95% CI for a proportion, at this file's exact-normal multiplier.
 
-    Reimplemented here rather than imported: evaluate_honestly.py defines it at
-    module scope alongside a 5-minute analysis, so importing it would run that
-    analysis. The formula is character-for-character the same.
+    The formula now lives in common.py. It used to be reimplemented here, because
+    evaluate_honestly.py defined it at module scope alongside a five-minute analysis and
+    importing it would have run that analysis. Every script has a __main__ guard now, so
+    importing is free and there is one definition instead of three.
+
+    The z default stays Z_TWO_SIDED rather than common's 1.96, so this file's printed
+    intervals are unchanged.
     """
-    p = n_correct / n_total
-    denom = 1 + z**2 / n_total
-    centre = (p + z**2 / (2 * n_total)) / denom
-    half = z * np.sqrt(p * (1 - p) / n_total + z**2 / (4 * n_total**2)) / denom
-    return centre - half, centre + half
+    return common_wilson(n_correct, n_total, z)
 
 
 def paired_power(delta, sd, n, alpha=ALPHA):
@@ -167,17 +169,8 @@ def mde_normal(sd, n, alpha=ALPHA, power=POWER):
     return (stats.norm.ppf(1 - alpha / 2) + Z_POWER) * sd / np.sqrt(n)
 
 
-def holm(pvals):
-    """Holm-Bonferroni adjusted p-values, order preserved."""
-    p = np.asarray(pvals, dtype=float)
-    order = np.argsort(p)
-    m = len(p)
-    adj = np.empty(m)
-    running = 0.0
-    for rank, idx in enumerate(order):
-        running = max(running, (m - rank) * p[idx])
-        adj[idx] = min(1.0, running)
-    return adj
+# Holm-Bonferroni adjusted p-values, order preserved. Defined in common.py.
+holm = common_holm
 
 
 def head(title):

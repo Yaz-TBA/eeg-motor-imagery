@@ -453,6 +453,32 @@ python decode_csp.py        # full pipeline + CSP patterns → csp_patterns.png
 
 Data downloads automatically on first run (cached in `~/mne_data`).
 
+### Tests
+
+```bash
+python test_pipeline.py       # or: python -m pytest test_pipeline.py -q
+```
+
+19 regression tests, under a second, no data download. They are not "does it run" tests.
+Each one guards a mistake this project actually made and had to retract, so a future edit
+that reintroduces it fails here instead of in this README. The three that matter most:
+
+- **95.9% and 47.4% are not attainable accuracies.** With 45 trials tested exactly once
+  each, accuracy is a count over 45, so it can only land on multiples of 2.222%. Both
+  numbers were published here as measurements. Neither is on the lattice, so neither ever
+  was one.
+- **CSP sits inside the Pipeline.** If it is fitted once outside, the spatial filters see
+  the test trials and every accuracy in this repo is invalid.
+- **`for_torch` rejects volts-scale data.** Feeding EEGNet volts leaves BatchNorm unable to
+  normalise; the network scores exactly the majority-class rate while being dead, which
+  reads as a plausible finding and is not one.
+
+Shared definitions live in `common.py`: the classifier, the Wilson interval, Holm
+correction, the channel sets and the loader. They used to be copied into each script,
+because importing a script that defined them also ran its multi-minute analysis. Every
+script has a `__main__` guard now, so importing costs nothing and there is one definition
+of what "the published pipeline" means rather than five.
+
 ### Scripts (built rung by rung)
 
 Rungs 1–4 build the result. Rungs 5–11 attack it, and five of them found something wrong:
