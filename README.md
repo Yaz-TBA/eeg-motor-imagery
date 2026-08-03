@@ -1,9 +1,16 @@
 # EEG Motor-Imagery Decoding
 
-Decoding *imagined* movement from scalp EEG with a classic **CSP + LDA**
-baseline. When you imagine moving, your sensorimotor cortex changes its
-mu (8–12 Hz) and beta (13–30 Hz) rhythm power in a spatially specific way;
-this project reads that pattern to guess which movement was imagined.
+I wanted to find out whether I could read *imagined* movement off the scalp, and then
+whether I could prove the number I got was real. This repository is both halves of that.
+
+When you imagine moving, your sensorimotor cortex changes its mu (8–12 Hz) and beta
+(13–30 Hz) rhythm power in a spatially specific way. This project reads that pattern with
+a classic **CSP + LDA** baseline and guesses which movement was imagined.
+
+The decoder itself is a tutorial baseline and I want to be upfront about that. What I think
+is worth looking at is the second half: the suite I built to attack my own result, and the
+corrections it forced me to publish. The headline used to read 94.4%. It reads 91.1% now,
+and the reason is written up next to it rather than quietly edited out :)
 
 **Dataset:** [PhysioNet EEGBCI](https://physionet.org/content/eegmmidb/1.0.0/)
 motor-imagery set (109 subjects, 64-channel EEG @ 160 Hz), loaded via
@@ -21,7 +28,7 @@ raw EEG  →  average reference  →  band-pass 8–30 Hz  →  epoch around cue
 - **Filtering** keeps only the mu/beta motor rhythms; applied to the
   continuous signal (not epochs) to avoid edge artifacts.
 - **CSP (Common Spatial Patterns)** learns channel-weightings that maximize
-  the variance ratio between classes — a handful of spatial filters that
+  the variance ratio between classes, a handful of spatial filters that
   separate hands from feet. The log-variance along the top axes is the feature.
 - **LDA** separates the two feature clouds with a linear boundary.
 - **Stratified 5-fold cross-validation** tests every trial exactly once and
@@ -46,7 +53,7 @@ the same objection that retired the earlier "± 5.6%" below. Take the Wilson int
 honest uncertainty, and as mildly optimistic: it treats 45 cross-validated predictions as
 independent draws from one model when they come from five. **That optimism is named here and not
 currently quantified.** An earlier revision of this table quantified it, from a variance-inflation
-factor and an `n_eff`-corrected interval computed on the fixed-partition cell C4 — and that cell
+factor and an `n_eff`-corrected interval computed on the fixed-partition cell C4, and that cell
 was withdrawn on exchangeability grounds, so every figure derived from it is withdrawn with it.
 The same applies to the 10,000-draw row this table used to carry. See
 `OVERRIDE-RULING-2026-07-30.md` §1.5, which enumerates them. Requantifying the optimism from a
@@ -129,7 +136,7 @@ percentile, **53.1% (478/900)**, or 53.4% (481/900) at the 99.5th.
 > **A registered falsification gate fired on this run and was overridden, and that has
 > not changed.** Subject 17's C4 null centres at 43.80%, outside the pre-registered 45%
 > to 55% band, and the pre-registration's consequence clause then bars reporting anything
-> in its Sections 6.1 to 6.4 from this run — which is both arms, not only the one that
+> in its Sections 6.1 to 6.4 from this run, which is both arms, not only the one that
 > tripped it. It is reported anyway, on an argument added *after* a smoke run tripped the
 > assert. The justification is a control rather than an argument: the same all-zero dummy
 > classifier shows the identical downward shift under a fixed partition (40.67% for
@@ -142,8 +149,8 @@ percentile, **53.1% (478/900)**, or 53.4% (481/900) at the 99.5th.
 > first did not fix the second. **A reader who rejects the override should treat both arms
 > as unreported from this run**: Section 6.4 is arm B, so the cross-subject p, the sd
 > ratio and both replacement thresholds in the paragraph above fall with arm A. That is a
-> wider blast radius than the exchangeability defect has — `LeaveOneGroupOut` reads only
-> `groups`, so arm B never had that defect — and wider than arm B's own centring earns,
+> wider blast radius than the exchangeability defect has, `LeaveOneGroupOut` reads only
+> `groups`, so arm B never had that defect, and wider than arm B's own centring earns,
 > since neither of its nulls leaves the band. The registered remedy is a run-level halt
 > and it does not ask why a cell is fine. The 59.4% (535/900) itself stands either way:
 > `cross_subject.py` produced it, and this run only re-tested it.
@@ -156,7 +163,7 @@ seed (42), one pipeline, on the same 45 trials:
 |---|---|---|---|
 | sensorimotor only (FC/C/CP strip) | 17 | **95.6%** | 43/45 |
 | all 64 | 64 | 91.1% | 41/45 |
-| frontopolar only (Fp/AF ring) | 8 | **51.1%** — *below* the 53.3% majority-class floor | 23/45 |
+| frontopolar only (Fp/AF ring) | 8 | **51.1%**: *below* the 53.3% majority-class floor | 23/45 |
 | **sensorimotor strip DELETED**, 47 kept | 47 | **77.8%** | 35/45 |
 | wide FC/C/CP strip deleted, 43 kept | 43 | 71.1% | 32/45 |
 | leave-one-run-out (all 64) | 64 | 93.3% | 42/45 |
@@ -306,7 +313,7 @@ does not measure muscle.
 > 8 to 30 Hz.
 
 The other direction is weaker than this README used to claim it. Sensorimotor-only
-is 43/45 against all-64's 41/45 — a **two-trial** difference, which on n=45 is
+is 43/45 against all-64's 41/45, a **two-trial** difference, which on n=45 is
 inside noise. The defensible statement is *"dropping 47 non-motor channels does
 not hurt"*, not *"the sensorimotor subset is better."* The load-bearing half of
 the ablation is the collapse, not the gain.
@@ -314,8 +321,8 @@ the ablation is the collapse, not the gain.
 > **Correction, and it is the reason `ablate_channels.py` now exists.** Until this
 > commit the two bolded rows read **95.9%** and **47.4%, i.e. chance**, and *no
 > script in the repo produced them*. Both are also arithmetically unreachable:
-> with 45 trials tested exactly once each, accuracy can only be k/45 — steps of
-> 2.222% — and neither 0.959 nor 0.474 is on that lattice. The real values are
+> with 45 trials tested exactly once each, accuracy can only be k/45, steps of
+> 2.222%, and neither 0.959 nor 0.474 is on that lattice. The real values are
 > 43/45 = 95.6% and 23/45 = 51.1%. The framing was wrong twice over too:
 > frontopolar-only is not "chance," because chance here is the 53.3%
 > majority-class rate, not 50%. The table is kept in corrected form rather than
@@ -324,7 +331,7 @@ the ablation is the collapse, not the gain.
 >
 > One honest limit on what the ablation bounds: the average reference is computed
 > over all 64 channels *before* any subset is picked, so the subsets are not
-> electrically independent — every channel carries −1/64 of every other. This
+> electrically independent, every channel carries −1/64 of every other. This
 > **bounds** the ocular contribution; it does not eliminate it.
 
 The learned CSP patterns are plotted below because they are interesting, **not as
@@ -392,7 +399,7 @@ the conservative one, and it is the one carrying the permutation test.
 Read those percentiles with one caveat the script makes visible: the estimator is
 quantized to 1/45, so the 100 seeds land on only a handful of distinct values and
 many of them tie exactly on 91.1%. `evaluate_honestly.py` ranks seeds *strictly
-below*, which is the most flattering of the available tie conventions — counting
+below*, which is the most flattering of the available tie conventions, counting
 ties as at-or-below would place seed 42 materially higher. The 2.7-point gap
 between 91.1% and the 93.8% mean does not depend on the convention; the word
 "3rd" does.
@@ -415,7 +422,7 @@ so that neither one's diagnostics get attached to the other's number.
   > **Correction.** This bullet used to say "a decoder using only frontopolar channels at
   > 0.5–5 Hz matches the 64-channel result on this subject." At matched settings it does not.
   > Same trials, same folds, same 1.0–2.0 s window: all-64 at 8–30 Hz is 73.3%, frontopolar at
-  > 0.5–5 Hz is **53.3%** — 20 points below, not level. The old "match" compared a frontopolar
+  > 0.5–5 Hz is **53.3%**: 20 points below, not level. The old "match" compared a frontopolar
   > decoder on the whole 0–4 s epoch against a 64-channel decoder on a 1-second crop, which is
   > two different experiments. The confound is real; the evidence quoted for it was
   > window-shopped, and CSP's log-variance features are close to blind to it anyway, because a
@@ -450,7 +457,7 @@ Data downloads automatically on first run (cached in `~/mne_data`).
 
 Rungs 1–4 build the result. Rungs 5–11 attack it, and five of them found something wrong:
 rung 5 (the reported precision was a quantization artifact, and 5 of 45 trials were never
-tested), rung 6 (the BCI-illiteracy inference was backwards — what was observed is evidence
+tested), rung 6 (the BCI-illiteracy inference was backwards, what was observed is evidence
 *of* signal), rung 7 (a gaze confound in this project's own data), rung 10 (a units bug meant
 the CNN was never training), and rung 11 (the "EEGNet wins" regime was the model reading the
 cue, not the imagery).
@@ -485,7 +492,7 @@ Four more scripts exist that are controls on the repo rather than rungs of the l
 | `ablate_channels.py` | Produces the artifact-ablation table above including the sensorimotor-deleted arm, and asserts every reported accuracy lands on the k/45 lattice |
 | `emg_proxy.py` | Refits the pipeline on 40–75 Hz at the temporal ring, and converts the null into a numeric sensitivity bound with an injection ladder |
 | `permutation_design.py` | Tests the permutation tests. Measures each null's false-positive rate on data with provably zero information, then re-scores every result on the cells that survive |
-| `check_provenance.py` | Extracts the figure classes its own docstring names — percentages, p-values, correlations, and integers bound to trials/subjects/shuffles/seeds/folds — from README.md and EXPLAINER.md, and fails if one of *those* is not printed by some script's stdout |
+| `check_provenance.py` | Extracts the figure classes its own docstring names, percentages, p-values, correlations, and integers bound to trials/subjects/shuffles/seeds/folds, from README.md and EXPLAINER.md, and fails if one of *those* is not printed by some script's stdout |
 
 The first three are the three exposures this repo used to concede in prose and now
 measures. Two of the three came back **against** the framing they were built to defend:
@@ -502,7 +509,7 @@ written in any of those forms is invisible to it however often it runs. Matching
 also by value rather than by meaning, which the docstring states plainly.
 
 Three things about it are worth knowing before you run it. It has a **WEAK** bucket for
-a number whose only backing line reads as a retraction — without that, a script
+a number whose only backing line reads as a retraction, without that, a script
 printing "95.9% and 47.4% are off this lattice" *in order to withdraw them* would have
 marked the fabricated originals as sourced, defeating the whole point on this repo.
 
@@ -579,5 +586,5 @@ is actually left:
   that is exact but not the best available. Three subjects is an existence proof, not a survey.
 
 See [EXPLAINER.md](EXPLAINER.md) §12 for the full scoreboard, including the complete list of
-claims this project published and later retracted. That list only grows — corrections are added
+claims this project published and later retracted. That list only grows, corrections are added
 to it, never swapped in over the record of the claim they correct.
