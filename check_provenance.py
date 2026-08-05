@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 """Every number in the docs must come out of a script. This checks that.
 
+NAVIGATION. Refuses to let a number appear in the docs unless a script in this repo
+produces it. Exits FAIL on figures quoted inside retraction prose too, which is expected;
+those need adjudicating by hand rather than fixing.
+
 The failure mode this guards against is the one that actually happened here: a
 table of ablation accuracies (95.9% / 47.4% / 93.3%) sat in README.md for weeks
 while NO script in the repo produced those numbers. Two of them were
@@ -100,7 +104,7 @@ REGISTRY = {
     # is the arm ablate_channels.py structurally CANNOT run, because the
     # published pipeline band-passes to 8-30 Hz and discards the band an EMG
     # probe needs before any covariance is computed. Pre-registered in
-    # neuro-canon/measurements/prereg-emg-proxy.md. Cheap despite four 1000-shuffle
+    # prereg/prereg-emg-proxy.md. Cheap despite four 1000-shuffle
     # permutation tests and a 400-run injection ladder, because every channel set
     # except ALL64 is 8 or 17 channels wide. Runtime MEASURED 2026-07-25 on this
     # machine, EEGBCI files already fetched, permutation tests at n_jobs=-1:
@@ -337,6 +341,21 @@ NON_ANALYSIS = {
                         "EXPLAINER.md for outcome wording a pre-registration "
                         "banned and prints only pass/fail plus offending "
                         "excerpts. It measures the prose, not the EEG data.",
+    "common.py": "a library. It defines the published pipeline, the Wilson "
+                 "and Holm helpers, the lattice check and the units guard, "
+                 "and running it produces no stdout at all, so there is "
+                 "nothing for a claim to match against. The scripts that "
+                 "import it are registered; that is where its numbers "
+                 "surface. Added 2026-08-04, after it was extracted in "
+                 "8419ddd and left in neither list -- which made the guard "
+                 "exit FAIL for a reason README.md never disclosed.",
+    "test_pipeline.py": "a test suite. Its stdout is nineteen PASS lines and "
+                        "a count, and every figure inside it is an assertion "
+                        "about a number that is already registered somewhere "
+                        "else. Registering it would let a doc claim be backed "
+                        "by its own test rather than by the run that produced "
+                        "it, which inverts the direction the guard is for. "
+                        "Added 2026-08-04, same commit gap as common.py.",
 }
 
 

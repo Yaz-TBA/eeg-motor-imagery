@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 """Fail when outcome-describing prose reuses wording a pre-registration banned.
 
+NAVIGATION. Checks WORDING, not truth. It catches banned phrasings (unscoped accuracy
+claims, 'chance is 50%', the withdrawn scalp-map defence) and can't tell you whether the
+surrounding sentence is correct.
+
 WHY THIS EXISTS, AND WHY check_provenance.py CANNOT DO IT
 
 check_provenance.py matches by VALUE. It asks whether some committed script
@@ -10,7 +14,7 @@ estimator-versus-seed misattribution, "each compared on identical folds", and
 the one this file guards -- describing the complement-ablation outcome as the
 decoder "not breaking".
 
-THE BAN, verbatim from measurements/prereg-complement-ablation.md:650-655 in the
+THE BAN, verbatim from prereg/prereg-complement-ablation.md:650-655 in the
 study corpus:
 
     Do not write "break", "does not break", "sensorimotor cortex" or "necessary"

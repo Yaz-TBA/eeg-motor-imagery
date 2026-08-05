@@ -1,5 +1,8 @@
 """What did regime C actually measure? A 2x2 that separates band from window.
 
+The 2x2 that worked out what regime C had actually measured. TL,DR: the CNN was decoding
+the cue, not the imagery.
+
 eegnet_compare.py runs three regimes, and the third one is not interpretable.
 Regime B is 8-30 Hz on a 1-2 s crop. Regime C is 4-38 Hz on a 0-4 s crop. That
 changes THREE things at once:
@@ -108,7 +111,7 @@ N_EPOCHS = 100
 BATCH_SIZE = 32
 LR = 1e-3
 BN_EPS = 1e-3
-CHECKPOINT = "regime_decomposition.json"
+CHECKPOINT = "results/regime_decomposition.json"
 
 # Epoch bounds. tmin is 1 s BEFORE the cue, which is what makes the pre-cue
 # control cell possible without re-epoching; every crop below must fit inside
@@ -248,7 +251,7 @@ def pool(cell):
 def for_torch(X):
     """Volts -> microvolts -> float32, with the guard that would have caught the
     units bug. MNE returns volts; a variance seven orders of magnitude below
-    BatchNorm's eps means normalisation never engages and the network is dead
+    BatchNorm's eps means normalization never engages and the network is dead
     while still scoring the majority-class rate."""
     Xs = (X * 1e6).astype(np.float32)
     var = float(Xs.var())
@@ -488,5 +491,5 @@ ax.set_title("Regime C decomposed: band and window varied independently\n"
              "pre-cue control, which must land on chance)", fontsize=11)
 ax.legend(loc="upper right")
 fig.tight_layout()
-fig.savefig("regime_decomposition.png", dpi=120)
-print("\nSaved regime_decomposition.png")
+fig.savefig("figures/regime_decomposition.png", dpi=120)
+print("\nSaved figures/regime_decomposition.png")

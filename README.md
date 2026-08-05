@@ -17,6 +17,52 @@ motor-imagery set (109 subjects, 64-channel EEG @ 160 Hz), loaded via
 `mne.datasets.eegbci`. This baseline uses **subject 1**, runs 6/10/14
 (Task 4 = imagine *both fists* vs. *both feet*).
 
+## Repo map: what to read, in what order
+
+There are a lot of scripts here. They are not all equally worth your time, and they fall into
+three groups. **If you read three files, read `decode_csp.py`, `evaluate_honestly.py` and
+`ablate_channels.py`, in that order.**
+
+**1. Building the result** (rungs 1–4). Start here.
+
+| Script | What it does |
+|---|---|
+| `load_and_plot.py` | Load one run, look at the raw signal |
+| `filter_and_epoch.py` | Band-pass to 8–30 Hz, average reference |
+| `epoch_trials.py` | Cut the continuous signal into labeled trials |
+| **`decode_csp.py`** | **The pipeline and the headline number. The entry point.** |
+
+**2. Attacking the result** (rungs 5–11). This is the half that matters.
+
+| Script | What it found |
+|---|---|
+| **`evaluate_honestly.py`** | **Moved the headline 94.4% → 91.1%** |
+| `sweep_subjects.py` | Median across all 109 subjects is 60.0%, not 91.1% |
+| `cross_subject.py` | 59.4% on an unseen person, with no calibration |
+| `harder_contrast.py` | Left vs right fist is much harder, and gaze is a confound |
+| **`ablate_channels.py`** | **The artifact control, and a prediction I lost** |
+| `emg_proxy.py` | Whether jaw muscle could be driving it (bounded, not closed) |
+| `riemannian.py` | Covariance geometry as an alternative classifier |
+| `eegnet_compare.py` | A CNN comparison, and the units bug that faked a finding |
+| `regime_decomposition.py` | What the CNN was actually decoding (the cue, not the imagery) |
+
+**3. Checking the checks.** Infrastructure. Read only if you want to audit.
+
+| Script | Job |
+|---|---|
+| `permutation_design.py` | Tests whether the permutation null is itself valid |
+| `validity_gate.py` | The registered independence gate |
+| `inferential_stats.py` | Every CI and p-value in the docs, computed in one place |
+| `check_provenance.py` | Refuses numbers in the docs that no script produces |
+| `check_wording.py` | Catches banned phrasings and retracted claims |
+| `test_pipeline.py` | 19 regression tests, one per mistake actually made |
+| `common.py` | The shared pipeline definition, imported by everything |
+| `status.py` | Computes the two repo gates into `STATUS.json` |
+
+**Directories:** `prereg/` the registered designs, written before the scripts existed ·
+`figures/` generated plots · `results/` generated data · `.provenance_cache/` captured stdout
+that `check_provenance.py` checks the docs against.
+
 ## Pipeline
 
 ```
@@ -47,6 +93,9 @@ raw EEG  →  average reference  →  band-pass 8–30 Hz  →  epoch around cue
 | Per-fold scores | 8/9, 8/9, 8/9, 8/9, 9/9 |
 | Trials | 45 (21 hands, 24 feet), one subject |
 
+Trying to emphasize how every number on this page carries its scope. A percentage without a
+denominator and a subject count isn't easy to understand or calibrate from.
+
 The per-fold row appears instead of a ± because a 9-trial test set can only score multiples of
 1/9. A standard deviation over those five values is a step on that ladder, not a spread, which is
 the same objection that retired the earlier "± 5.6%" below. Take the Wilson interval as the
@@ -66,7 +115,7 @@ decoding is finding real structure rather than fitting noise. ("Matched or
 exceeded" rather than "beat" because that is the comparison scikit-learn
 actually counts.)
 
-![Permutation null distribution](permutation_null.png)
+![Permutation null distribution](figures/permutation_null.png)
 
 ### The null's design was challenged, `permutation_design.py` measured it, and the challenge was mostly wrong
 
@@ -352,7 +401,7 @@ topographies by eye is not a control, which is why the ablation above replaced i
 > withdrawn too. A retraction passage resting on an unproduced number would be
 > the exact defect it was written to correct.
 
-![CSP spatial patterns](csp_patterns.png)
+![CSP spatial patterns](figures/csp_patterns.png)
 
 ### A note on the earlier number
 
@@ -448,7 +497,7 @@ so that neither one's diagnostics get attached to the other's number.
 ```bash
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-python decode_csp.py        # full pipeline + CSP patterns → csp_patterns.png
+python decode_csp.py        # full pipeline + CSP patterns → figures/csp_patterns.png
 ```
 
 Data downloads automatically on first run (cached in `~/mne_data`).
@@ -470,7 +519,7 @@ that reintroduces it fails here instead of in this README. The three that matter
 - **CSP sits inside the Pipeline.** If it is fitted once outside, the spatial filters see
   the test trials and every accuracy in this repo is invalid.
 - **`for_torch` rejects volts-scale data.** Feeding EEGNet volts leaves BatchNorm unable to
-  normalise; the network scores exactly the majority-class rate while being dead, which
+  normalize; the network scores exactly the majority-class rate while being dead, which
   reads as a plausible finding and is not one.
 
 Shared definitions live in `common.py`: the classifier, the Wilson interval, Holm
@@ -499,13 +548,13 @@ cue, not the imagery).
 
 | # | Script | Does |
 |---|---|---|
-| 1 | `load_and_plot.py` | Load one run, plot raw EEG → `raw_eeg.png` |
+| 1 | `load_and_plot.py` | Load one run, plot raw EEG → `figures/raw_eeg.png` |
 | 2 | `epoch_trials.py` | Cut runs 6/10/14 into labeled hands/feet trials |
 | 3 | `filter_and_epoch.py` | Add 8–30 Hz band-pass + average reference |
 | 4 | `decode_csp.py` | CSP + LDA, cross-validated, permutation test, spatial patterns |
 | 5 | `evaluate_honestly.py` | Stress-test the number: stratification, coverage, permutation test, 100-seed sweep of both estimators |
 | 6 | `sweep_subjects.py` | All 109 subjects, per-subject chance, against the pure-noise expectation |
-| 7 | `harder_contrast.py` | Left vs. right fist (runs 4/8/12). Found a lateralised gaze confound |
+| 7 | `harder_contrast.py` | Left vs. right fist (runs 4/8/12). Found a lateralized gaze confound |
 | 8 | `cross_subject.py` | Leave-one-subject-out across 20 subjects |
 | 9 | `riemannian.py` | MDM and Tangent Space vs. the CSP baseline on identical folds |
 | 10 | `eegnet_compare.py` | EEGNet vs. CSP+LDA at two sample sizes. Where the units bug was found |
@@ -607,10 +656,12 @@ is actually left:
 - **EMG inside the decoder's own passband.** The probe covers 40–75 Hz and is blind at 8–30 Hz
   by construction, which is the only band the headline can actually be contaminated in. Closing
   that needs an instrument this montage and this sampling rate cannot provide.
-- **Re-scoring `sweep_results.csv` on an exact null.** Run blocking moved one of the two median
+- **Re-scoring `results/sweep_results.csv` on an exact null.** Run blocking moved one of the two median
   subjects across 0.05, so per-subject significance across the 109 was computed with a null
   that is exact but not the best available. Three subjects is an existence proof, not a survey.
 
 See [EXPLAINER.md](EXPLAINER.md) §12 for the full scoreboard, including the complete list of
 claims this project published and later retracted. That list only grows, corrections are added
 to it, never swapped in over the record of the claim they correct.
+
+The list only grows :sob: good to keep track & iterate, iterate, iterate tho.

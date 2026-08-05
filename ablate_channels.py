@@ -1,6 +1,11 @@
 """The artifact control: refit on the channels where the EYES are loudest and see
 whether the result survives there.
 
+Genuinely didn't expect this one.. deleting the motor strip was supposed to break the
+decoder and it didn't ?? 77.8% on the remaining 47 channels. Lost this prediction i guess ?
+Read the caveats below before taking anything from it though, since a channel deletion
+can't falsify a SOURCE hypothesis in either direction.
+
 A scalp topography is not evidence. It is a picture of the model's weights, and
 a model riding an eye-movement artifact will happily draw a picture too. The
 only cheap control that actually bites is an ABLATION: refit the entire pipeline
@@ -32,7 +37,7 @@ range(10), because a seed-42 point difference is ONE quantized draw -- this file
 already annotates its own +4.4 point row as "one draw, not an effect size" and
 the same rule now binds the arm that does not flatter. The decision statistic
 for (e) is a ten-seed mean gap AND an exact McNemar, both fixed in advance in
-neuro-canon/measurements/prereg-complement-ablation.md, which also records that
+prereg/prereg-complement-ablation.md, which also records that
 the accuracy half of (e) had already been run once and was NOT blind.
 
 WHY THIS README TABLE EXISTS AS A SCRIPT NOW. An earlier README published these
@@ -227,7 +232,7 @@ def main():
     helpers does not run a multi-minute experiment as a side effect."""
 
     # Pre-registered decision thresholds. Fixed in
-    # neuro-canon/measurements/prereg-complement-ablation.md BEFORE this script ran.
+    # prereg/prereg-complement-ablation.md BEFORE this script ran.
     # One trial on n = 45 is 2.222 points, two trials are 4.444. A48 already refused
     # to call two trials a difference in the direction that flattered the project;
     # the same refusal is hard-coded here in the direction that does not.

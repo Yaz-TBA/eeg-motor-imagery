@@ -1,0 +1,681 @@
+
+==============================================================================
+SECTION 0  SETUP, THE EXCHANGEABLE UNIT, AND WHAT THIS RUN IS
+==============================================================================
+mne 1.12.1   numpy 2.5.1   sklearn 1.9.0
+Draws per cell: arm A N = 10000 (floor p = 9.999e-05), arm B N = 2000 (floor p = 0.00049975)
+Pilot reproduction N = 300, sklearn-agreement gate N = 1000
+This IS the registered run: every N matches the pre-registration.
+
+THIS RUN IS NOT BLIND, and saying otherwise would be the exact failure mode the
+pre-registration exists to correct. A pilot (canon A269 / A270, marked
+uncommitted) already ran both arms on 2026-07-25 and its numbers were read before
+the pre-registration was written. They are quoted in SECTION 1 as the PRIOR.
+Agreement below is a CONFIRMATION at higher resolution with a paired design, not
+an independent discovery.
+
+
+------------------------------------------------------------------------------
+Arm A subjects: label structure, reference set sizes, and the published value
+------------------------------------------------------------------------------
+
+Subject 1: n = 45  (21 hands / 24 feet)   majority-class rate (CHANCE, never 50%) = 53.3% (24/45)
+  observed on P0 = 91.1% (41/45)   against chance 53.3% (24/45)   (+37.8 points)
+  sweep_results.csv says 0.9111 = 91.1% (41/45)   match: True
+  run 6: n = 15  7 hands / 8 feet   FHHFHFFHHFFHHFF
+  run 10: n = 15  7 hands / 8 feet   HFFHFHHFFHHFFHF
+  run 14: n = 15  7 hands / 8 feet   FHFHHFHFHFFHFHF
+  reference set, i.i.d. exchangeable over all 45: C(45,21) = 3.774e+12
+  reference set, exchangeable WITHIN RUN only     : 2.665e+11  (smaller by a factor of 14.2)
+  The BLOCK null is the SMALLER reference set and therefore the WEAKER
+  assumption: it does not assume trials are exchangeable across runs.
+
+Subject 17: n = 45  (24 hands / 21 feet)   majority-class rate (CHANCE, never 50%) = 53.3% (24/45)
+  observed on P0 = 62.2% (28/45)   against chance 53.3% (24/45)   (+8.9 points)
+  sweep_results.csv says 0.6222 = 62.2% (28/45)   match: True
+  run 6: n = 15  8 hands / 7 feet   HFHFHFFHFHHFFHH
+  run 10: n = 15  8 hands / 7 feet   HFHFHFHFFHHFFHH
+  run 14: n = 15  8 hands / 7 feet   HFHFFHFHFHFHHFH
+  reference set, i.i.d. exchangeable over all 45: C(45,24) = 3.774e+12
+  reference set, exchangeable WITHIN RUN only     : 2.665e+11  (smaller by a factor of 14.2)
+  The BLOCK null is the SMALLER reference set and therefore the WEAKER
+  assumption: it does not assume trials are exchangeable across runs.
+
+Subject 19: n = 45  (22 hands / 23 feet)   majority-class rate (CHANCE, never 50%) = 51.1% (23/45)
+  observed on P0 = 64.4% (29/45)   against chance 51.1% (23/45)   (+13.3 points)
+  sweep_results.csv says 0.6444 = 64.4% (29/45)   match: True
+  run 6: n = 15  7 hands / 8 feet   HFFHFHHFFHHFFHF
+  run 10: n = 15  7 hands / 8 feet   HFHFHFHFFHHFHFF
+  run 14: n = 15  8 hands / 7 feet   FHFHFHHFHFFHHFH
+  reference set, i.i.d. exchangeable over all 45: C(45,22) = 4.117e+12
+  reference set, exchangeable WITHIN RUN only     : 2.665e+11  (smaller by a factor of 15.4)
+  The BLOCK null is the SMALLER reference set and therefore the WEAKER
+  assumption: it does not assume trials are exchangeable across runs.
+
+FALSIFICATION CHECKS 4 and 6 PASS: subject 1 is exactly 41/45 on P0, and subjects
+17 and 19 reproduce sweep_results.csv at 28/45 and 29/45.
+
+==============================================================================
+SECTION 1  FALSIFICATION GATE 1: DOES THE PILOT (A269) REPRODUCE?
+==============================================================================
+Run FIRST, before anything else. The pilot consumed one default_rng(42)
+sequentially across its four cells, so this reproduces that consumption order
+exactly: 300 i.i.d. vectors, then 300 more i.i.d. vectors, then 300 cyclic shifts,
+then 300 within-run permutations. Scoring is deterministic given the labels, so
+generating the vectors up front and scoring them in parallel is identical to the
+pilot's serial loop.
+
+The two failure modes are DISTINGUISHABLE and only one is fatal:
+  all four cells shifting TOGETHER  -> version drift in mne/sklearn, reportable
+  ONE cell shifting                 -> a bug in that cell, fatal
+
+observed (subject 1, P0) = 91.1% (41/45)   chance 53.3% (24/45)
+
+cell                                      null mean   null sd  null max        p   pilot A269         verdict
+(i)   iid shuffle, re-stratified folds        50.7%      8.9%     86.7%   0.0033   50.7/8.9/86.7   MATCH
+(ii)  iid shuffle, FIXED folds                47.7%      8.4%     71.1%   0.0033   47.7/8.4/71.1   MATCH
+(iii) within-run cyclic shift                 49.0%      8.6%     73.3%   0.0033   49.0/8.6/73.3   MATCH
+(iv)  within-run label permutation            50.2%      8.2%     68.9%   0.0033   50.2/8.2/68.9   MATCH
+
+Cells matching A269 exactly at one decimal: 4 of 4.
+GATE 1 PASSES. The pilot reproduces. A269 is the prior for everything below.
+
+==============================================================================
+SECTION 2  FALSIFICATION GATE 2: IS MY C1 ACTUALLY WHAT SKLEARN DOES?
+==============================================================================
+The single most important check in the document. EVERY claim of a
+difference below is measured against C1, so if C1 is not the published null then
+the framing 'this is what sklearn does' is unfounded.
+
+sklearn draws its permutations from check_random_state(42), a legacy MT19937,
+while C1 draws from default_rng(42), a PCG64. The two see DIFFERENT label vectors
+by construction, so this is a DISTRIBUTIONAL agreement check, not an exact one:
+null mean and null sd must agree to within 3 Monte Carlo standard errors of the
+DIFFERENCE.
+
+  my C1      : null mean 50.993%  sd 8.702%  max 86.7% (39/45)
+  sklearn    : null mean 50.749%  sd 8.457%  max 82.2% (37/45)
+  difference : mean +0.244 points (MC se 0.384, z = +0.64)
+               sd   +0.245 points (MC se 0.271, z = +0.90)
+  sklearn's observed 91.1% (41/45) against my P0 observed 91.1% (41/45): match True
+
+GATE 2 PASSES: |z| <= 3 on both mean and sd is satisfied.
+
+==============================================================================
+SECTION 2B  THE REGISTERED NULL-CENTRING ASSERT FIRES, AND WHY IT IS THE ASSERT
+            THAT IS WRONG RATHER THAN THE NULL
+==============================================================================
+DISCLOSE FIRST, ARGUE SECOND. This section did not exist when the
+pre-registration was written. It was added after a SMOKE RUN at N = 60 tripped the
+registered assert on subject 17's C4 cell. That makes everything in it POST-HOC,
+and the departure it justifies runs in the direction that FLATTERS this project
+(a lower null means a smaller corrected p), which is exactly when a post-hoc
+argument deserves the most suspicion. So the evidence below is a control that
+uses NO EEG AT ALL, and the registered gate's outcome is reported either way in
+section 6 rather than quietly dropped.
+
+WHAT WAS REGISTERED. Section 5.4 assert 9 and Section 7 falsification 8:
+"Each cell's null mean is within 0.05 of 0.50 ... Wider than that means the null
+is mis-specified and no p from it means what it appears to." Section 6.5 then
+says that if it fires, nothing in Sections 6.1 to 6.4 may be reported.
+
+WHAT THE PRE-REGISTRATION ALSO SAYS, IN THE SAME DOCUMENT. Section 7's secondary
+mechanism probe registers, in advance, that under a FIXED partition an unbalanced
+permuted test fold has complementary training folds unbalanced the OTHER way, so
+those folds score WORSE. That mechanism PREDICTS a fixed-partition null centred
+BELOW 0.50. The pre-registration therefore registered two things that cannot both
+be right: assert 9 applied to all four cells, and a mechanism that makes assert 9
+false for the two fixed cells. The run found the inconsistency. That is a defect
+in the pre-registration, and it is being reported as one.
+
+WHY THE 0.45-0.55 BAND DOES NOT TRANSFER. It is imported from
+evaluate_honestly.py:220, which asserts it for the RE-STRATIFIED null. Under
+re-stratification every test fold is forced to be near-balanced, so train and test
+class proportions barely move and the null sits at 0.50. Under a FIXED partition
+the per-fold class counts must sum to a CONSTANT total, so a test fold that is
+heavy in one class leaves the training folds heavy in the other. That is a
+property of the arithmetic of a fixed partition, not of EEG, not of CSP, and not
+of this pipeline.
+
+THE CONTROL, and it is the reason this departure is defensible at all: a
+majority-class DummyClassifier on an ALL-ZERO feature matrix. It cannot decode
+anything, because there is nothing to decode. If it shows the same downward shift,
+the shift belongs to the partition rule.
+
+  Majority-class dummy, feature matrix = np.zeros((n, 1)), 2000 draws per cell:
+  subject           RE-STRATIFIED           FIXED at P0    majority-class rate
+  S1             53.33% +/- 0.00%       40.67% +/- 5.71%           53.3% (24/45)
+  S17            53.33% +/- 0.00%       47.15% +/- 6.97%           53.3% (24/45)
+  S19            44.44% +/- 0.00%       37.40% +/- 4.10%           51.1% (23/45)
+
+  Read that table before reading anything else in this run. A predictor that has
+  NO ACCESS TO THE DATA loses double-digit points purely by moving from a
+  re-stratified partition to a fixed one. Under re-stratification it sits exactly
+  at the majority-class rate with zero variance; under a fixed partition it falls
+  well below 0.50. Nothing about EEG, CSP or LDA is involved.
+
+  The splitter fact from pre-registration Section 2.1, verified here on subject 1:
+    test-fold |n_hands - n_feet| over 500 x 5 folds
+      FIXED partition   : 1:1334  3:780  5:319  7:65  9:2
+      RE-STRATIFIED     : 1:2500
+    Re-stratification admits ONE imbalance value. The fixed partition admits the
+    full range. They are not two estimates of one quantity, they are two different
+    reference distributions.
+
+WHAT THIS DEPARTURE DOES AND DOES NOT LICENSE.
+  It licenses: enforcing assert 9 as a hard halt on the RE-STRATIFIED cells (C1,
+  C3) and on both arm B cells, and reporting it as a MEASURED OUTCOME rather than
+  a halt on the fixed cells (C2, C4).
+  It does NOT license: treating the corrected p as unaffected. A null centred
+  lower makes the corrected p SMALLER than the published one, so this departure
+  moves the result in the project's favour and every number it touches is
+  labelled with that fact in section 6.
+  It also does NOT show the corrected p is invalid. A permutation p is exact when
+  the observed statistic and the null replicates are computed the SAME way. The
+  observed value is scored on P0; C2 and C4 score every replicate on P0. It is
+  C1, the published null, that scores replicates on a partition the observed value
+  never saw.
+
+==============================================================================
+SECTION 3  ARM A: THE 2x2 FACTORIAL, PAIRED ON THE LABELS
+==============================================================================
+                     | partition RE-STRATIFIED each draw | partition FIXED at P0
+  i.i.d. shuffle     | C1 = the published null           | C2 = correction (a) alone
+  within-run shuffle | C3 = pilot cell (iv)              | C4 = FULLY CORRECTED
+
+One list of 10000 i.i.d. vectors feeds BOTH C1 and C2. A second list of 10000
+within-run vectors feeds BOTH C3 and C4. So C1-vs-C2 and C3-vs-C4 are PAIRED: same
+labels, only the partition rule differs, which isolates the correction. C1-vs-C3
+and C2-vs-C4 are UNPAIRED BY CONSTRUCTION, because they draw from different
+reference sets, and are compared on distributions only.
+
+REGISTERED IN ADVANCE: for subject 1 the p is expected at its floor in every cell.
+Expected exceedances in 10000 draws are about 0.028 at a 4.5 sd effect. AN ARM
+WHOSE ANSWER IS FIXED BY THE EFFECT SIZE CANNOT DETECT A DESIGN ERROR, so subject
+1's finding is the PAIRED DIFFERENCE and the null's SHAPE, not the p.
+
+------------------------------------------------------------------------------
+ARM A, SUBJECT 1   observed 91.1% (41/45)   chance (majority class) 53.3% (24/45)   (+37.8 points above chance)
+------------------------------------------------------------------------------
+C1  i.i.d. shuffle, RE-STRATIFIED   [the published null]
+    null mean 50.53%  sd 8.63%   min 11.1% (5/45)   max 86.7% (39/45)
+    p50=51.1% (23/45)  p90=62.2% (28/45)  p95=64.4% (29/45)  p99=68.9% (31/45)  p99.9=75.6% (34/45)
+    observed 91.1% (41/45)   standardised distance +4.70 sd (descriptive only, the null is not normal)
+    p <= 9.999e-05 (BOUND, the floor of 10000 draws, C = 0)
+C2  i.i.d. shuffle, FIXED at P0     [correction (a) alone]
+    null mean 48.26%  sd 8.84%   min 17.8% (8/45)   max 84.4% (38/45)
+    p50=48.9% (22/45)  p90=60.0% (27/45)  p95=62.2% (28/45)  p99=68.9% (31/45)  p99.9=75.6% (34/45)
+    observed 91.1% (41/45)   standardised distance +4.85 sd (descriptive only, the null is not normal)
+    p <= 9.999e-05 (BOUND, the floor of 10000 draws, C = 0)
+C3  within-run shuffle, RE-STRAT    [pilot cell (iv)]
+    null mean 50.09%  sd 8.57%   min 17.8% (8/45)   max 77.8% (35/45)
+    p50=48.9% (22/45)  p90=62.2% (28/45)  p95=64.4% (29/45)  p99=71.1% (32/45)  p99.9=75.6% (34/45)
+    observed 91.1% (41/45)   standardised distance +4.79 sd (descriptive only, the null is not normal)
+    p <= 9.999e-05 (BOUND, the floor of 10000 draws, C = 0)
+C4  within-run shuffle, FIXED at P0 [FULLY CORRECTED]
+    null mean 47.26%  sd 8.90%   min 15.6% (7/45)   max 75.6% (34/45)
+    p50=46.7% (21/45)  p90=57.8% (26/45)  p95=62.2% (28/45)  p99=68.9% (31/45)  p99.9=73.3% (33/45)
+    observed 91.1% (41/45)   standardised distance +4.93 sd (descriptive only, the null is not normal)
+    p <= 9.999e-05 (BOUND, the floor of 10000 draws, C = 0)
+
+  Partition bookkeeping (asserts 5 and 6, both passed):
+    C2/C4 replayed P0 on 10000/10000 replicates (test index arrays identical, in order).
+    C1 realised a partition differing from P0 on 10000/10000 replicates; mean fraction of trials whose fold index moved = 71.4%
+    C3 differed from P0 on 10000/10000; mean fraction moved = 65.6%
+    A within-run shuffle preserved every run's counts on 10000/10000 replicates. An i.i.d. shuffle broke at least one run's counts: True
+
+  PAIRED difference d = acc(C2) - acc(C1), same labels, partition rule the ONLY thing that differs:
+    C2 - C1: mean(d) = -2.263 points   sd(d) = 8.652 points   MC se = 0.0865 points
+             |mean(d)| = 26.2 MC se and 1.02 trials (one trial = 2.22 points)
+             d != 0 on 89.7% of replicates, d > 0 on 34.5%
+             MATERIAL: True  (registered rule: > 3 MC se AND > 1 trial)
+    C4 - C3: mean(d) = -2.822 points   sd(d) = 8.836 points   MC se = 0.0884 points
+             |mean(d)| = 31.9 MC se and 1.27 trials (one trial = 2.22 points)
+             d != 0 on 90.3% of replicates, d > 0 on 33.1%
+             MATERIAL: True  (registered rule: > 3 MC se AND > 1 trial)
+
+  UNPAIRED distribution comparisons (different reference sets, so replicate-by-replicate
+  pairing is meaningless and is not used):
+    C3 - C1: mean difference -0.440 points  (MC se 0.1217, 3.6 se, 0.20 trials)   MATERIAL: False
+    C4 - C2: mean difference -0.999 points  (MC se 0.1254, 8.0 se, 0.45 trials)   MATERIAL: False
+    C4 - C1: mean difference -3.262 points  (MC se 0.1240, 26.3 se, 1.47 trials)   MATERIAL: True
+
+  Null sd by cell, and the ratio that A271's variance-inflation factor is computed from:
+    C1: sd 8.634 points (MC se 0.0611)   VIF against binomial sd 7.454 = 1.342   n_eff = 33.5
+    C2: sd 8.839 points (MC se 0.0625)   VIF against binomial sd 7.454 = 1.406   n_eff = 32.0
+    C3: sd 8.573 points (MC se 0.0606)   VIF against binomial sd 7.454 = 1.323   n_eff = 34.0
+    C4: sd 8.895 points (MC se 0.0629)   VIF against binomial sd 7.454 = 1.424   n_eff = 31.6
+    sd(C2)/sd(C1) = 1.0237  (MC se 0.0102, 2.3 se from 1)   MATERIAL: False
+
+  Tail mass at FIXED LATTICE POINTS, not at the maximum. A269 already withdrew
+  the max as too noisy a statistic to reason from.
+    cell      >= 32/45    >= 34/45    >= 36/45
+    C1              87          18           4
+    C2              71          12           3
+    C3             102          18           0
+    C4              52           7           0
+    (counts out of 10000; 32/45 = 71.1%, 34/45 = 75.6%, 36/45 = 80.0%)
+
+  Wilson on 41/45 at face value      = [79.3%, 96.5%]  width 17.2 pts
+  Wilson at n_eff from the CORRECTED C4 = [76.3%, 97.0%]  width 20.8 pts   (n_eff 31.6, VIF 1.424)
+
+------------------------------------------------------------------------------
+ARM A, SUBJECT 17   observed 62.2% (28/45)   chance (majority class) 53.3% (24/45)   (+8.9 points above chance)
+------------------------------------------------------------------------------
+C1  i.i.d. shuffle, RE-STRATIFIED   [the published null]
+    null mean 51.11%  sd 8.38%   min 20.0% (9/45)   max 82.2% (37/45)
+    p50=51.1% (23/45)  p90=62.2% (28/45)  p95=64.4% (29/45)  p99=71.1% (32/45)  p99.9=75.6% (34/45)
+    observed 62.2% (28/45)   standardised distance +1.33 sd (descriptive only, the null is not normal)
+    p =  0.11529 (C = 1152 of 10000)
+C2  i.i.d. shuffle, FIXED at P0     [correction (a) alone]
+    null mean 48.26%  sd 9.16%   min 17.8% (8/45)   max 80.0% (36/45)
+    p50=48.9% (22/45)  p90=60.0% (27/45)  p95=62.2% (28/45)  p99=68.9% (31/45)  p99.9=75.6% (34/45)
+    observed 62.2% (28/45)   standardised distance +1.52 sd (descriptive only, the null is not normal)
+    p =  0.079592 (C = 795 of 10000)
+C3  within-run shuffle, RE-STRAT    [pilot cell (iv)]
+    null mean 47.64%  sd 8.14%   min 17.8% (8/45)   max 77.8% (35/45)
+    p50=46.7% (21/45)  p90=57.8% (26/45)  p95=62.2% (28/45)  p99=66.7% (30/45)  p99.9=73.3% (33/45)
+    observed 62.2% (28/45)   standardised distance +1.79 sd (descriptive only, the null is not normal)
+    p =  0.052795 (C = 527 of 10000)
+C4  within-run shuffle, FIXED at P0 [FULLY CORRECTED]
+    null mean 43.80%  sd 8.73%   min 17.8% (8/45)   max 77.8% (35/45)
+    p50=44.4% (20/45)  p90=55.6% (25/45)  p95=57.8% (26/45)  p99=64.4% (29/45)  p99.9=68.9% (31/45)
+    observed 62.2% (28/45)   standardised distance +2.11 sd (descriptive only, the null is not normal)
+    p =  0.025197 (C = 251 of 10000)
+
+  Partition bookkeeping (asserts 5 and 6, both passed):
+    C2/C4 replayed P0 on 10000/10000 replicates (test index arrays identical, in order).
+    C1 realised a partition differing from P0 on 10000/10000 replicates; mean fraction of trials whose fold index moved = 71.5%
+    C3 differed from P0 on 10000/10000; mean fraction moved = 66.7%
+    A within-run shuffle preserved every run's counts on 10000/10000 replicates. An i.i.d. shuffle broke at least one run's counts: True
+
+  PAIRED difference d = acc(C2) - acc(C1), same labels, partition rule the ONLY thing that differs:
+    C2 - C1: mean(d) = -2.851 points   sd(d) = 8.360 points   MC se = 0.0836 points
+             |mean(d)| = 34.1 MC se and 1.28 trials (one trial = 2.22 points)
+             d != 0 on 89.9% of replicates, d > 0 on 31.8%
+             MATERIAL: True  (registered rule: > 3 MC se AND > 1 trial)
+    C4 - C3: mean(d) = -3.837 points   sd(d) = 8.799 points   MC se = 0.0880 points
+             |mean(d)| = 43.6 MC se and 1.73 trials (one trial = 2.22 points)
+             d != 0 on 91.2% of replicates, d > 0 on 29.0%
+             MATERIAL: True  (registered rule: > 3 MC se AND > 1 trial)
+
+  UNPAIRED distribution comparisons (different reference sets, so replicate-by-replicate
+  pairing is meaningless and is not used):
+    C3 - C1: mean difference -3.473 points  (MC se 0.1169, 29.7 se, 1.56 trials)   MATERIAL: True
+    C4 - C2: mean difference -4.459 points  (MC se 0.1266, 35.2 se, 2.01 trials)   MATERIAL: True
+    C4 - C1: mean difference -7.310 points  (MC se 0.1211, 60.4 se, 3.29 trials)   MATERIAL: True
+
+  Null sd by cell, and the ratio that A271's variance-inflation factor is computed from:
+    C1: sd 8.383 points (MC se 0.0593)   VIF against binomial sd 7.454 = 1.265   n_eff = 35.6
+    C2: sd 9.160 points (MC se 0.0648)   VIF against binomial sd 7.454 = 1.510   n_eff = 29.8
+    C3: sd 8.141 points (MC se 0.0576)   VIF against binomial sd 7.454 = 1.193   n_eff = 37.7
+    C4: sd 8.732 points (MC se 0.0617)   VIF against binomial sd 7.454 = 1.372   n_eff = 32.8
+    sd(C2)/sd(C1) = 1.0926  (MC se 0.0109, 8.5 se from 1)   MATERIAL: True
+
+  Tail mass at FIXED LATTICE POINTS, not at the maximum. A269 already withdrew
+  the max as too noisy a statistic to reason from.
+    cell      >= 32/45    >= 34/45    >= 36/45
+    C1             102          20           2
+    C2              82          14           2
+    C3              31           5           0
+    C4               9           1           0
+    (counts out of 10000; 32/45 = 71.1%, 34/45 = 75.6%, 36/45 = 80.0%)
+
+  Wilson on 28/45 at face value      = [47.6%, 74.9%]  width 27.3 pts
+  Wilson at n_eff from the CORRECTED C4 = [45.2%, 76.7%]  width 31.5 pts   (n_eff 32.8, VIF 1.372)
+
+------------------------------------------------------------------------------
+ARM A, SUBJECT 19   observed 64.4% (29/45)   chance (majority class) 51.1% (23/45)   (+13.3 points above chance)
+------------------------------------------------------------------------------
+C1  i.i.d. shuffle, RE-STRATIFIED   [the published null]
+    null mean 48.83%  sd 9.10%   min 17.8% (8/45)   max 82.2% (37/45)
+    p50=48.9% (22/45)  p90=60.0% (27/45)  p95=64.4% (29/45)  p99=68.9% (31/45)  p99.9=75.6% (34/45)
+    observed 64.4% (29/45)   standardised distance +1.72 sd (descriptive only, the null is not normal)
+    p =  0.055494 (C = 554 of 10000)
+C2  i.i.d. shuffle, FIXED at P0     [correction (a) alone]
+    null mean 47.04%  sd 9.18%   min 13.3% (6/45)   max 82.2% (37/45)
+    p50=46.7% (21/45)  p90=60.0% (27/45)  p95=62.2% (28/45)  p99=68.9% (31/45)  p99.9=75.6% (34/45)
+    observed 64.4% (29/45)   standardised distance +1.90 sd (descriptive only, the null is not normal)
+    p =  0.037396 (C = 373 of 10000)
+C3  within-run shuffle, RE-STRAT    [pilot cell (iv)]
+    null mean 48.07%  sd 8.99%   min 15.6% (7/45)   max 80.0% (36/45)
+    p50=48.9% (22/45)  p90=60.0% (27/45)  p95=62.2% (28/45)  p99=68.9% (31/45)  p99.9=75.6% (34/45)
+    observed 64.4% (29/45)   standardised distance +1.82 sd (descriptive only, the null is not normal)
+    p =  0.044496 (C = 444 of 10000)
+C4  within-run shuffle, FIXED at P0 [FULLY CORRECTED]
+    null mean 45.72%  sd 9.28%   min 13.3% (6/45)   max 80.0% (36/45)
+    p50=46.7% (21/45)  p90=57.8% (26/45)  p95=62.2% (28/45)  p99=68.9% (31/45)  p99.9=73.3% (33/45)
+    observed 64.4% (29/45)   standardised distance +2.02 sd (descriptive only, the null is not normal)
+    p =  0.030197 (C = 301 of 10000)
+
+  Partition bookkeeping (asserts 5 and 6, both passed):
+    C2/C4 replayed P0 on 10000/10000 replicates (test index arrays identical, in order).
+    C1 realised a partition differing from P0 on 10000/10000 replicates; mean fraction of trials whose fold index moved = 73.0%
+    C3 differed from P0 on 10000/10000; mean fraction moved = 68.0%
+    A within-run shuffle preserved every run's counts on 10000/10000 replicates. An i.i.d. shuffle broke at least one run's counts: True
+
+  PAIRED difference d = acc(C2) - acc(C1), same labels, partition rule the ONLY thing that differs:
+    C2 - C1: mean(d) = -1.783 points   sd(d) = 8.795 points   MC se = 0.0879 points
+             |mean(d)| = 20.3 MC se and 0.80 trials (one trial = 2.22 points)
+             d != 0 on 90.1% of replicates, d > 0 on 36.8%
+             MATERIAL: False  (registered rule: > 3 MC se AND > 1 trial)
+    C4 - C3: mean(d) = -2.356 points   sd(d) = 8.952 points   MC se = 0.0895 points
+             |mean(d)| = 26.3 MC se and 1.06 trials (one trial = 2.22 points)
+             d != 0 on 90.3% of replicates, d > 0 on 35.1%
+             MATERIAL: True  (registered rule: > 3 MC se AND > 1 trial)
+
+  UNPAIRED distribution comparisons (different reference sets, so replicate-by-replicate
+  pairing is meaningless and is not used):
+    C3 - C1: mean difference -0.755 points  (MC se 0.1279, 5.9 se, 0.34 trials)   MATERIAL: False
+    C4 - C2: mean difference -1.328 points  (MC se 0.1305, 10.2 se, 0.60 trials)   MATERIAL: False
+    C4 - C1: mean difference -3.111 points  (MC se 0.1300, 23.9 se, 1.40 trials)   MATERIAL: True
+
+  Null sd by cell, and the ratio that A271's variance-inflation factor is computed from:
+    C1: sd 9.098 points (MC se 0.0643)   VIF against binomial sd 7.454 = 1.490   n_eff = 30.2
+    C2: sd 9.179 points (MC se 0.0649)   VIF against binomial sd 7.454 = 1.517   n_eff = 29.7
+    C3: sd 8.985 points (MC se 0.0635)   VIF against binomial sd 7.454 = 1.453   n_eff = 31.0
+    C4: sd 9.279 points (MC se 0.0656)   VIF against binomial sd 7.454 = 1.550   n_eff = 29.0
+    sd(C2)/sd(C1) = 1.0089  (MC se 0.0101, 0.9 se from 1)   MATERIAL: False
+
+  Tail mass at FIXED LATTICE POINTS, not at the maximum. A269 already withdrew
+  the max as too noisy a statistic to reason from.
+    cell      >= 32/45    >= 34/45    >= 36/45
+    C1              82          14           2
+    C2              66          12           4
+    C3              80          13           2
+    C4              56          10           3
+    (counts out of 10000; 32/45 = 71.1%, 34/45 = 75.6%, 36/45 = 80.0%)
+
+  Wilson on 29/45 at face value      = [49.8%, 76.8%]  width 26.9 pts
+  Wilson at n_eff from the CORRECTED C4 = [46.3%, 79.2%]  width 32.9 pts   (n_eff 29.0, VIF 1.550)
+
+==============================================================================
+SECTION 4  SECONDARY MECHANISM PROBE (EXPLANATION ONLY, CHANGES NO NUMBER)
+==============================================================================
+Registered SEPARATELY and in advance, because this project's round-one
+failure mode was inventing the mechanism story in the same breath as the number,
+and because A269 already records one FAILED directional prediction (a heavier
+right tail for the restricted null, which reversed).
+
+THE MECHANISM UNDER TEST: under a FIXED partition a permuted-label test fold can be
+strongly unbalanced, and the complementary training folds are then unbalanced the
+OTHER way, so the classifier's induced prior is anti-correlated with the test
+fold's majority and those folds score WORSE. Re-stratification forbids such folds
+entirely, which would be why its null sits higher.
+
+PREDICTION: in C2, per-fold test-set imbalance correlates NEGATIVELY with per-fold
+accuracy. If the correlation is zero or positive the mechanism is WRONG and gets
+withdrawn. mean(d) and every p above are UNAFFECTED either way, because the
+measurement does not depend on the explanation.
+
+  Subject 1, C2 (fixed partition), 50000 folds (10000 replicates x 5):
+    distinct test-fold imbalances seen: 0.1111, 0.3333, 0.5556, 0.7778, 1.0000
+    Pearson r(imbalance, per-fold accuracy) = -0.1468
+    mean per-fold accuracy at the most balanced imbalance 0.1111: 49.91%
+    mean per-fold accuracy at the most extreme imbalance 1.0000: 31.39%
+    MECHANISM PREDICTION (negative r) HOLDS
+
+  Subject 17, C2 (fixed partition), 50000 folds (10000 replicates x 5):
+    distinct test-fold imbalances seen: 0.1111, 0.3333, 0.5556, 0.7778, 1.0000
+    Pearson r(imbalance, per-fold accuracy) = -0.1421
+    mean per-fold accuracy at the most balanced imbalance 0.1111: 49.83%
+    mean per-fold accuracy at the most extreme imbalance 1.0000: 28.78%
+    MECHANISM PREDICTION (negative r) HOLDS
+
+  Subject 19, C2 (fixed partition), 50000 folds (10000 replicates x 5):
+    distinct test-fold imbalances seen: 0.1111, 0.3333, 0.5556, 0.7778, 1.0000
+    Pearson r(imbalance, per-fold accuracy) = -0.2250
+    mean per-fold accuracy at the most balanced imbalance 0.1111: 49.56%
+    mean per-fold accuracy at the most extreme imbalance 1.0000: 21.83%
+    MECHANISM PREDICTION (negative r) HOLDS
+
+==============================================================================
+SECTION 5  ARM B: CROSS-SUBJECT LOSO, GLOBAL SHUFFLE AGAINST BLOCK SHUFFLE
+==============================================================================
+
+Pooled 900 trials from 20 subjects, 64 channels x 161 samples, 20 folds of 45
+Observed LOSO accuracy 59.4% (535/900)   against pooled majority-class rate 50.1% (451/900)   (+9.3 points)
+
+Per-subject majority-class rates across the 20: [0.5111, 0.5333]
+  0.5111 = 23/45 : subjects [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 15, 18, 19, 20]  (n = 14)
+  0.5333 = 24/45 : subjects [1, 2, 3, 14, 16, 17]  (n = 6)
+A268 records the marginal as 'fixed by the protocol at a near-balanced
+21/24'. That is right for subject 1 and WRONG as a statement about the
+pooled set. A268 needs correcting, and the heterogeneity above is exactly
+the structure a global shuffle destroys.
+
+LeaveOneGroupOut._iter_test_masks reads ONLY `groups`, so the LOSO partition is
+already invariant to the labels and arm (a)'s defect does not exist here. What is
+wrong in arm (b) is the REFERENCE SET, not the partition: a global shuffle draws
+label vectors the experiment could not have produced.
+
+  G = global permutation of all 900. What cross_subject.py:135 does, 2000 times
+      instead of once.
+  B = within-subject block permutation. Correction (b).
+
+UNPAIRED BY CONSTRUCTION and reported as such.
+
+MECHANISM EXHIBIT (descriptive, not a test). sd across the 2000 replicates of each
+held-out subject's OWN majority-class rate, the constant every LOSO fold is read against:
+  under B (block): range across replicates is EXACTLY 0 for all 20 subjects.
+                   np.std reports 2.09e-14, which is float accumulation on a
+                   constant array, not variation.
+  under G (global): mean 0.0434, range [0.0420, 0.0447]
+  worst single draw under G: some subject reached a majority rate of 80.0% (36/45), a class split the experiment
+  could not have produced. That variance has nothing to do with decoding.
+
+------------------------------------------------------------------------------
+ARM B RESULTS
+------------------------------------------------------------------------------
+G  GLOBAL permutation of all 900   [what cross_subject.py does]
+    null mean 49.59%  sd 2.01%   min 43.2% (389/900)   max 55.8% (502/900)
+    p50=49.7% (447/900)  p90=52.1% (469/900)  p95=52.9% (476/900)  p99=54.2% (488/900)  p99.5=54.7% (492/900)  p99.9=55.6% (500/900)
+    observed 59.4% (535/900)   standardised distance +4.91 sd (descriptive only, the null is not normal)
+    p <= 0.00049975 (BOUND, the floor of 2000 draws, C = 0)
+B  WITHIN-SUBJECT block permutation [correction (b)]
+    null mean 50.04%  sd 1.28%   min 45.0% (405/900)   max 54.1% (487/900)
+    p50=50.0% (450/900)  p90=51.6% (464/900)  p95=52.1% (469/900)  p99=53.1% (478/900)  p99.5=53.4% (481/900)  p99.9=54.1% (487/900)
+    observed 59.4% (535/900)   standardised distance +7.37 sd (descriptive only, the null is not normal)
+    p <= 0.00049975 (BOUND, the floor of 2000 draws, C = 0)
+
+  sd(G) = 2.007 points (MC se 0.0317)
+  sd(B) = 1.276 points (MC se 0.0202)
+  sd ratio sd(G)/sd(B) = 1.5730  (delta-method MC se 0.0352, 16.3 se from 1)
+  bootstrap cross-check on that se (2000 resamples): 0.0346, 95% interval [1.510, 1.643]
+  MATERIAL (registered rule: differs from 1 by > 3 MC se): True
+  null MEAN difference G - B = -0.447 points (MC se 0.0532, 8.4 se, 0.20 within-subject trials)
+
+------------------------------------------------------------------------------
+THE DELIVERABLE: A REPLACEMENT FOR SHUFFLE_MAX = 0.60
+------------------------------------------------------------------------------
+cross_subject.py:146 holds its label-shuffle leakage guard to a hard-coded
+0.60. That is a round number with no derivation anywhere in the repo. Below it is
+replaced by a measured quantile of the CORRECT reference distribution.
+
+  BLOCK null (correction (b)), on the k/900 lattice:
+    99.0th percentile = 53.1% (478/900)   <- proposed replacement for SHUFFLE_MAX
+    99.5th percentile = 53.4% (481/900)   <- the more conservative option
+  GLOBAL null (what the repo currently permutes), for comparison:
+    99.0th percentile = 54.2% (488/900)
+    99.5th percentile = 54.7% (492/900)
+
+  Where the existing 0.60 sits:
+    in the BLOCK null : +7.81 sd, percentile 100.00, 0 of 2000 draws at or above it
+    in the GLOBAL null: +5.19 sd, percentile 100.00, 0 of 2000 draws at or above it
+    against the OBSERVED cross-subject result 59.4% (535/900): the guard sits +0.6 points from it
+
+  Replacement lands ABOVE 0.60: False
+  What this does NOT show: none of these quantiles was validated against a REAL
+  leak. cross_subject.py:143 already discloses that its guard has never fired.
+  Replacing an underived threshold with a derived one does not measure the guard's
+  false-alarm rate against an actual defect.
+
+==============================================================================
+SECTION 6  WHICH PRE-REGISTERED OUTCOME EACH RESULT MATCHES
+==============================================================================
+Registered materiality, fixed before the run:
+  p-value change   : crosses 0.05, or both off the floor and differing by a factor >= 2
+  paired mean(d)   : > 3 MC se AND > 1/45 = 2.22 points (ONE WHOLE TRIAL)
+  sd ratio         : differs from 1 by more than 3 MC se
+
+FALSIFICATION GATES (these say the HARNESS is broken, not that the result is interesting):
+  1. pilot reproduces          : 4/4 cells match A269 -> PASS
+  2. C1 is what sklearn does   : PASS (z_mean +0.64, z_sd +0.90)
+  3. lattice on every replicate: PASS (asserted k/45 on every arm A replicate, k/900 on every arm B replicate, to 1e-9)
+  4. observed = 41/45 on P0    : PASS
+  5. fixed cells really fixed  : PASS (C2 and C4 replayed P0 on every replicate)
+  6. subjects 17/19 reproduce  : PASS (28/45 and 29/45)
+  7. block/global marginals    : PASS (block preserved every marginal; global changed at least one; pooled counts preserved everywhere)
+  8. null means in [0.45,0.55] : FIRES on [(17, 'C4')]
+       every cell's null mean, printed so nothing is hidden:
+         subject 1   C1 0.5053   C2 0.4826   C3 0.5009   C4 0.4726 
+         subject 17  C1 0.5111   C2 0.4826   C3 0.4764   C4 0.4380*
+         subject 19  C1 0.4883   C2 0.4704   C3 0.4807   C4 0.4572 
+         arm B     G  0.4959   B  0.5004
+       * = OUTSIDE the registered 0.45-0.55 band. Every one of them is a
+       FIXED-partition cell (C2 or C4). Per pre-registration Section 6.5
+       this run's Sections 6.1-6.4 are UNREPORTABLE. They are reported
+       anyway, and this line is why: SECTION 2B shows a majority-class
+       dummy on an all-zero feature matrix reproduces the same downward
+       shift with no EEG involved, so the band is a property of
+       re-stratification and not a test of null specification. That is a
+       POST-HOC departure, decided after a smoke run tripped the assert,
+       and it moves the result in this project's favour. No re-stratified
+       cell and neither arm B cell is outside the band.
+
+------------------------------------------------------------------------------
+SUBJECT 1
+------------------------------------------------------------------------------
+  p by cell: C1 <= 9.999e-05 (BOUND, the floor of 10000 draws, C = 0)
+             C2 <= 9.999e-05 (BOUND, the floor of 10000 draws, C = 0)
+             C3 <= 9.999e-05 (BOUND, the floor of 10000 draws, C = 0)
+             C4 <= 9.999e-05 (BOUND, the floor of 10000 draws, C = 0)
+  -> [neutral] REGISTERED, NEAR-CERTAIN OUTCOME for a large effect: both p-values at
+     the floor, C = 0 in every cell. The correction does not change the verdict.
+     This is NOT evidence the original null was correctly designed. It is evidence
+     the effect is large enough that the design error cannot change the answer.
+  -> [good for the headline, bad for the design] mean(d) materially NEGATIVE
+     (-2.263 points): the fixed-partition null sits BELOW the re-stratified one, so
+     the published null is TOO HIGH and the published p is CONSERVATIVE. The error ran
+     against the project's own interest. Report as 'the error was in the safe
+     direction, which we did not know until we measured it', never as vindication.
+  -> [good] within-run cells are NOT materially different from i.i.d. cells
+     (C3 - C1 = -0.440 points). Run blocking does not matter for this subject:
+     trials behave as exchangeable across runs. This SUPPORTS the published i.i.d.
+     null as adequate here.
+  -> [depends] C4 (FULLY CORRECTED) differs materially from C1 (-3.262 points).
+     This is the headline result of arm A whichever direction it goes, because C4 is
+     the null with the weakest assumptions and the correct conditioning. Its p is the
+     one that should be published going forward.
+
+------------------------------------------------------------------------------
+SUBJECT 17
+------------------------------------------------------------------------------
+  p by cell: C1 =  0.11529 (C = 1152 of 10000)
+             C2 =  0.079592 (C = 795 of 10000)
+             C3 =  0.052795 (C = 527 of 10000)
+             C4 =  0.025197 (C = 251 of 10000)
+  -> p-values are INTERIOR, so they were FREE to move. Published C1 is NOT significant at 0.05.
+     crossed 0.05 UPWARD (lost significance)  : none
+     crossed 0.05 DOWNWARD (gained significance): ['C4']
+     C4 (fully corrected) against C1 (published): 0.0252 against 0.1153, factor 4.58
+     (material at factor >= 2: True)
+  -> [depends] the corrected p crosses 0.05 DOWNWARD. The same demonstration with the
+     opposite sign: the published null was costing real detections. Equally
+     publishable, and it must NOT be sold as a bonus.
+  -> [good for the headline, bad for the design] mean(d) materially NEGATIVE
+     (-2.851 points): the fixed-partition null sits BELOW the re-stratified one, so
+     the published null is TOO HIGH and the published p is CONSERVATIVE. The error ran
+     against the project's own interest. Report as 'the error was in the safe
+     direction, which we did not know until we measured it', never as vindication.
+  -> [depends] null SD differs materially between C1 and C2 (ratio 1.0926). The
+     correction changes the null's SPREAD. A271's variance-inflation factor and the
+     n_eff-corrected Wilson interval are computed from the null sd and must be
+     recomputed from the corrected null (printed in section 3).
+  -> [good for the headline] the block null is materially LOWER (-3.473 points).
+     The i.i.d. null was conservative for a second, independent reason. Same
+     discipline: safe direction, not vindication.
+  -> [depends] C4 (FULLY CORRECTED) differs materially from C1 (-7.310 points).
+     This is the headline result of arm A whichever direction it goes, because C4 is
+     the null with the weakest assumptions and the correct conditioning. Its p is the
+     one that should be published going forward.
+
+------------------------------------------------------------------------------
+SUBJECT 19
+------------------------------------------------------------------------------
+  p by cell: C1 =  0.055494 (C = 554 of 10000)
+             C2 =  0.037396 (C = 373 of 10000)
+             C3 =  0.044496 (C = 444 of 10000)
+             C4 =  0.030197 (C = 301 of 10000)
+  -> p-values are INTERIOR, so they were FREE to move. Published C1 is NOT significant at 0.05.
+     crossed 0.05 UPWARD (lost significance)  : none
+     crossed 0.05 DOWNWARD (gained significance): ['C2', 'C3', 'C4']
+     C4 (fully corrected) against C1 (published): 0.0302 against 0.05549, factor 1.84
+     (material at factor >= 2: False)
+  -> [depends] the corrected p crosses 0.05 DOWNWARD. The same demonstration with the
+     opposite sign: the published null was costing real detections. Equally
+     publishable, and it must NOT be sold as a bonus.
+  -> [neutral] mean(d) = -1.783 points is NOT material (20.3 MC se,
+     0.80 trials). The partition rule does not change the null at a
+     magnitude anyone should act on for this dataset. This must NOT be written as
+     'the objection was wrong': it was a real defect that turned out not to bite at n=45.
+  -> [good] within-run cells are NOT materially different from i.i.d. cells
+     (C3 - C1 = -0.755 points). Run blocking does not matter for this subject:
+     trials behave as exchangeable across runs. This SUPPORTS the published i.i.d.
+     null as adequate here.
+  -> [depends] C4 (FULLY CORRECTED) differs materially from C1 (-3.111 points).
+     This is the headline result of arm A whichever direction it goes, because C4 is
+     the null with the weakest assumptions and the correct conditioning. Its p is the
+     one that should be published going forward.
+
+------------------------------------------------------------------------------
+ARM B
+------------------------------------------------------------------------------
+  p under G (global) <= 0.00049975 (BOUND, the floor of 2000 draws, C = 0)
+  p under B (block)  <= 0.00049975 (BOUND, the floor of 2000 draws, C = 0)
+  -> [good] the observed 59.4% (535/900) remains far outside the BLOCK null. The
+     cross-subject finding survives the correct null. Reported with the floor
+     convention as p <= 0.00049975, never as a measured value.
+  -> [good for rigour, bad for the existing guard] sd(B) is materially SMALLER than
+     sd(G) (ratio 1.573). The global shuffle inflates the null by re-dealing each
+     held-out subject's class marginal, a variance source unrelated to decoding. The
+     published guard is loose for a NAMEABLE reason, and the replacement threshold is
+     this arm's deliverable. Confirms A270 at 10x the draws.
+  -> the replacement threshold (53.1% (478/900)) lands BELOW 0.60, so the existing guard is
+     LOOSER than the correct null justifies, consistent with A41's reading.
+
+------------------------------------------------------------------------------
+SECONDARY MECHANISM PROBE (changes nothing above)
+------------------------------------------------------------------------------
+  subject 1: r(fold imbalance, fold accuracy) in C2 = -0.1468  -> [neutral] SUPPORTED, explanation only
+  subject 17: r(fold imbalance, fold accuracy) in C2 = -0.1421  -> [neutral] SUPPORTED, explanation only
+  subject 19: r(fold imbalance, fold accuracy) in C2 = -0.2250  -> [neutral] SUPPORTED, explanation only
+  Either way, mean(d) and every p above are UNAFFECTED: the measurement does
+  not depend on the explanation. Registered this way deliberately, because
+  A269 already carries one failed directional prediction.
+
+==============================================================================
+REGISTERED RISKS THAT THIS RUN DOES NOT REPAIR
+==============================================================================
+  1. Subject 1's arm was uninformative BY CONSTRUCTION and that was known
+     before the run. Its p cannot move at a 4.5 sd effect. Presenting 'p
+     unchanged' as a clean confirmation would be reading a resolution floor as a
+     measurement.
+  2. This run is not blind. A269 and A270 were read before the pre-registration
+     was written. Agreement is confirmation at higher resolution with a paired
+     design, not independent discovery.
+  3. n = 45 per subject. Every null here is small-sample and the within-subject
+     null is not binomial. Nothing here repairs that.
+  4. Three subjects is not a survey. 17 and 19 came from a fixed median rule but
+     are still 2 of 109, chosen for statistical position. The claim available is
+     EXISTENCE, never frequency.
+  5. Runs 6/10/14 are one session. Within-run blocking addresses drift INSIDE a
+     run. A session-level trend across all three survives every null here.
+  6. Arm B reuses cross_subject.py's documented 20-subject budget, not the full
+     109. The block-permutation conclusion is scoped to those 20.
+  7. Two of the six comparisons are unpaired by construction and carry Monte
+     Carlo noise the paired ones do not. They are labelled as such above.
+
+==============================================================================
+DONE
+==============================================================================

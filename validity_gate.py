@@ -1,5 +1,9 @@
 """G-S, the y_obs-independence gate registered in prereg-permutation-validity.md §4.
 
+NAVIGATION. The G-S gate registered in prereg-permutation-validity.md. Small on purpose:
+it answers one question, whether the null is independent of the observed labels, and it
+answers it the way the pre-registration said it would before the run happened.
+
 Deterministic. No EEG, no Monte Carlo, no estimator, no tie-break. A permutation
 rule is a pair (partition, permutation group). Theorem 3.1's hypothesis 2 says
 neither object may be a function of the observed label vector. G-S checks that
@@ -27,7 +31,7 @@ N_SPLITS = 5
 N_TRIPLES = 200
 
 # Subject marginals as (n_class2, n_class3), verified against the committed run
-# stdout at neuro-canon/runs/permutation-design-2026-07-25.stdout:22,33,44.
+# stdout at prereg/runs/permutation-design-2026-07-25.stdout:22,33,44.
 # permutation_design.py:297 sets event_id=dict(T1=2, T2=3), so class 2 is hands.
 MARGINALS = {1: (21, 24), 17: (24, 21), 19: (22, 23)}
 

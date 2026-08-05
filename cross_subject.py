@@ -1,5 +1,7 @@
 """Train on other people, test on someone the model has never seen.
 
+59.4% with zero calibration; goes to show the decoder is NOT generalizable yet.
+
 Everything up to this rung is WITHIN-subject: the model trains and tests on the
 same person's brain. That is a real result, but it is not the result a working
 BCI needs. A deployed system meets a new user whose skull thickness, cortical
@@ -65,7 +67,7 @@ SUBJECTS = list(range(1, 21))
 RUNS = [6, 10, 14]
 TMIN, TMAX = -1.0, 4.0
 L_FREQ, H_FREQ = 8.0, 30.0
-WITHIN_CSV = "sweep_results.csv"
+WITHIN_CSV = "results/sweep_results.csv"
 
 
 def load_subject(subject):
@@ -181,7 +183,7 @@ print(f"subjects above pooled chance: {(scores > chance_all).sum()}/{len(scores)
 # cross-subject score sitting at chance is a legitimate scientific finding about
 # how badly naive CSP transfers, not a bug in the code. An assert would convert
 # that finding into a crash, and the obvious way to make a crash go away is to
-# tune until it passes. That is precisely the behaviour this file forbids.
+# tune until it passes. That is precisely the behavior this file forbids.
 #
 # So it reports and warns. The negative control above (shuffled labels must
 # collapse) is the one that gets to abort, because an elevated shuffled score
@@ -245,7 +247,7 @@ if paired:
     ax.set_title("The transfer gap: same people, trained on themselves vs. on others")
     ax.legend()
     fig.tight_layout()
-    fig.savefig("cross_vs_within.png", dpi=120)
-    print("\nSaved cross_vs_within.png")
+    fig.savefig("figures/cross_vs_within.png", dpi=120)
+    print("\nSaved figures/cross_vs_within.png")
 else:
     print(f"\n({WITHIN_CSV} not found -- run sweep_subjects.py for the paired comparison.)")

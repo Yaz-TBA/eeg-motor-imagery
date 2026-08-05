@@ -1,5 +1,9 @@
 """Left fist vs. right fist: the same pipeline on a genuinely harder problem.
 
+Understandable that when refined to determine left vs right fist, the accuracy DROPS.
+Realistically this is the more accurate application for a real BCI. Less accuracy when
+the classes move closer together makes sense & is worth more than mindless verification.
+
 Fists-vs-feet is close to the easiest motor-imagery contrast there is. Hands sit
 laterally on the motor homunculus and feet sit up near the midline, so the two
 classes light up parts of cortex that are centimetres apart and their scalp
@@ -52,7 +56,7 @@ were hardcoded string constants, and the framing around them was wrong:
 
 And then the real problem, which is the reason this rung is worth keeping. The
 PhysioNet protocol puts the target on the LEFT or RIGHT of the screen and leaves
-it there for the whole trial, so a lateralised visual stimulus is present for the
+it there for the whole trial, so a lateralized visual stimulus is present for the
 entire decoding window. A left/right decoder can ride the subject's EYES instead
 of their motor cortex. EEGMMIDB ships no EOG channels and this pipeline has no
 ICA, so that confound can be bounded by ablation but never removed. The ablation
@@ -113,7 +117,7 @@ def main():
 
     # FRONTOPOLAR comes from common.py: the 8 most anterior electrodes in the montage.
     # If a "motor imagery" decoder works using ONLY these, it is not reading motor
-    # cortex -- they sit above the eyes, which is exactly where a lateralised gaze
+    # cortex -- they sit above the eyes, which is exactly where a lateralized gaze
     # artifact would show up. That is the whole point of this file's ablation.
 
 
@@ -177,7 +181,7 @@ def main():
     def permutation(epochs, picks=None, crop=CROP):
         X, y = features(epochs, picks, crop)
         # permutation_test_score takes no error_score argument; it fits directly and
-        # lets exceptions propagate, which is the behaviour we want anyway.
+        # lets exceptions propagate, which is the behavior we want anyway.
         observed, null_scores, p_value = permutation_test_score(
             make_clf(X.shape[1]), X, y, scoring="accuracy", cv=cv_split(),
             n_permutations=N_PERMUTATIONS, random_state=SEED, n_jobs=-1,
@@ -275,7 +279,7 @@ def main():
 
     # --- 5. but the confound is still real: look at the raw amplitude -------------
     # CSP builds log-VARIANCE features, which are close to blind to a steady DC offset.
-    # A lateralised gaze deviation is exactly a steady offset, so CSP is the wrong
+    # A lateralized gaze deviation is exactly a steady offset, so CSP is the wrong
     # instrument for finding it, and section 4's near-chance frontopolar row is NOT
     # evidence that the eyes are quiet. Mean amplitude is the right instrument.
     print("\n--- The confound is real anyway: frontopolar MEAN AMPLITUDE, not variance ---")
@@ -337,18 +341,18 @@ def main():
     # --- 6. the honesty check on the spatial patterns ----------------------------
     # Left and right hand imagery differ by HEMISPHERE. So the CSP patterns must come
     # out laterally asymmetric, weighted over C3 vs C4, rather than the central-vs-
-    # lateral pattern that fists-vs-feet produced. If they are not lateralised,
+    # lateral pattern that fists-vs-feet produced. If they are not lateralized,
     # either the labels are wrong or the model is riding an artifact. This is a weak
     # check: sections 4-5 above are the real ones, because a topography read by eye
     # cannot tell a motor pattern from an ocular one.
     csp_full = CSP(n_components=4, reg=None, log=True, norm_trace=False)
     csp_full.fit_transform(data, labels)
     fig = csp_full.plot_patterns(epochs.info, components=range(4), ch_type="eeg", show=False)
-    fig.savefig("csp_patterns_lr.png", dpi=120, bbox_inches="tight")
+    fig.savefig("figures/csp_patterns_lr.png", dpi=120, bbox_inches="tight")
 
-    print("\nSaved csp_patterns_lr.png")
+    print("\nSaved figures/csp_patterns_lr.png")
     print("Sanity check: these patterns should be LEFT/RIGHT asymmetric (C3 vs C4),")
-    print("not the central-vs-lateral pattern in csp_patterns.png. Compare them --")
+    print("not the central-vs-lateral pattern in figures/csp_patterns.png. Compare them --")
     print("but treat the ablation above, not the picture, as the evidence.")
 
 

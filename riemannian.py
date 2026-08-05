@@ -1,5 +1,9 @@
 """Classify covariance matrices on their own curved geometry, not as flat vectors.
 
+Covariance matrices don't live in flat space, they live on a curved manifold, and
+measuring distance along the curve instead of straight through it turns out to work
+better. Genuinely one of the prettiest ideas in the whole field.
+
 This rung exists to answer the failure the previous one measured. cross_subject.py
 measures a 4.7-point within-to-cross gap that this repo's own test cannot
 distinguish from zero: 95% CI [-1.9, +11.2] points, paired t = +1.390, p = 0.181
@@ -229,5 +233,5 @@ ax.set_ylabel("cross-subject accuracy (LOSO)")
 ax.set_title("Does manifold geometry survive the jump to a new person?")
 ax.legend()
 fig.tight_layout()
-fig.savefig("riemannian_comparison.png", dpi=120)
-print("\nSaved riemannian_comparison.png")
+fig.savefig("figures/riemannian_comparison.png", dpi=120)
+print("\nSaved figures/riemannian_comparison.png")

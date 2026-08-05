@@ -1,5 +1,9 @@
 """Run the whole pipeline on all 109 subjects, not just the lucky one.
 
+Subject 1 gets 91.1%. The median across all 109 is 60.0%. Both numbers are true, but
+it's entirely worth testing ALL subjects to confirm the result isn't just subject 1
+being unusually easy to decode ?
+
 This is the rung that turns a demo into a result. A single subject's accuracy
 says almost nothing about the METHOD -- subject 1 is a clean recording, and
 per-subject quality in this dataset varies enormously.
@@ -290,7 +294,7 @@ if odd:
         print(f"  S{r['subject']:03d}: {r['sfreq']:g} Hz")
 
 # --- csv + figure -------------------------------------------------------------
-with open("sweep_results.csv", "w") as fh:
+with open("results/sweep_results.csv", "w") as fh:
     fh.write("subject,accuracy,chance,n_trials,sfreq,status\n")
     for r in rows:
         a = "" if np.isnan(r["accuracy"]) else f"{r['accuracy']:.4f}"
@@ -312,6 +316,6 @@ ax.set_title("CSP+LDA across all subjects: the method, not one recording")
 ax.set_ylim(0, 1)
 ax.legend(loc="upper left")
 fig.tight_layout()
-fig.savefig("subject_distribution.png", dpi=120)
+fig.savefig("figures/subject_distribution.png", dpi=120)
 
-print("\nSaved sweep_results.csv and subject_distribution.png")
+print("\nSaved results/sweep_results.csv and figures/subject_distribution.png")

@@ -1,11 +1,29 @@
 .venv/
 __pycache__/
 *.pyc
-# Matches the live cache AND every dated backup beside it (e.g.
-# .provenance_cache.pre-2026-07-25/). The bare `.provenance_cache/` rule did not,
-# so a `git add -A` would have committed a stale evidence pool that check_claims.py
-# could later read by mistake.
-.provenance_cache*/
+
+# The LIVE evidence pool is TRACKED, deliberately. check_provenance.py matches every numeric
+# claim in README.md and EXPLAINER.md against a script's captured stdout, and without this
+# directory a reader who clones has to re-run all sixteen scripts (about three hours, and
+# permutation_design.py alone is nearly five) before the guard can tell them anything. A claim
+# that can only be checked by people who already have the cache is not checkable.
+#
+# This is NOT a contradiction of the STATUS.json rule below, and the difference is the reason
+# both rules can coexist: STATUS.json describes MUTABLE CURRENT STATE and is stale the moment
+# a commit lands. The provenance cache is a RECORD OF WHAT A SPECIFIC VERSION OF A SCRIPT
+# PRINTED, keyed by a SHA-256 of that script's source (see meta.json). Change the source and
+# the key changes and the entry stops matching, automatically. It cannot silently go stale.
+#
+# Contents are VERBATIM stdout and are never edited, including the three files that carry a
+# local MNE download path (~/mne_data/...). Scrubbing them would make the cache no longer a
+# faithful capture, which is the property the whole guard rests on.
+#
+# The dated backup pools beside it stay ignored: they are superseded evidence, and a stale
+# pool that check_provenance.py could read by mistake is worse than no pool. This rule is
+# written as `.provenance_cache.*/` rather than the old `.provenance_cache*/` on purpose --
+# git cannot re-include a file whose parent directory is excluded, so a `!` negation after
+# the wider glob would have silently done nothing.
+.provenance_cache.*/
 
 # permutation_design.py block checkpoints: raw per-replicate scores, regenerable.
 .permutation_design_cache/

@@ -1,5 +1,11 @@
 """Measure what a CORRECTLY DESIGNED permutation null does to this repo's p-values.
 
+NAVIGATION. This is the registered validity run and it is long since the design IS the
+result. Section 0 sets up, section 1 is falsification gate 1 (does the pilot reproduce),
+section 2 is gate 2 (sklearn agreement), and the two arms diverge after that. If you only
+want the outcome, search for "PRE-REGISTERED VERDICT". No jokes anywhere in this file, on
+purpose: a script whose whole job is showing I didn't fool myself should read like one.
+
 WHY THIS SCRIPT EXISTS. Two published nulls in this repo are built on assumptions
 the experiment does not satisfy, and until now the repo has conceded that in prose
 without measuring it.
@@ -139,7 +145,7 @@ def main():
     # are included rather than inventing a tie-break.
     SUBJECTS_A = [1, 17, 19]
     SUBJECTS_B = list(range(1, 21))
-    WITHIN_CSV = "sweep_results.csv"
+    WITHIN_CSV = "results/sweep_results.csv"
 
     # A269, the pilot, quoted here as the PRIOR. This run confirms or contradicts it;
     # it does not discover it independently. Order: null mean %, null sd %, null max %.

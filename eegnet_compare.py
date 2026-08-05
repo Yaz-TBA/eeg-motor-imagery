@@ -1,5 +1,9 @@
 """Does a compact CNN beat a well-understood classical baseline?
 
+The rung where a units bug meant the CNN was never actually training, and it still
+produced a number that looked like a real finding. Everything downstream of that is why
+the assert in `for_torch` exists.
+
 EEGNet learns its temporal and spatial filters end to end instead of having them
 hand-designed. Structurally it is doing what CSP does, but learned: a temporal
 convolution discovers frequency filters, then a depthwise spatial convolution
@@ -144,12 +148,12 @@ def for_torch(X):
 
     UNITS BUG, caught by adversarial review after the first version of this rung
     was already written up. MNE returns data in VOLTS: X.std() is about 1.3e-5,
-    so the variance is about 1.6e-10. braindecode's EEGNet normalises with
+    so the variance is about 1.6e-10. braindecode's EEGNet normalizes with
     BatchNorm2d(eps=1e-3), and a variance SEVEN ORDERS OF MAGNITUDE below eps
     means the batch-norm denominator is essentially just eps: it divides by
     sqrt(1e-3) = 0.0316 where the signal's own sigma is ~7e-6, so the first
     BatchNorm's output lands about 4500x too small instead of at unit scale.
-    Normalisation never engages.
+    Normalization never engages.
 
     WITHDRAWN 2026-07-25, AND KEPT VISIBLE. This docstring used to continue:
     "activations stay near 1e-8, and the network cannot train: reaching useful
@@ -165,7 +169,7 @@ def for_torch(X):
     each BN stage renormalises, so the deficit decays down the stack, and no
     script in this repo measures the end-to-end scale. Do not restate any
     end-to-end multiplier from this file. "The network cannot train out of it"
-    is therefore supported by the OBSERVED behaviour below rather than by that
+    is therefore supported by the OBSERVED behavior below rather than by that
     arithmetic, and downstream prose should say plausible, not established.
 
     THE OBSERVED BEHAVIOUR, recorded as history rather than as a live result.
@@ -185,11 +189,11 @@ def for_torch(X):
     """
     Xs = (X * 1e6).astype(np.float32)
     # The guard that would have caught this in the first place. BatchNorm can
-    # only normalise if the signal variance is well above its eps.
+    # only normalize if the signal variance is well above its eps.
     var = float(Xs.var())
     assert var > 1e3 * BN_EPS, (
         f"Signal variance {var:.2e} is not comfortably above BatchNorm eps "
-        f"{BN_EPS:.0e}. BatchNorm will not normalise and the network will not "
+        f"{BN_EPS:.0e}. BatchNorm will not normalize and the network will not "
         f"train. Check the units: MNE returns volts, torch models want microvolts."
     )
     return Xs
@@ -366,5 +370,5 @@ ax.set_ylim(0, 1)
 ax.set_title("Learned filters vs. designed filters, at three sample sizes")
 ax.legend()
 fig.tight_layout()
-fig.savefig("eegnet_vs_csp.png", dpi=120)
-print("\nSaved eegnet_vs_csp.png")
+fig.savefig("figures/eegnet_vs_csp.png", dpi=120)
+print("\nSaved figures/eegnet_vs_csp.png")

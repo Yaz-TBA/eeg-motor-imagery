@@ -1,5 +1,8 @@
 """Ask the question a skeptical reader asks first: how do you know the number is real?
 
+This is the file that moved the headline from 94.4% to 91.1%. Was written to verify my
+own result and it succeeded in denying it, which i guess means it worked.. yippeeee ! :P
+
 THIS RUNG IS WHAT CHANGED THE HEADLINE. decode_csp.py originally reported
 "94.4% +/- 5.6%" from 10 random 80/20 splits (ShuffleSplit); it now uses
 StratifiedKFold(5) and reports 91.1% with a permutation p <= 0.001. The original
@@ -252,7 +255,7 @@ def main():
     print(f"\n--- 6. Seed sensitivity across {N_SEEDS} random_state values ---")
     # BOTH estimators get swept. Sweeping only the retracted one (ShuffleSplit) and
     # then attaching its "not cherry-picked" verdict to the PUBLISHED number would be
-    # a bait-and-switch: they are different estimators with different seed behaviour.
+    # a bait-and-switch: they are different estimators with different seed behavior.
     seed_means = np.array([
         cross_val_score(make_clf(), data, labels,
                         cv=ShuffleSplit(n_splits=10, test_size=0.2, random_state=s),
@@ -296,7 +299,7 @@ def main():
     ax.set_title(f"Permutation test: p = {p_value:.4f} ({N_PERMUTATIONS} shuffles)")
     ax.legend()
     fig.tight_layout()
-    fig.savefig("permutation_null.png", dpi=120)
+    fig.savefig("figures/permutation_null.png", dpi=120)
 
     fig, ax = plt.subplots(figsize=(7, 4))
     ax.hist(seed_means, bins=20, color="#b0b8c4", edgecolor="white")
@@ -306,9 +309,9 @@ def main():
     ax.set_title(f"The headline moves {100*(seed_means.max()-seed_means.min()):.0f} points with the seed")
     ax.legend()
     fig.tight_layout()
-    fig.savefig("seed_sensitivity.png", dpi=120)
+    fig.savefig("figures/seed_sensitivity.png", dpi=120)
 
-    print("\nSaved permutation_null.png and seed_sensitivity.png")
+    print("\nSaved figures/permutation_null.png and figures/seed_sensitivity.png")
 
 
 

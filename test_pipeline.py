@@ -1,5 +1,9 @@
 """Regression tests for the claims this repo publishes.
 
+NAVIGATION. Regression tests, not 'does it run' tests. Each one guards a mistake this
+project actually made and had to retract, so a future edit that reintroduces it fails
+here instead of in the README.
+
 These are deliberately not "does the code run" tests. Each one guards a specific mistake
 this project actually made and had to retract, so a future edit that reintroduces the
 mistake fails here instead of in a README.
@@ -179,7 +183,7 @@ def test_complement_size_is_47():
 # =============================================================================
 
 def test_for_torch_rejects_volts_scale_data():
-    """MNE returns volts. Feeding volts to EEGNet leaves BatchNorm unable to normalise,
+    """MNE returns volts. Feeding volts to EEGNet leaves BatchNorm unable to normalize,
     and the network scores exactly the majority-class rate while being dead. That read as
     'CNN performs at chance on small data', which is a completely plausible finding and
     was wrong. The guard makes that state unreachable."""
@@ -188,7 +192,7 @@ def test_for_torch_rejects_volts_scale_data():
         common.for_torch(volts / 1e6)   # a thousand times smaller still: unambiguously dead
     except AssertionError:
         return
-    raise AssertionError("for_torch accepted data too small for BatchNorm to normalise")
+    raise AssertionError("for_torch accepted data too small for BatchNorm to normalize")
 
 
 def test_for_torch_accepts_and_converts_real_scale_data():

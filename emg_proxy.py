@@ -1,6 +1,9 @@
 """The EMG probe: refit the pipeline on MUSCLE-BAND frequencies at MUSCLE-TERRITORY
 electrodes and see whether hands vs. feet is still decodable there.
 
+Checks if the jaw muscle could be affecting the result, with it only bounding the answer
+(not closing it) since this probe is blindest to the decoder's own 8-30 Hz band.
+
 WHY THIS SCRIPT EXISTS. The repo's only artifact control is ablate_channels.py,
 whose frontopolar-only row (23/45, 51.1%, against a 24/45 = 53.3% majority floor)
 addresses OCULAR contamination. It says nothing about MUSCLE, and it structurally
@@ -17,7 +20,7 @@ eliminate one.
 
 PRE-REGISTERED. Every band, channel set, test, threshold and outcome-meaning in
 this file was fixed in writing before any of it was executed, in
-neuro-canon/measurements/prereg-emg-proxy.md. The point of that document is that
+prereg/prereg-emg-proxy.md. The point of that document is that
 no number produced here can be narrated after the fact. This project's round-one
 failure mode was inventing the mechanism story in the same breath as the number.
 Measuring and explaining are separate steps, and the explanation was written
@@ -129,7 +132,7 @@ def main():
     # confounds region with an 8x cut in channel count, and matching the counts removes
     # that confound from this one comparison.
 
-    # The stipulated injection topography: right-lateralised, mimicking the shape of
+    # The stipulated injection topography: right-lateralized, mimicking the shape of
     # the observed component. STIPULATED, NOT MEASURED. It is a plausible right
     # temporalis projection, not this subject's. A spatially flat topography is run
     # alongside it precisely because the sensitivity figure should not rest on an
@@ -716,7 +719,7 @@ def main():
     print(f"  The pinned-seed value {acc_str(K_PRIMARY)} sits at the "
           f"{_pct_of_sweep:.0f}th percentile of that distribution.")
     print(f"  So seed {SEED} is one of the more FAVOURABLE partitions available to the")
-    print(f"  probe, and the probe's characteristic behaviour is nearer "
+    print(f"  probe, and the probe's characteristic behavior is nearer "
           f"{_q50:.0f}/{N} = {_q50/N:.1%}.")
 
 
@@ -761,7 +764,7 @@ def main():
           f"reach the pre-registered")
     print(f"  'bad' band at 30/{N} or above. The bad band is UNREACHABLE under every")
     print(f"  partition tried, which is a stronger statement than any single seed can")
-    print(f"  make. The pinned seed reports the probe's BEST behaviour and the "
+    print(f"  make. The pinned seed reports the probe's BEST behavior and the "
           f"conclusion")
     print(f"  survives at its worst.")
     print(f"  The pre-registration's own '<= 20/45 is a degenerate classifier and NOT")
@@ -1546,7 +1549,7 @@ def main():
         print("  injection ladder rather than by the observed accuracy.")
     elif above["TEMPORAL"] and not above["FRONTOPOLAR"] and not above["SENSORIMOTOR"]:
         print("\n  Localised to temporal territory. Consistent with temporalis EMG, and")
-        print("  ALSO consistent with any right-lateralised source this design cannot")
+        print("  ALSO consistent with any right-lateralized source this design cannot")
         print("  distinguish from it.")
     elif above["TEMPORAL"] and above["FRONTOPOLAR"] and not above["SENSORIMOTOR"]:
         print("\n  Anterior and lateral, not central. The leading candidate is the")

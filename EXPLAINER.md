@@ -30,7 +30,7 @@ a novel result and I am not presenting it as one.
 The part I think is actually worth your time is the second half of this document: the suite I
 built to attack my own result, and the four rounds of corrections it forced. The headline used
 to say 94.4%. It doesn't anymore, and §10 is where that happened. Every number I have withdrawn
-is still in here, sitting next to the one that replaced it :)
+should still be in here, sitting right next to the retraction :3
 
 ### What the artifact controls do and don't show
 
@@ -100,6 +100,10 @@ over the active region. This drop is called **Event-Related Desynchronization (E
 
 So "imagine your fists" → mu/beta power drops over the *lateral* electrodes (C3/C4).
 "Imagine your feet" → mu/beta power drops over the *central* electrode (Cz).
+
+The counterintuitive bit: imagining a movement makes the rhythm go DOWN, not up. The idle
+motor cortex hums, and getting ready to move interrupts the hum. We are detecting an
+interruption in the hum, like a fan randomly stopping for a moment !
 
 The model's entire job reduces to: **find where in the 8–30 Hz band the power dropped, and
 map that location to a class.** Everything upstream in the pipeline exists to make this
@@ -286,7 +290,7 @@ What it does, step by step:
    using the standard 10-05 electrode layout. Without this, MNE knows the *numbers* but not
    *where on the head* each electrode sits, and you couldn't draw a scalp map later.
 6. Prints metadata (sampling rate, duration, channel count) and saves the first 5 seconds of
-   the first 10 channels to **`raw_eeg.png`**.
+   the first 10 channels to **`figures/raw_eeg.png`**.
 
 **Why it exists:** sanity. If the download, channel naming, or montage is broken, you find out
 here, before you've built a classifier on top of a silent bug.
@@ -401,7 +405,7 @@ Then it prints the scoreboard against the majority-class baseline:
 chance = max(np.mean(labels == 2), np.mean(labels == 3))   # majority-class baseline
 ```
 and finally **visualizes what CSP learned** by fitting it on all trials and drawing the top 4
-spatial patterns as scalp maps → **`csp_patterns.png`**. That plot is *interesting, and it is
+spatial patterns as scalp maps → **`figures/csp_patterns.png`**. That plot is *interesting, and it is
 not the credibility check*: §8.3 explains why, and it is the single most important correction
 in this document.
 
@@ -564,7 +568,7 @@ directly beneath it, so nobody can read it as a quantity again.
 > on them: the window sweep above refutes the 17.8 on its own, from code, and more decisively.
 
 **And then the real problem.** The PhysioNet protocol places the target on the **left or right
-of the screen and leaves it there** until the subject relaxes, so a lateralised visual stimulus
+of the screen and leaves it there** until the subject relaxes, so a lateralized visual stimulus
 is present for the entire decoding window. On subject 1 the frontopolar asymmetry
 `mean(Fp1,AF7,AF3) − mean(Fp2,AF8,AF4)` is:
 
@@ -760,7 +764,7 @@ sits on the **Riemannian** side only (`riemannian.py:131/135/140/144`); the CSP 
 `grep -n 'Covariances(' riemannian.py`. This line previously read `121/125/130/134` and `:117`,
 which were correct until `riemannian.py` gained a docstring at 17:36 and everything below it
 shifted by ten lines. The set before that was `121/126/131/135`, withdrawn earlier. The fact has
-not changed once; the locator has changed three times.)* Regularizing only one arm favours **that** arm. So the baseline
+not changed once; the locator has changed three times.)* Regularizing only one arm favors **that** arm. So the baseline
 won a comparison that was tilted against it. Shrinkage is not a nicety on the Riemannian side
 either, `raw.set_eeg_reference("average")` costs one degree of freedom, which makes every 64×64
 covariance rank-63 and singular by construction, so the two 64-channel Riemannian pipelines cannot
@@ -817,10 +821,10 @@ quantization ladder §10.2 disowns, not an interval on the estimate.
 **This rung was measuring a dead network, and it took adversarial review to catch it.**
 
 MNE returns data in **volts**. The signal standard deviation is about 1.3e-5, so the variance is
-about **1.6e-10**. braindecode's EEGNet normalises with `BatchNorm2d(eps=1e-3)`: a variance
+about **1.6e-10**. braindecode's EEGNet normalizes with `BatchNorm2d(eps=1e-3)`: a variance
 **seven orders of magnitude below eps**. So batch norm divides by `sqrt(var + eps)` ≈
 `sqrt(1e-3)` = **0.0316** instead of by the signal's own sigma of ~7e-6: its output comes out
-about **4500× too small** where it should come out at 1. Normalisation never engages.
+about **4500× too small** where it should come out at 1. Normalization never engages.
 
 Batch norm does not do *nothing*, though, and getting this right matters for saying it out loud.
 Each BN stage renormalises, so the deficit decays down the stack rather than compounding. **The
@@ -1144,7 +1148,7 @@ the same 20 folds.
 > post-cue whatever the subject imagines. This grid bounds **when** the effect starts, not **what**
 > it is. **(b)** The filtering is applied to continuous data before cropping, and MNE's zero-phase
 > 4–38 Hz firwin is a 265-tap symmetric FIR with a half-length of 0.825 s, so post-cue energy
-> smears *backwards* into the pre-cue window. The direction is favourable, smear can only push a
+> smears *backwards* into the pre-cue window. The direction is favorable, smear can only push a
 > pre-cue score up, so a null is conservative, but an above-chance pre-cue result would have
 > needed a truncated-filter re-run before it meant anything. And p = 0.108 is a failure to reject,
 > not proof of a true null.
@@ -1174,7 +1178,7 @@ This is the same shape of finding as rung 7's gaze confound, and it earns the sa
 a rung, believe it, then find the confound in your own result. **Two of the eleven rungs turned
 out to be decoding the stimulus rather than the intention.** For a project about reading
 *intent*, that is the most useful thing in the repository, and it is why regime C is kept and
-re-analysed rather than deleted.
+re-analyzed rather than deleted.
 
 > **The general lesson, worth carrying to any BCI result.** Both confounds were invisible to
 > accuracy, to cross-validation, and to permutation testing, because in every case the model was
@@ -1186,6 +1190,9 @@ re-analysed rather than deleted.
 ---
 
 ## 8. CSP: Common Spatial Patterns (the heart of the method)
+
+This is the part I wanted to be able to derive on my whiteboard for genuine understanding,
+so it goes intricately.
 
 CSP is the one genuinely EEG-specific algorithm here, and the thing most worth understanding
 deeply. If you can explain CSP, you understand this project.
@@ -1223,7 +1230,7 @@ virtual channels over the trial:
 
 So each trial becomes a 4-dimensional feature vector: `[logvar₁, logvar₂, logvar₃, logvar₄]`.
 
-### 8.3 The `csp_patterns.png` plot: *interesting, but NOT the honesty check*
+### 8.3 The `figures/csp_patterns.png` plot: *interesting, but NOT the honesty check*
 `csp.plot_patterns(...)` draws each spatial filter as a **scalp map** (a top-down head with a
 color heatmap).
 
@@ -1376,6 +1383,10 @@ trial, and because 53.3% reads as "chance," it was mistaken for a finding rather
 
 ### 10.4 The permutation test: is 91% outside what noise produces?
 
+Shuffle the labels, re-run the entire thing, see what randomness scores. Do it a thousand
+times. If your real answer sits outside that whole cloud, you have something. It's a beautiful
+way to show significance, which is the statistician's word for it.
+
 Cross-validation tells you the estimate is stable. It does not tell you the signal is real. For
 that, `permutation_test_score` shuffles the labels 1000 times and re-runs the **entire pipeline**
 on each shuffle, building the distribution of accuracies this exact method produces on data whose
@@ -1410,7 +1421,7 @@ only. The within-run reference set is 14.2 times smaller than the i.i.d. one, an
 reference set is a weaker assumption, not a stronger one.
 
 `permutation_design.py` runs the full 2x2 of those two corrections at 10,000 draws per cell on
-three subjects (1, plus 17 and 19 picked by a fixed median rule from `sweep_results.csv`). One list
+three subjects (1, plus 17 and 19 picked by a fixed median rule from `results/sweep_results.csv`). One list
 of permuted label vectors feeds both partition rules, so the partition contrast is genuinely
 paired and isolates the rule.
 
@@ -1646,7 +1657,7 @@ Three further facts, printed alongside, and two of them cut against the unflatte
    standard deviations out. So the declared channel-count confound does not explain this arm's
    deficit. It is **not** retired for the 17-channel and 8-channel rows, which keep far fewer
    channels than this control ever does. That arm was added post-registration with the answer
-   visible, and it is labelled as such.
+   visible, and it is labeled as such.
 3. **The verdict is not robust to which integer was typed as `random_state`.** Seed 42 gives
    p = 0.0703. The same exact test on the ten registered sweep seeds gives a median of 0.0391 with
    6 of 10 reaching p < 0.05, so seed 42 is worse for the loss than seven of those ten. And the two
@@ -1857,7 +1868,7 @@ if you turn it:
 | `RUNS` | 6,10,14 | Which task | **4,8,12** = *imagined* left vs. right fist, a much harder contrast on the same homunculus strip. **Not 3,7,11. Those are executed movement** (see the run table in §4). **Already built** as rung 7, where it found a gaze confound. |
 | `L_FREQ,H_FREQ` | 8,30 | The band kept | Split into mu (8–12) and beta (13–30) and combine (filter-bank CSP), often a real gain, and still unbuilt here. Splitting them on the left/right contrast is what exposed it as an alpha-band decoder. |
 | CSP `n_components` | 4 | # spatial filters | 6 or 8, more filters can help or overfit; cross-validate to decide. Untested here. |
-| CSP `reg` | None | Covariance shrinkage | `'ledoit_wolf'`: stabilizes CSP when trials are few or channels many. Untested on this baseline. Worth noting that rung 9's Riemannian arm ran with OAS shrinkage while its CSP baseline ran `reg=None`: an asymmetry that favours the **Riemannian** arm, not the baseline. The baseline won anyway. |
+| CSP `reg` | None | Covariance shrinkage | `'ledoit_wolf'`: stabilizes CSP when trials are few or channels many. Untested on this baseline. Worth noting that rung 9's Riemannian arm ran with OAS shrinkage while its CSP baseline ran `reg=None`: an asymmetry that favors the **Riemannian** arm, not the baseline. The baseline won anyway. |
 | crop `1.0–2.0 s` | 1 s window | Which slice becomes features | Sliding it on the left/right contrast gave **66.7 / 55.6 / 73.3 / 64.4 / 46.7%** for starts at 0.0 / 0.5 / 1.0 / 1.5 / 2.0 s. A **26.7-point** range across *overlapping* windows of the same trials. Treat this knob as a **noise source**, not a tuning surface. |
 | `cv` | `StratifiedKFold(5, shuffle=True)` | Evaluation rigor | **Leave-one-subject-out** once you go multi-subject (rungs 8–10 do). Leave-one-**run**-out is the cheaper *within*-session check: it holds at 93.3%. It is **not** a session-level check, which this document used to call it, runs 6/10/14 are three recordings from one session, and EEGMMIDB has no second session to hold out. |
 | `random_state` | 42 | Reproducibility seed | Rung 5 already swept 100 seeds: 88.9–97.8%, mean **93.8%**, with 42 at the **3rd percentile**: so the published number understates its own estimator by ~2.7 points. That "3rd" is a *strictly-below* rank; the estimator is quantized to 1/45, many seeds tie exactly on 91.1%, and a tie-aware rank puts 42 higher. The 2.7-point gap does not depend on the convention; the word "3rd" does. Worth knowing that 42 was **inherited from MNE's CSP tutorial, not chosen**: which makes "the seed wasn't cherry-picked" true but vacuous. |
@@ -1887,7 +1898,7 @@ already built**. Here is the real state instead.
 |, | Is the artifact ablation real? | **It is now.** `ablate_channels.py` produces it; two of its four published values were unreachable and are corrected below |
 | guard | What does deleting the 17-channel sensorimotor strip cost? | **Undecided, leaned neither way.** 47 electrodes with the FC/C/CP strip removed reach **77.8% (35/45)**, ten-seed 79.3%, permutation p ≤ 0.001. G = +14.7 points clears its threshold; the paired McNemar (p = 0.0703, 8 discordant) does not. Registered verdict: *a loss is suggested and not established at n = 45* (§10.5) |
 | guard | Is class information riding on muscle? | **Not in 40–75 Hz, and unbounded in 8–30 Hz.** A muscle-band decoder at the temporal ring lands at **51.1% (23/45)**, below the 53.3% floor, permutation p = 0.5175, univariate arm null. Sensitivity bound a = 0.600 of T8's high-band SD; a bursty source is not bounded at all (§10.5b) |
-| guard | Is the permutation null itself correctly built? | **The within-subject one already was.** The published re-stratified null is exact; the "correction" this project favoured is anti-conservative to 13x nominal on zero-information data and is withdrawn. Run blocking is real and moved one median subject across 0.05. Cross-subject, the block null replaces `SHUFFLE_MAX = 0.60` with **53.1% (478/900)** (§10.4b) |
+| guard | Is the permutation null itself correctly built? | **The within-subject one already was.** The published re-stratified null is exact; the "correction" this project favored is anti-conservative to 13x nominal on zero-information data and is withdrawn. Run blocking is real and moved one median subject across 0.05. Cross-subject, the block null replaces `SHUFFLE_MAX = 0.60` with **53.1% (478/900)** (§10.4b) |
 
 ### 12.1 What is retracted, and why that list matters
 
@@ -1964,7 +1975,7 @@ invented mechanisms for real measurements; round two published measurements that
   surrogates, computed by no script, and an underpowered null presented as a clean bill of health.
   Withdrawn and replaced by the scripted frontopolar ablation (§14 item 4).
 - **"Rung 9's shrinkage flattered the comparison in the baseline's favour."** Backwards. OAS sits
-  on the **Riemannian** arm; the CSP baseline runs `reg=None`. The asymmetry favoured Riemannian,
+  on the **Riemannian** arm; the CSP baseline runs `reg=None`. The asymmetry favored Riemannian,
   and the baseline won anyway. §7 rung 9 had it right and §11 had it wrong. The document
   contradicted itself about its own most-cited negative result.
 - **"An independent reimplementation landing on the same values."** Rung 11's control shares
@@ -2085,7 +2096,7 @@ refuted**, and the entries are ordered with the costly ones first.
 - **"The published permutation null marginalises over partitions the observed value conditions on,
   so it is the wrong null."** Conceded in this document and treated as a defect awaiting repair.
   **Measured, and the concession was wrong in its conclusion.** The published re-stratified null is
-  an exact test. The repair this project favoured, freezing the folds at the true-label partition,
+  an exact test. The repair this project favored, freezing the folds at the true-label partition,
   is **not** a test: on data with provably zero information it rejects at 0.6550 against a nominal
   0.05, 13.1x, because the frozen partition is itself a function of the labels being permuted.
   Every number computed from those cells is withdrawn, including a variance-inflation factor and an
@@ -2248,7 +2259,7 @@ Absence from the UNBACKED list means *not checked*, not *checked and passed*.
     duty cycle the registered detection criterion cannot adjudicate any amplitude tested, so this
     is an open exposure rather than a larger bound. Closing it means recalibrating the criterion
     for intermittent sources, which is a new pre-registration, not a re-run.
-12. **Re-scoring `sweep_results.csv` on the exact block null.** Run blocking moved one of two
+12. **Re-scoring `results/sweep_results.csv` on the exact block null.** Run blocking moved one of two
     median subjects across 0.05 (§10.4b), so per-subject significance across the 109 was computed
     with a null that is exact but not the best available. Three subjects is an existence proof
     that the correction *can* move a verdict, never a frequency, and the honest version of rung 6
@@ -2266,7 +2277,7 @@ Absence from the UNBACKED list means *not checked*, not *checked and passed*.
 ```bash
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-python decode_csp.py        # full pipeline + writes csp_patterns.png
+python decode_csp.py        # full pipeline + writes figures/csp_patterns.png
 ```
 - The dataset downloads automatically on first run and is cached in `~/mne_data`, so later runs
   are fast and offline-capable. The first run of rung 6 pulls ~840 MB (all 109 subjects).
@@ -2324,6 +2335,9 @@ python decode_csp.py        # full pipeline + writes csp_patterns.png
 
 ## 14. The honest limitations (know these before a mentor asks)
 
+**EMPHASIS HERE !** 45 trials total means every confidence interval here is about 17 points
+wide. Probably the single biggest limitation on this page !!
+
 The README states these plainly, which is itself a strength, over-claiming is the cardinal sin
 in BCI. Be ready to volunteer them:
 
@@ -2370,7 +2384,7 @@ in BCI. Be ready to volunteer them:
    > breaks is worse than no universal, so it is demoted to a rule and the counterexample is
    > corrected below.
 5. **Two confirmed confounds, in rungs 7 and 11.** Rung 7's left/right decoding rides a
-   lateralised gaze artifact, and EEGMMIDB ships no EOG channels, so it can be bounded but
+   lateralized gaze artifact, and EEGMMIDB ships no EOG channels, so it can be bounded but
    neither removed nor monitored. Rung 11's wide-window CNN comparison turned out to be reading
    something time-locked to **cue onset**: EEGNet scores **61.1% on the 0–1 s window alone**, and
    adding the whole imagery window on top of it buys nothing distinguishable from zero. That
@@ -2422,7 +2436,7 @@ in BCI. Be ready to volunteer them:
    run and it did not pass. §10.5.
 9. **Two of this project's three newest measurements went against it.** The sensorimotor deletion
    above, and the permutation-null re-analysis, which found that the "correction" this repo
-   favoured is anti-conservative to 13x nominal and that the published null was already exact
+   favored is anti-conservative to 13x nominal and that the published null was already exact
    (§10.4b). Both were pre-registered, both were run anyway, and both are reported at the same
    volume as the results that flattered the project. That is the point of pre-registration and it
    is the only reason those two paragraphs are trustworthy.
@@ -2479,7 +2493,7 @@ stronger half of the answer:
 > the rest of the imagery window adds nothing. Both times the model
 > was finding real, reproducible structure that survived permutation testing. It was just the
 > wrong structure. The third was a units bug: MNE returns volts, and the network's batch-norm
-> epsilon is **seven orders of magnitude** larger than the signal variance, so normalisation never
+> epsilon is **seven orders of magnitude** larger than the signal variance, so normalization never
 > engaged, it never trained, and it scored exactly the majority-class rate, which reads as 'CNN
 > performs at chance on small data,' a completely plausible finding I wrote up as a headline.
 >
@@ -2587,3 +2601,8 @@ If you can say all three, you own this repo.
 - **EEGNet**: A compact CNN for EEG; the deep-learning comparison in rungs 10 and 11.
 - **MDM / Tangent Space**: Riemannian classifiers operating on covariance matrices: nearest
   class mean along the manifold, and a projection to a flat space where ordinary classifiers work.
+
+---
+
+If you got this far: genuinely thank you ! if you see something I got wrong or am inaccurate
+about PLEASE tell me !! :3

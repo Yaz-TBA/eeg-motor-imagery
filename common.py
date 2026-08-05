@@ -1,5 +1,10 @@
 """Shared pipeline definitions, so "the published pipeline" is one object and not five copies.
 
+Explanation for why the same four helpers used to live in six different files: importing
+any of those files also ran its analysis (idk how to work around that at the time), so
+importing was expensive and copying was cheaper. That's fixed now, and this is where they
+live.
+
 WHY THIS FILE EXISTS. Until now every analysis script defined its own `make_clf`,
 `wilson_interval`, `holm` and `load_subject`. The copies agreed, and two of them carried
 docstrings explaining that they were copied deliberately rather than imported, because
@@ -88,11 +93,11 @@ def wilson_interval(n_correct, n_total, z=Z_95):
     Default z=1.96 reproduces the intervals already published in the README. Callers
     wanting the exact normal multiplier pass z=Z_TWO_SIDED.
 
-    The result is clamped to [0, 1]. In exact arithmetic Wilson cannot leave the unit
-    interval, but at k == n the upper bound lands one ULP above 1.0 (2.2e-16), and this
-    repo does hit k == n: subject 70 scores 45/45 in the 109-subject sweep. The clamp is
-    below any precision anything is reported to and stops a "100.00000000000002%" ever
-    reaching a page. test_pipeline.py asserts the boundary behaviour.
+    Wilson literally can't leave [0, 1], but float rounding pushes the upper bound one ULP
+    over at k == n, the good ol' 2.2e-16 cursing me again :/ Happens with subject 70 since
+    they scored 45/45 in the sweep, so it fires for real and isn't hypothetical. The clamp
+    moves things by less than any precision anything here is reported to, and stops a
+    "100.00000000000002%" ever reaching a page. test_pipeline.py asserts the boundary.
     """
     p = n_correct / n_total
     denom = 1 + z**2 / n_total
@@ -153,18 +158,19 @@ def seed_everything(seed=SEED):
 def for_torch(X, bn_eps=BN_EPS):
     """Volts -> microvolts -> float32, with the guard that catches the units bug.
 
-    MNE returns VOLTS. braindecode's EEGNet normalises with BatchNorm2d(eps=1e-3), and a
-    signal variance orders of magnitude below eps means the batch-norm denominator is
-    essentially just eps, so normalisation never engages and the network trains from a
-    dead start while still scoring the majority-class rate. The assert makes that
-    unreachable. CSP is unaffected because it works on variance RATIOS, which are
+    MNE hands you VOLTS. Torch models want microvolts. If not fixed, BatchNorm quietly stops
+    normalizing (its eps is 1e-3 and the signal variance sits orders of magnitude below
+    that, so the denominator is basically just eps), the network never trains, and it still
+    returns a plausible-looking 53.3%, which is exactly the majority-class rate. A dead
+    network that looks like a finding is the worst application here, so this asserts instead
+    of trusting. CSP is unaffected since it works on variance RATIOS, which are
     scale-invariant.
     """
     Xs = (X * 1e6).astype(np.float32)
     var = float(Xs.var())
     assert var > 1e3 * bn_eps, (
         f"Signal variance {var:.2e} is not comfortably above BatchNorm eps "
-        f"{bn_eps:.0e}. BatchNorm will not normalise and the network will not train. "
+        f"{bn_eps:.0e}. BatchNorm will not normalize and the network will not train. "
         f"Check the units: MNE returns volts, torch models want microvolts."
     )
     return Xs
@@ -180,6 +186,11 @@ def load_epochs(subject, runs=RUNS, l_freq=L_FREQ, h_freq=H_FREQ,
     is picked, exactly as decode_csp.py does. Subsets are therefore not electrically
     independent of each other; every channel carries -1/64 of every other. Ablations
     bound an artifact contribution rather than eliminating it.
+
+    Six scripts load data slightly differently and they all do it on purpose: different
+    bands, different crops, different run sets. So this takes every one of those as an
+    argument instead of picking a favorite. Care to add a parameter instead of an `if`
+    branch in here :P
 
     Returns (X, y), plus the per-epoch run index if return_runs, plus the channel names
     if return_ch_names, in that order.

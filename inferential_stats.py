@@ -1,4 +1,8 @@
 """Compute the confidence intervals, p-values and power figures that the write-up
+
+NAVIGATION. Every inferential claim in the repo, recomputed in one place so the numbers
+in README.md and EXPLAINER.md have exactly one source. Organised as section_*() functions
+called from main(); jump to the one you need rather than reading top to bottom.
 asserts but no committed script produces.
 
 THE DEFECT THIS GUARDS AGAINST is the one that cost this project nine retracted
@@ -22,7 +26,7 @@ what would have to be re-run. An honest "cannot reproduce" line is a correct
 output.
 
 WHAT THIS FILE DOES NOT DO. It does not re-run any model whose scores are already
-on disk. Rungs 8, 9 and 11 are re-analysed from stored per-fold arrays, so this
+on disk. Rungs 8, 9 and 11 are re-analyzed from stored per-fold arrays, so this
 script inherits their provenance exactly, including the caveat that
 `regime_decomposition.json` is a 2026-07-23 checkpoint that the 2026-07-25 cold
 run resumed from rather than recomputed. It also does not correct anything in the
@@ -192,7 +196,7 @@ def cannot(what, why, rerun):
 # ---------------------------------------------------------------------------
 
 def load_regime():
-    path = ROOT / "regime_decomposition.json"
+    path = ROOT / "results/regime_decomposition.json"
     if not path.exists():
         return None
     return json.loads(path.read_text())
@@ -208,14 +212,14 @@ def load_perfold():
     (md5 a7bc94bf7e8271e79cec718c0ea7d271, 2870 bytes), so dropping it loses no
     data.
     """
-    path = ROOT / "riemannian_perfold.json"
+    path = ROOT / "results/riemannian_perfold.json"
     if not path.exists():
         return None
     return json.loads(path.read_text())
 
 
 def load_sweep():
-    path = ROOT / "sweep_results.csv"
+    path = ROOT / "results/sweep_results.csv"
     if not path.exists():
         return None
     with path.open() as fh:
@@ -765,7 +769,7 @@ def section_bn_scale(X):
     print("  Its input sigma is the signal after one temporal convolution; the")
     print("  divisor is sqrt(eps) because the variance is seven orders below eps.")
 
-    sub("end-to-end, measured rather than modelled")
+    sub("end-to-end, measured rather than modeled")
     v_in, u_in = np.array(clf_in["volts"]), np.array(clf_in["microvolts"])
     v_lg, u_lg = np.array(logits["volts"]), np.array(logits["microvolts"])
     print(f"  classifier-input sd, volts       {v_in.mean():.4e}")
@@ -870,7 +874,7 @@ def section_weight_travel(X, y, end_to_end):
     print("  measures and does not confirm.")
     print("  What this does NOT show: a scale argument is not a training experiment.")
     print("  The direct evidence that the volts configuration does not train is the")
-    print("  degenerate-prediction behaviour, which the guard in eegnet_compare.py now")
+    print("  degenerate-prediction behavior, which the guard in eegnet_compare.py now")
     print("  refuses to reproduce. This section bounds the optimizer's reach; it does")
     print("  not prove the optimizer could never find another route.")
 
