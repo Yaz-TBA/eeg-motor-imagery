@@ -1,0 +1,38 @@
+Loading 20 subjects...
+Pooled 900 trials from 20 subjects (64 channels x 161 samples)
+Structural checks passed (20 folds, one subject each).
+Label-shuffled control: 50.8% (must sit near chance; the bar it is actually held to, SHUFFLE_MAX in the source,
+                        sits about ten points ABOVE pooled chance -- a gross-leak bar, not a near-chance one)
+
+Running leave-one-subject-out...
+
+==========================================================
+Cross-subject (LOSO, 20 subjects)
+==========================================================
+mean      59.4% +/- 11.8%
+median    58.9%
+min / max 44.4% / 77.8%
+pooled chance 50.1%
+subjects above pooled chance: 14/20
+
+Positive control: LOSO mean 59.4% vs pooled majority-class rate 50.1% (+9.3 points).
+  Above chance, so the transfer gap below is a gap in a working model,
+  not the distance between two kinds of noise.
+
+Within-subject (from results/sweep_results.csv): 64.1%
+Cross-subject on the same people   : 59.4%
+THE GAP                            : 4.7 points
+Cross beats within for 8/20 subjects.
+
+CAVEAT on that gap, and it is not a small one:
+  - The within-subject column is read from results/sweep_results.csv, which sweep_subjects.py
+    produced with StratifiedKFold per subject on that subject's own trials.
+    The cross-subject column is LeaveOneGroupOut over pooled trials. Two
+    estimators, two fold structures -- so this is NOT a paired comparison on
+    identical folds, and the difference is not purely a transfer cost.
+  - sweep_subjects.py documents that its epoch tail runs off the end of some
+    recordings, so MNE silently drops trials and those subjects' accuracies
+    land off the k/n lattice. Nothing here checks whether any subject in this
+    subset is one of them.
+
+Saved figures/cross_vs_within.png

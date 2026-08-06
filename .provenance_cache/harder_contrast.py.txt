@@ -1,0 +1,79 @@
+
+Runs [4, 8, 12] (imagined left vs. right fist), subject 1
+45 trials (23 left, 22 right) | chance = 51.1%
+
+CSP+LDA accuracy: 73.3%  (+/- 11.3%)
+Chance (majority class): 51.1%
+Per-fold: [0.56 0.78 0.67 0.89 0.78]
+Permutation test: p =  0.0020 (null 48.8% +/- 8.4%, max 73.3%)
+
+--- Reference contrast, runs [6, 10, 14] (both fists vs. both feet) ---
+Recomputed in this process with the identical pipeline, so the two numbers
+cannot drift apart the way a hardcoded constant does.
+Fists-vs-feet: 91.1% (+/- 4.4%), p <= 0.001
+Left/right minus fists/feet: -17.8 points, on subject 1 only.
+What that gap is NOT: the cost of a harder contrast. It is one subject, two
+different recording sessions, 45 trials each, and the crop window below is
+the best of five. Treat it as a direction, not a quantity.
+
+--- Crop-window sweep (left vs. right, all 64 channels, 8-30 Hz) ---
+  0.0-1.0 s: 66.7%
+  0.5-1.5 s: 55.6%
+  1.0-2.0 s: 73.3%  <- published
+  1.5-2.5 s: 64.4%
+  2.0-3.0 s: 46.7%
+Range across five overlapping 1-second windows: 26.7 points.
+Overlapping windows of the same trials should not disagree by that much.
+That spread is the honest error bar on this rung, and it is larger than
+the gap in section 2.
+
+--- Gaze confound: can 8 frontopolar channels do this on their own? ---
+Frontopolar set: Fp1, Fpz, Fp2, AF7, AF3, AFz, AF4, AF8
+All rows use the SAME trials, folds and 1.0-2.0 s window as the
+headline above. Only the channels and the band change.
+  all 64 ch, 8-30 Hz (headline)            73.3%
+  frontopolar 8 ch, 8-30 Hz                62.2%
+  all 64 ch, 0.5-5.0 Hz                    51.1%
+  frontopolar 8 ch, 0.5-5.0 Hz             53.3%
+
+At matched settings the frontopolar-only decoder is 20.0 points BELOW the
+64-channel headline, not level with it. An earlier version of the writeup said
+the frontopolar decoder 'matches the 64-channel result'. It does not, at matched
+settings. Here is where that claim came from:
+
+--- Same frontopolar decoder, 0.5-5.0 Hz, across windows ---
+  0.0-1.0 s: 66.7%
+  1.0-2.0 s: 53.3%  <- matched to the headline
+  2.0-3.0 s: 66.7%
+  0.0-4.0 s: 73.3%  <- 4x longer than the headline window; NOT a matched comparison
+The impressive frontopolar number came from the whole-epoch window, while the
+headline came from a 1-second crop. Comparing those two is comparing two
+different experiments. Matched, the ablation is much less dramatic.
+
+--- The confound is real anyway: frontopolar MEAN AMPLITUDE, not variance ---
+CSP features are log-variance, which is nearly blind to a steady DC shift --
+and a sustained gaze deviation IS a steady DC shift. So section 4 undertests
+the confound. Swapping the feature, not the channels, is what finds it.
+  0.0-1.0 s (cue period         ): 86.7% (+/- 8.3%), p <= 0.001
+  1.0-2.0 s (matched to headline): 62.2% (+/- 20.6%), p =  0.0939
+
+Frontopolar asymmetry, mean(Fp1+AF7+AF3) - mean(Fp2+AF8+AF4), in microvolts:
+  0.0-1.0 s: left cues +11.89 uV, right cues -12.99 uV  (Welch t = +7.71, p = 3.7e-09)
+  1.0-2.0 s: left cues  -2.99 uV, right cues  +2.43 uV  (Welch t = -1.51, p = 0.14)
+  0.0-4.0 s: left cues  +2.83 uV, right cues  -2.58 uV  (Welch t = +5.10, p = 7.6e-06)
+
+The sign flips with the cue side and the effect is largest in the CUE window,
+on the frontopolar left-minus-right contrast -- the electrodes nearest the
+eyes. (Each side is a 3-channel average, Fp1/AF7/AF3 against Fp2/AF8/AF4, so
+this statistic cannot attribute the effect to any individual electrode.)
+That is the signature of the eyes moving to the target, not of sensorimotor
+cortex.
+Note the 1-2 s row reverses polarity: that row is not significant (p = 0.14),
+so it is noise, and quoting it as a real reversal would be reading a coin flip.
+EEGMMIDB has no EOG channels and this pipeline has no ICA, so this bounds the
+confound; it does not remove it. n = 1 subject -- this is a flag, not a rate.
+
+Saved figures/csp_patterns_lr.png
+Sanity check: these patterns should be LEFT/RIGHT asymmetric (C3 vs C4),
+not the central-vs-lateral pattern in figures/csp_patterns.png. Compare them --
+but treat the ablation above, not the picture, as the evidence.

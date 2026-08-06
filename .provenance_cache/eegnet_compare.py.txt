@@ -1,0 +1,48 @@
+torch 2.13.0 | device: mps | seed 42 | 100 epochs, batch 32
+
+====================================================================
+A. Within-subject (subject 1, 45 trials, narrow regime)
+====================================================================
+chance                53.3%
+CSP + LDA             91.1% +/- 4.4%   (0.1s)
+EEGNet                82.2% +/- 11.3%   (5.5s)
+EEGNet - CSP          -8.9 points
+EEGNet parameters     2,290 for 45 trials
+
+====================================================================
+B. Cross-subject LOSO (20 subjects, narrow regime, identical folds)
+====================================================================
+pooled 900 trials, 64 channels x 161 samples
+chance                50.1%
+CSP + LDA             59.4% +/- 11.8%   (5.0s)
+EEGNet                60.1% +/- 12.0%   (501.1s)
+EEGNet - CSP          +0.7 points
+EEGNet beats baseline on 10/20 subjects, loses on 8, ties on 2
+EEGNet parameters     2,290 for ~855 training trials
+compute ratio         EEGNet took 101x the baseline's time
+
+====================================================================
+C. Cross-subject LOSO (wide regime: 0-4 s, 4-38 Hz)
+====================================================================
+pooled 900 trials, 64 channels x 641 samples (4.0x longer than regime B)
+chance                50.1%
+CSP + LDA (wide)      51.4% +/- 8.7%   (15.4s)
+EEGNet (wide)         63.2% +/- 10.7%   (1310.2s)
+EEGNet - CSP          +11.8 points
+EEGNet beats baseline on 15/20 subjects, loses on 2, ties on 3
+EEGNet parameters     2,770
+
+EEGNet narrow -> wide: +3.1 points
+CSP    narrow -> wide: -8.0 points
+
+====================================================================
+SUMMARY
+====================================================================
+experiment                   CSP+LDA    EEGNet     delta
+A within-subject (n=45)       91.1%     82.2%     -8.9
+B cross-subject narrow        59.4%     60.1%     +0.7
+C cross-subject wide          51.4%     63.2%    +11.8
+
+total EEGNet training time: 30.3 min on mps
+
+Saved figures/eegnet_vs_csp.png

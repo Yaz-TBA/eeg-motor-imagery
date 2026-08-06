@@ -1,0 +1,45 @@
+Extracting EDF parameters from /Users/yaz/mne_data/MNE-eegbci-data/files/eegmmidb/1.0.0/S001/S001R06.edf...
+Setting channel info structure...
+Creating raw.info structure...
+Reading 0 ... 19999  =      0.000 ...   124.994 secs...
+Extracting EDF parameters from /Users/yaz/mne_data/MNE-eegbci-data/files/eegmmidb/1.0.0/S001/S001R10.edf...
+Setting channel info structure...
+Creating raw.info structure...
+Reading 0 ... 19999  =      0.000 ...   124.994 secs...
+Extracting EDF parameters from /Users/yaz/mne_data/MNE-eegbci-data/files/eegmmidb/1.0.0/S001/S001R14.edf...
+Setting channel info structure...
+Creating raw.info structure...
+Reading 0 ... 19999  =      0.000 ...   124.994 secs...
+EEG channel type selected for re-referencing
+Applying average reference.
+Applying a custom ('EEG',) reference.
+Filtering raw data in 3 contiguous segments
+Setting up band-pass filter from 8 - 30 Hz
+
+FIR filter parameters
+---------------------
+Designing a one-pass, zero-phase, non-causal bandpass filter:
+- Windowed time-domain design (firwin) method
+- Hamming window with 0.0194 passband ripple and 53 dB stopband attenuation
+- Lower passband edge: 8.00
+- Lower transition bandwidth: 2.00 Hz (-6 dB cutoff frequency: 7.00 Hz)
+- Upper passband edge: 30.00 Hz
+- Upper transition bandwidth: 7.50 Hz (-6 dB cutoff frequency: 33.75 Hz)
+- Filter length: 265 samples (1.656 s)
+
+Used Annotations descriptions: [np.str_('T1'), np.str_('T2')]
+Not setting metadata
+45 matching events found
+No baseline correction applied
+0 projection items activated
+Using data from preloaded Raw for 45 events and 801 original time points ...
+0 bad epochs dropped
+<Epochs | 45 events (all good), -1 – 4 s (baseline off), ~17.7 MiB, data loaded,
+ 'hands': 21
+ 'feet': 24>
+
+Trials per class (should be unchanged: 21 hands, 24 feet):
+  hands: 21
+  feet: 24
+
+Band-pass: 8.0-30.0 Hz | reference: average

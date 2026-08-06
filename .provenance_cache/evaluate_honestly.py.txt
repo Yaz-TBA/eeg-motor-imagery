@@ -1,0 +1,48 @@
+
+45 trials (21 hands, 24 feet) | chance = 53.3%
+
+--- 1. Quantization: a 20% test set is 9 trials ---
+A fold's accuracy can only be k/9, i.e. steps of 11.1%.
+Attainable values near the headline: 7/9=77.8%, 8/9=88.9%, 9/9=100.0%
+
+The 10 folds produced 2 distinct values: 88.9%, 100.0%
+Total correct across folds: 85/90
+
+--- 2. Coverage: ShuffleSplit is not a partition ---
+Test-set class balance per fold (hands, feet): [(6, 3), (5, 4), (2, 7), (7, 2), (4, 5), (2, 7), (2, 7), (4, 5), (3, 6), (5, 4)]
+Trials never tested: 5 of 45
+Times a trial is tested: min=0 max=6
+Worst-balanced fold is (2, 7) -- guessing its majority alone scores 77.8%, not the 53.3% we print as chance.
+
+--- 3. Stratified k-fold, where every trial is tested once ---
+ShuffleSplit(10, 0.2)    94.4% +/- 5.6%
+StratifiedKFold(5)       91.1% +/- 4.4%
+StratifiedKFold(10)      92.5% +/- 16.0%
+Note the +/- on 10-fold: 4-5 test trials per fold makes a fold std meaningless.
+
+--- 4. Permutation test (1000 label shuffles) ---
+Running... (this is the slow part)
+Observed accuracy : 91.1%
+Null distribution : 50.7% +/- 8.5% (max 82.2%)
+p-value           : <= 0.001  (the floor of a 1000-shuffle test, not a measurement)
+Shuffled labels matched or exceeded the real result 0 times out of 1000.
+Null is centred near 50%, so the reference distribution is well formed.
+NOTE: p is bounded below by 1/(n+1) = 0.0010. Report this as p <= 0.001, not as a measured value.
+
+--- 5. An honest interval ---
+Point estimate (stratified 5-fold): 91.1%  (41/45 trials)
+Wilson 95% CI on n=45            : [79.3%, 96.5%]  (width 17.2 pts)
+What '+/- 5.6%' implies           : [88.8%, 100.0%]  <- far too tight
+
+--- 6. Seed sensitivity across 100 random_state values ---
+ShuffleSplit (retracted)     mean 93.6% | min 87.8% | max 98.9% | range 11.1 pts
+                             seed 42 lands at the 49th percentile (94.4%)
+StratifiedKFold (published)  mean 93.8% | min 88.9% | max 97.8% | range 8.9 pts
+                             seed 42 lands at the 3rd percentile (91.1%)
+
+The two estimators agree in expectation to +0.2 points (StratifiedKFold minus ShuffleSplit; positive means the estimator change RAISES the expectation).
+So the headline drop from 94.4% to 91.1% is mostly SEED LUCK, not a
+change of estimator. The estimator change is the right call for other
+reasons (coverage, stratification); it just is not worth 3 points.
+
+Saved figures/permutation_null.png and figures/seed_sensitivity.png

@@ -1,0 +1,77 @@
+torch 2.13.0 | device: mps | seed 42 | 100 epochs, batch 32
+Resuming: 7 cell(s) already on disk (narrow-short, wide-short, narrow-long, wide-long, original-C, cue-only, pre-cue)
+  THIS IS NOT A COLD RUN. Every cached cell below is READ FROM results/regime_decomposition.json
+  (last written 2026-07-23 21:29), not recomputed, and the tables at the end are that file's
+  numbers. Delete results/regime_decomposition.json to reproduce from the data.
+
+narrow-short: cached, skipping
+
+wide-short: cached, skipping
+
+narrow-long: cached, skipping
+
+wide-long: cached, skipping
+
+original-C: cached, skipping
+
+cue-only: cached, skipping
+
+pre-cue: cached, skipping
+
+======================================================================
+THE 2x2
+======================================================================
+                               8-30 Hz               4-38 Hz
+1.0-2.0 s        CSP 59.4% / NET 60.1% CSP 57.9% / NET 56.1%
+1.0-4.0 s        CSP 58.9% / NET 60.7% CSP 55.3% / NET 57.7%
+
+======================================================================
+MAIN EFFECTS AND INTERACTION (percentage points)
+======================================================================
+model           band    window   interaction   cue onset
+csp             -2.6      -1.6          -2.0        -3.9
+eegnet          -3.5      +1.1          +1.0        +5.3
+
+band        = wide minus narrow, averaged over both window lengths
+window      = long minus short, averaged over both bands
+interaction = how much the band effect changes when the window lengthens
+cue onset   = moving the crop start 1.0 s -> 0.0 s, the undocumented third change
+
+======================================================================
+THE CUE, AND THE SECOND BEFORE IT
+======================================================================
+window                                 CSP+LDA              EEGNet
+-1.0 to 0.0 s  (pre-cue)       47.7% (p=0.108)     51.8% (p=0.181)   <- must be chance
+0.0 to 1.0 s   (post-cue)      53.7% (p=0.023)     61.1% (p=0.000)
+  paired post-cue minus pre-cue, CSP+LDA  +6.0 pts (p=0.0103)
+  paired post-cue minus pre-cue, EEGNet   +9.3 pts (p=0.0000)
+
+The post-cue row on its own proves nothing -- a model can look
+above chance there because of subject leakage or drift that has
+nothing to do with the cue. The pre-cue row is the control that
+rules those out: it is matched in band, length and folds, and it
+contains neither the cue flash nor any imagery. Chance pre-cue plus
+above-chance post-cue localises the effect to cue onset, so regime
+C's 'the ranking flips' is the CNN reading something time-locked to
+the cue rather than learning motor imagery better than CSP does.
+It does NOT say which post-cue thing: see the LIMITATION note next
+to the cell definitions -- EEGBCI's cue is position-confounded with
+the class, so cue flash and imagery onset cannot be separated here.
+
+AND HALF THE PREDICTION THIS CELL WAS BUILT ON FAILED.
+The cue-only cell was written to predict that EEGNet would score
+above chance in the cue window and that CSP would NOT. CSP scores
+53.7% there (p=0.023), which is above chance.
+So CSP is not blind to whatever the cue window carries; it simply
+follows it less than EEGNet does. The cue-locking conclusion above
+stands, because it rests on the pre-cue control and the paired
+deltas. The MECHANISM story -- 'CSP's log-variance features cannot
+see a phase-locked evoked response' -- does not, and should not be
+repeated anywhere downstream.
+
+Every p in this block is a t-test across 20 leave-one-subject-out
+folds treated as independent draws. They overlap in 19/20 of their
+training data, so these p-values are anti-conservative. Read them as
+ordering evidence, not as calibrated tail probabilities.
+
+Saved figures/regime_decomposition.png

@@ -1,0 +1,57 @@
+Fetching data for 109 subjects (~840 MB on first run, then cached)...
+Fetch complete.
+
+Evaluating (CSP+LDA, stratified 5-fold, per-subject chance)...
+
+==============================================================
+109 of 109 subjects evaluated successfully
+==============================================================
+mean       64.0%
+median     60.0%
+IQR        52.8% to 75.6%
+min / max  35.6% (S032) / 100.0% (S070)
+mean per-subject chance  51.7%
+
+Above their own chance : 79/109
+Exactly AT chance      : 6/109  (mathematical ties, not noise)
+Below their own chance : 24/109
+  above 60%:  54/109
+  above 70%:  38/109
+  above 80%:  21/109
+  above 90%:  10/109
+
+Under a pure-noise null (50.7% +/- 8.5%), you would expect
+  55% (59/109) at-or-below their own chance line.
+Observed: 30/109 (28%).
+  -> FEWER below chance than noise alone predicts. That is evidence of
+     signal across the population, NOT a measure of BCI illiteracy.
+     Calling this figure an illiteracy rate would be backwards.
+
+Subject 1 (the original headline): 91.1%, the 91st percentile of subjects.
+
+No subjects excluded.
+
+Non-standard trial counts (12; modal count is 45):
+  S034: 42 trials  <- accuracy off the k/n lattice
+  S037: 42 trials  <- accuracy off the k/n lattice
+  S041: 44 trials  <- accuracy off the k/n lattice
+  S064: 43 trials  <- accuracy off the k/n lattice
+  S072: 42 trials  <- accuracy off the k/n lattice
+  S073: 42 trials  <- accuracy off the k/n lattice
+  S074: 42 trials  <- accuracy off the k/n lattice
+  S076: 42 trials  <- accuracy off the k/n lattice
+  S088: 57 trials  <- accuracy off the k/n lattice
+  S092: 57 trials  <- accuracy off the k/n lattice
+  S100: 36 trials  <- accuracy off the k/n lattice
+  S102: 43 trials  <- accuracy off the k/n lattice
+  12 of these 12 report an accuracy that is a mean over
+  UNEQUAL folds, so it is not correct-trials/n and sits on no k/n
+  lattice. Most of the shortfalls are this script's own doing: the
+  epoch runs to 4 s while only 1-2 s is used.
+
+Non-standard sampling rate (3):
+  S088: 128 Hz
+  S092: 128 Hz
+  S100: 128 Hz
+
+Saved results/sweep_results.csv and figures/subject_distribution.png

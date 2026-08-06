@@ -1,0 +1,32 @@
+Loading 20 subjects...
+Pooled 900 trials from 20 subjects
+Sensorimotor subset: 17 channels (153 covariance parameters vs 2080 for the full montage)
+
+Leave-one-subject-out, identical folds for every pipeline.
+Pooled chance: 50.1%
+
+CSP + LDA (baseline)     59.4% +/- 11.8%  (median 58.9%, 14/20 above chance)
+Cov + MDM (64 ch)        51.7% +/- 6.0%  (median 51.1%, 12/20 above chance)
+Cov + TS + LR (64 ch)    57.2% +/- 9.9%  (median 53.3%, 15/20 above chance)
+Cov + MDM (motor)        56.9% +/- 10.8%  (median 53.3%, 13/20 above chance)
+Cov + TS + LR (motor)    56.8% +/- 8.7%  (median 56.7%, 13/20 above chance)
+
+==============================================================
+Paired against the CSP+LDA baseline, subject by subject
+==============================================================
+Cov + MDM (64 ch):
+  mean change -7.8 points (best +6.7, worst -28.9)
+  beats baseline on 5/20 subjects, loses on 12, ties on 3
+Cov + TS + LR (64 ch):
+  mean change -2.2 points (best +22.2, worst -24.4)
+  beats baseline on 5/20 subjects, loses on 11, ties on 4
+Cov + MDM (motor):
+  mean change -2.6 points (best +11.1, worst -17.8)
+  beats baseline on 9/20 subjects, loses on 8, ties on 3
+Cov + TS + LR (motor):
+  mean change -2.7 points (best +17.8, worst -28.9)
+  beats baseline on 7/20 subjects, loses on 11, ties on 2
+
+Best on this data: CSP + LDA (baseline) (59.4%)
+
+Saved figures/riemannian_comparison.png

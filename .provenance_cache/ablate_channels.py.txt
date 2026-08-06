@@ -1,0 +1,259 @@
+
+Subject 1, runs [6, 10, 14] (imagined both fists vs. both feet)
+45 trials (21 hands, 24 feet) | majority class = 53.3%
+Trials per run: run 6=15, run 10=15, run 14=15
+
+--- The deleted sets, as exact set differences ---
+montage 64 ch | SENSORIMOTOR 17 + COMPLEMENT 47 = 64, disjoint partition: asserted, not counted by hand
+WIDE FC/C/CP 21 + NOT_WIDE 43 = 64, disjoint partition: asserted
+COMPLEMENT (47 ch, montage order): FC5 FC6 CP5 CP6 Fp1 Fpz Fp2 AF7 AF3 AFz AF4 AF8 F7 F5 F3 F1 Fz F2 F4 F6 F8 FT7 FT8 T7 T8 T9 T10 TP7 TP8 P7 P5 P3 P1 Pz P2 P4 P6 P8 PO7 PO3 POz PO4 PO8 O1 Oz O2 Iz
+COMPLEMENT keeps these four peri-Rolandic electrodes: ['FC5', 'FC6', 'CP5', 'CP6']
+COMPLEMENT keeps this temporal ring (temporalis EMG territory, UNBOUNDED in this repo): ['T7', 'T8', 'T9', 'T10', 'TP7', 'TP8']
+
+--- Attainable-accuracy lattice (n = 45) ---
+Every fold scheme here is a PARTITION: each trial is tested once, so the
+overall accuracy is k/45 for integer k, i.e. steps of 2.222%.
+Values near the headline: 39/45=86.7%, 40/45=88.9%, 41/45=91.1%, 42/45=93.3%, 43/45=95.6%, 44/45=97.8%
+So 95.9% and 47.4% -- the two numbers the old README table carried --
+are OFF this lattice (43/45 = 95.6%, 21/45 = 46.7%) and cannot have been measured.
+
+--- The McNemar half's detection floor, from the design alone ---
+In a paired 2x2 on the same 45 trials, b - c is IDENTICALLY (arm-1 correct) - (arm-2 correct),
+so the accuracy gap in trials fixes b - c and only c is free. Enumerating every (b, c) with
+b + c <= 45: the smallest trial gap that reaches p < 0.05 at ANY discordant count is
+|b - c| = 6 trials (first at n_disc = 6, 0 vs 6, p = 0.0312) = 13.3 points.
+THE REGISTERED G THRESHOLD IS 10.0 POINTS = 4.50 TRIALS, WHICH IS BELOW THAT FLOOR.
+The two halves of the registered two-part rule are therefore calibrated to
+incommensurable effect sizes: single-seed gaps from 10.0 to 13.3 points cannot
+reach p < 0.05 at any n_disc, so in that range the conjunctive rule cannot fire no
+matter what the data does. This is a fact about the rule, not about the recording.
+It also REFUTES the pre-registration's own stated justification for the rule
+(prereg section 6.2: 'At a gap of 10 or more points the McNemar should fire
+comfortably'). At exactly 10 points it cannot fire at all. The pre-registration is
+NOT edited to match this; it is refuted, and the refutation is recorded in its
+RESULTS section as an outcome of the run.
+CAVEAT ON SCOPE, stated so this is not read as more than it is: G is a TEN-SEED MEAN
+gap and the McNemar is computed on ONE partition, so the 13.3-point floor binds the
+SEED-42 gap directly and G only through their correlation. The two halves of the
+rule are not even evaluated on the same seed set. See the per-seed McNemar table below.
+
+--- Ablation (CSP+LDA, seed 42, same pipeline throughout) ---
+condition                         ch     acc   correct  per-fold
+all 64 channels                   64  91.1%     41/45  0.89 0.89 0.89 0.89 1.00
+sensorimotor only (17 ch)         17  95.6%     43/45  1.00 0.89 1.00 0.89 1.00
+frontopolar only (8 ch)            8  51.1%     23/45  0.56 0.78 0.33 0.56 0.33
+sensorimotor DELETED (47 kept)    47  77.8%     35/45  0.67 0.89 0.78 0.78 0.78
+wide FC/C/CP DELETED (43 kept)    43  71.1%     32/45  0.67 0.78 0.67 0.67 0.78
+all 64, leave-one-run-out         64  93.3%     42/45  0.87 0.93 1.00
+
+All 6 accuracies land on the k/45 lattice, as they must.
+Positive control: all 64 at 41/45 beats majority 24/45 by more than TOL=1e-09. PASS.
+Negative control: frontopolar-only is 1 trial off the majority rate, within the registered 3. PASS.
+
+--- Ten-seed sweep, seeds [0, 1, 2, 3, 4, 5, 6, 7, 8, 9] (leave-one-run-out has no seed to sweep, so it is absent) ---
+condition                         ch   seed42  10-seed             range
+all 64 channels                   64   91.1%   94.0%  [91.1%, 95.6%]
+sensorimotor only (17 ch)         17   95.6%   94.4%  [88.9%, 97.8%]
+frontopolar only (8 ch)            8   51.1%   47.1%  [42.2%, 53.3%]
+sensorimotor DELETED (47 kept)    47   77.8%   79.3%  [75.6%, 84.4%]
+wide FC/C/CP DELETED (43 kept)    43   71.1%   76.7%  [66.7%, 91.1%]
+Each of the 10 per-seed values above is on the k/45 lattice (asserted). Their MEAN is not, and should not be.
+
+--- Exact McNemar on EVERY sweep seed (all 64 vs. the complement) ---
+ seed    all64     comp  gap(tr)   b   c  n_disc        p
+    0    42/45    36/45        6   7   1       8   0.0703
+    1    43/45    36/45        7   8   1       9   0.0391  <alpha
+    2    42/45    35/45        7   8   1       9   0.0391  <alpha
+    3    41/45    34/45        7   9   2      11   0.0654
+    4    43/45    34/45        9  10   1      11   0.0117  <alpha
+    5    43/45    36/45        7   8   1       9   0.0391  <alpha
+    6    42/45    38/45        4   5   1       6   0.2188
+    7    43/45    35/45        8  10   2      12   0.0386  <alpha
+    8    42/45    35/45        7   7   0       7   0.0156  <alpha
+    9    42/45    38/45        4   6   2       8   0.2891
+median p over the 10 registered sweep seeds = 0.0391; 6 of 10 reach p < 0.05.
+Every row obeys the algebra above: b - c equals the trial gap exactly, in all 10 rows.
+
+--- SECONDARY: complement re-referenced within its own 47 (ONE SPATIAL DIMENSION DELETED, not the leak removed) ---
+IDENTITY CHECK: max |secondary - (primary - its own across-channel mean)| = 9.15e-20
+      against a data scale of 1.58e-04, i.e. 5.8e-16 relative. The secondary IS the primary
+      with the uniform spatial direction removed. Nothing else changes.
+RANK CHECK: rank drops 47 -> 46. ONE spatial dimension deleted, out of 47.
+WHAT THAT DIRECTION CARRIES: m64(x) - m47(x) = -(17/64)(m47(x) - m17(x)).
+      It mixes the average-referenced strip contribution -(17/64)*m17 WITH (17/64) of the
+      complement's OWN global component m47. The cost below is therefore NOT assignable
+      to the strip leak alone, and this arm does not identify a causal contribution.
+average ref over all 64, then pick 47 (PRIMARY): seed42 77.8% (35/45)  10-seed 79.3% [75.6%, 84.4%]
+average ref over the 47 alone   (SECONDARY): seed42 68.9% (31/45)  10-seed 73.3% [64.4%, 82.2%]
+difference, secondary minus primary: -6.0 points over ten seeds (two trials = 4.444 points, so anything inside that is nothing).
+UNDER THE RULE THIS SCRIPT ALREADY HARD-CODES: 6.0 points is 2.7 trials,
+      above the two-trial band (4.444) and below the 10.0-point threshold, with NO
+      confidence interval, NO significance test and NO registered threshold of its own
+      (the pre-registration registered this arm as a measurement and registered no
+      interpretation rule for it). So it is SUGGESTED, NOT ESTABLISHED, on exactly the
+      standard the 10.0-point rule imposes on G. Any reading stronger than that is
+      post hoc. Any reading that assigns these points to the strip leak specifically is
+      also unidentified, per the decomposition printed above.
+
+--- Permutation test on the complement (47 ch), 1000 shuffles, seed 42 ---
+observed 77.8% (35/45)   p <= 0.001
+null mean 51.0% +/- 8.8%, max 73.3%
+null centred 1.0 points off 50%, inside the registered 5. PASS
+
+--- Wilson 95% CI on the complement, z = 1.96 ---
+35/45 = 77.8%, Wilson [63.7%, 87.5%], width 23.7 points, against the majority floor 53.3% (24/45).
+An interval 23.7 points wide is what n = 45 buys. It is printed so the point estimate is never read alone.
+
+--- Exact McNemar: all 64 vs. the complement, seed 42 folds, paired per trial ---
+2x2: both correct 34, all-64 only (b) 7, complement only (c) 1, neither 3. Sums to 45.
+discordant pairs n_disc = 8 (7 vs 1), exact two-sided p = 0.0703
+POWER, at n_disc = 8: the most lopsided split that would STILL have missed p < 0.05 is 7 vs 1 (p = 0.0703). Anything less lopsided than that is undetectable by this test at this n_disc.
+MARGINAL-FORCED POWER, which conditions on nothing the run produced: at seed 42 the two
+      marginals are 41/45 and 35/45, so b - c = 41 - 35 = 6 is forced. Enumerating c:
+        c = 0, b = 6, n_disc = 6, p = 0.0312   FIRES
+        c = 1, b = 7, n_disc = 8, p = 0.0703
+        c = 2, b = 8, n_disc = 10, p = 0.1094
+        c = 3, b = 9, n_disc = 12, p = 0.1460
+        c = 4, b = 10, n_disc = 14, p = 0.1796
+      1 of the 20 attainable configurations reaches p < 0.05, and it is c = 0.
+      The observed c = 1. So at these marginals the test was near-predetermined to miss,
+      and that was checkable with two lines of arithmetic at prereg-writing time.
+
+--- POST-REGISTRATION arm 10: random-17-channel-deletion null (50 draws) ---
+Registered confound 2.4(d) / risk 6 / caveat (v), measured instead of declared. NOT BLIND:
+added 2026-07-26 with the answer already visible, on an adversarial pass's instruction.
+random-47 ten-seed mean: 93.5%, range [90.7%, 95.8%]
+random-47 G null: mean +0.5 points, range [-1.8, +3.3], sd 1.1
+observed G (strip deleted) = +14.7 points. Draws at or beyond it: 0/50.
+Draws landing at or below the complement's 79.3%: 0/50.
+Empirical p = (C+1)/(N+1) = 0.0196, whose RESOLUTION FLOOR is 1/51 = 0.0196.
+observed G sits 12.4 null SDs above the null mean.
+READING, and its limits. Deleting 17 channels costs essentially nothing on
+average; deleting THE STRIP costs far more than any random deletion reached. So the
+declared channel-count confound does NOT explain the complement arm's deficit, and
+caveat (v) is retired FOR THE 47-vs-64 COMPARISON ONLY. It is NOT retired for the
+17-channel or 8-channel arms: this control deletes 17 and keeps 47, so it says
+nothing about how a 17-channel or 8-channel CSP estimation problem differs from a
+64-channel one. What it does NOT do: it does not substitute for the registered
+decision rule, it is not blind, and a permutation over channel sets is not a
+permutation over labels, so it cannot speak to whether the complement decodes at all.
+
+--- Registered analysis-falsifiers (prereg section 7) ---
+(1) PASS  all-64 reproduces 41/45 at seed 42: got 41/45 = 91.1%, expected 41/45 = 91.1%
+(2) PASS  sensorimotor 43/45 and frontopolar 23/45 at seed 42: got 43/45 and 23/45, expected 43/45 and 23/45
+(3) PASS  COMPLEMENT is 47 and partitions the montage with SENSORIMOTOR: 17 + 47 = 64, disjoint
+(4) PASS  every accuracy on the k/45 lattice, fold-mean == pooled count: all 6 conditions checked, plus every one of the 10 per-seed values in the sweep
+(5) PASS  complement ten-seed mean within one trial of the prior uncommitted run: this run 79.3%, prior (uncommitted) 79.3%, difference 0.0 points, one trial = 2.222
+(6) PASS  complement is above the frontopolar-8 floor: complement 79.3% ten-seed / 35/45 seed42 vs frontopolar 47.1% / 23/45
+(7) PASS  permutation null centred within 5 points of 50%: null at 51.0%, 1.0 points off
+(8) PASS  negative control stays dead (within 3 trials of majority): frontopolar is 1 trial(s) off 24/45
+(9) PASS  band E did not land (complement does not beat all 64 by > two trials): G = +14.7 points, band-E edge is -4.444
+(10) PASS  in band A or B, the McNemar also reaches p < 0.05 (scoped to A/B): G = +14.7 is NOT in band A/B; McNemar p = 0.0703 on n_disc = 8, so this check does not apply
+      pairing diagnostic: StratifiedKFold(random_state=42) returns identical test folds on repeated calls: True. Both arms were scored on it, and for each arm cross_val_predict's pooled count equals cross_val_score's fold-mean (asserted above), so the 2x2 is a genuine per-trial pairing.
+10 of 10 passed. No analysis-falsifier fired; the numbers above are quotable.
+
+--- THE PRE-REGISTERED VERDICT ---
+G = (all-64 ten-seed mean) - (complement ten-seed mean) = 94.0 - 79.3 = +14.7 points.
+Two trials on n = 45 is 4.444 points (the prereg rounds this to 4.4). The pre-committed threshold for a real loss is G > 10.0 points AND McNemar p < 0.05.
+BAND C: SUBSTANTIAL LOSS, NOT NECESSARY. McNemar p = 0.0703 on n_disc = 8, which does NOT reach p < 0.05.
+VERDICT DOWNGRADED, by the rule and not by preference. G = +14.7 cleared the
+10.0-point threshold; the McNemar did not reach p < 0.05. The registered rule
+requires BOTH halves and forbids upgrading on whichever reads better.
+REGISTERED VERDICT: a loss is SUGGESTED and NOT ESTABLISHED at n = 45.
+Reported as undecided, leaned neither way.
+NOT ESTABLISHED BY THIS RUN, therefore not written: that the strip is
+'sufficient but not necessary'. G points that way and the test that was
+registered to confirm it did not. Both halves get said, or neither does.
+WHY IT FAILED, at the discordant count it actually got: n_disc = 8 (7 vs 1).
+      The observed split IS the most lopsided split that misses p < 0.05 at
+      n_disc = 8. Only a 8-0 sweep would have reached it. This design had
+      essentially no power here, and that is a property of n = 45
+      with a strongly agreeing pair, not evidence for either side.
+      34 of 45 trials were called correctly by BOTH arms and 3 by neither,
+      which is what leaves the discordant count small. The pairing is
+      working as designed; it is the sample that is small.
+WHAT THE FOUR LINES ABOVE LEAVE OUT, and it is the larger part:
+      (1) THE RULE CANNOT FIRE AT ITS OWN THRESHOLD. The McNemar half needs a
+          6-trial = 13.3-point gap at minimum, at any n_disc. The registered G half fires at
+          10.0 points = 4.50 trials. Between them the conjunction is unreachable by
+          construction. This is a defect in the rule, and the pre-registration's stated
+          justification for the rule ('at a gap of 10 or more points the McNemar should
+          fire comfortably', section 6.2) is REFUTED by this arithmetic.
+      (2) THE VERDICT IS NOT ROBUST TO SEED CHOICE. Seed 42 gives p = 0.0703. The same
+          exact test on the 10 seeds of this script's OWN registered sweep gives a
+          median of 0.0391, with 6 of 10 reaching p < 0.05. Seed 42 is worse
+          for the loss than 7 of those 10 seeds and worse than their median.
+          So 'not established' is substantially a fact about which integer was
+          typed as random_state, not about the recording.
+      (3) THE CONJUNCTION IS EVALUATED ON DISJOINT SEED SETS. G is a mean over
+          [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]; the McNemar is at seed 42, which is not in that list.
+      NONE OF THIS FLIPS THE VERDICT. Ten non-independent re-splits of the same 45
+      trials are not ten samples, so 'ESTABLISHED' is not licensed either. What is
+      established is that the registered rule, as written, CANNOT certify band C at
+      n = 45, and that the reported outcome is a property of the rule at least as much
+      as a reading of the data.
+
+TRUE IN EVERY BAND (1): THE AVERAGE-REFERENCE LEAK. The reference is
+computed over all 64 electrodes BEFORE the 47 are picked, so every
+complement channel carries -1/64 of every sensorimotor channel. The complement is
+NOT electrically independent of the strip. This measurement BOUNDS the
+strip's necessity; it cannot establish it. A high complement score is
+partly what volume conduction plus a 64-channel average reference PREDICTS.
+TRUE IN EVERY BAND (2): THE INSTRUMENT LIMIT. No band licenses a SOURCE
+claim in either direction. Forward-is-not-inverse refutes a negative source
+claim exactly as hard as a positive one, so 'the strip is not necessary'
+is a statement about 64 electrodes, not about cortex.
+
+--- What this does and does not show ---
+Frontopolar-only lands at 51.1% (23/45) against a majority-class rate of 53.3% (24/45).
+That is 1 trial off the rate you get by ignoring
+the EEG entirely and always answering 'feet'. The frontopolar
+decoder has no usable signal. Note the framing: the honest reference here
+is the MAJORITY rate, not 50% -- with 21/24 classes, a 51.1% result is not
+'above chance', it is a degenerate classifier 1 trial short of guessing.
+The per-fold spread (0.33 to 0.78) is the other tell: folds that wide are
+a coin, not a decoder.
+Sensorimotor-only (95.6%) vs. all 64 (91.1%): +4.4 points from dropping 47 non-motor channels (one seed, one partition).
+Leave-one-run-out (93.3%) holds up with no trial sharing a run with
+its training set, so the result is not an artifact of drift shared INSIDE
+a run. It does not rule out a session-level trend: runs [6, 10, 14] are three
+recordings from one session, and a drift monotonic across all three
+survives this control. EEGMMIDB has no second session to test against.
+
+BOUND, NOT PROOF: the average reference is computed over all 64 channels
+before picking, so the subsets are not electrically independent, and
+EEGMMIDB ships no EOG channel to regress out. This ablation bounds the
+ocular contribution; it cannot measure it.
+
+--- WHAT THE COMPLEMENT ARM DOES NOT SHOW ---
+(i)   THE AVERAGE-REFERENCE LEAK. Reference over all 64, then pick 47. Every
+      complement channel carries -1/64 of every deleted channel. BOUNDS, not proves.
+(ii)  THE INSTRUMENT LIMIT. Deleting the electrodes nearest a source does
+      not delete the source from the remaining electrodes. No
+      channel-deletion result on a 64-channel scalp montage falsifies a
+      source hypothesis, in EITHER direction. Sensor-space only.
+(iii) THIS IS NOT 'SENSORIMOTOR CORTEX DELETED'. The complement keeps ['FC5', 'FC6', 'CP5', 'CP6'],
+      four peri-Rolandic electrodes. The wide-21 arm above deletes them too and lands
+      at 32/45 = 71.1% at seed 42, 76.7% over ten seeds. That is the bound.
+(iv)  UNBOUNDED EMG. The complement keeps ['T8', 'T10', 'TP8'], temporalis muscle
+      territory, and NOTHING in this repo bounds a myogenic contribution.
+      The permitted sentence is 'the non-strip electrodes decode above the
+      floor, and how much of that is muscle is NOT yet bounded'. The
+      sentence 'posterior cortex also decodes' is BLOCKED until it is.
+(v)   CHANNEL-COUNT CONTROL: MEASURED 2026-07-26, PARTIALLY RETIRED. This line used to
+      read 'NO CHANNEL-COUNT CONTROL' and declare 47 vs 17 vs 64 channels an
+      unmeasured confound. It is now measured for the 47-vs-64 comparison: arm 10
+      deletes 17 channels at random 50 times and the ten-seed mean barely moves
+      (93.5%, G null mean +0.5 points), while deleting the strip costs +14.7.
+      So channel count does not explain the complement arm's deficit. The
+      confound STANDS UNMEASURED for the 17-channel and 8-channel arms, which keep
+      far fewer channels than arm 10 ever does. Channel counts still print
+      beside every row.
+(vi)  n = 45, ONE SUBJECT, ONE SESSION, three runs. Ten seeds is a small
+      sample of splits, which is why the range prints beside every mean,
+      and the McNemar sits on a discordant count of 8, which is why that count
+      travels with its p everywhere it is quoted.
+(vii) THE ACCURACY HALF OF THIS ARM WAS NOT BLIND. It had been run once,
+      uncommitted, before the pre-registration was written, and the prior
+      value (79.3% over ten seeds) is checked against this run at falsifier (5).
+      The permutation test, the Wilson interval and the McNemar are blind.

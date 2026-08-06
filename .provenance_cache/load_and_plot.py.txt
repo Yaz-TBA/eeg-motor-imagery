@@ -1,0 +1,24 @@
+Extracting EDF parameters from /Users/yaz/mne_data/MNE-eegbci-data/files/eegmmidb/1.0.0/S001/S001R06.edf...
+Setting channel info structure...
+Creating raw.info structure...
+Reading 0 ... 19999  =      0.000 ...   124.994 secs...
+<Info | 9 non-empty values
+ bads: []
+ ch_names: FC5, FC3, FC1, FCz, FC2, FC4, FC6, C5, C3, C1, Cz, C2, C4, C6, ...
+ chs: 64 EEG
+ custom_ref_applied: False
+ dig: 67 items (3 Cardinal, 64 EEG)
+ highpass: 0.0 Hz
+ lowpass: 80.0 Hz
+ meas_date: 2009-08-12 16:15:00 UTC
+ nchan: 64
+ projs: []
+ sfreq: 160.0 Hz
+ subject_info: <subject_info | his_id: X, sex: 0, last_name: X>
+>
+
+Sampling rate: 160.0 Hz
+Duration: 125.0 s, Channels: 64
+Using matplotlib as 2D backend.
+
+Saved plot to figures/raw_eeg.png

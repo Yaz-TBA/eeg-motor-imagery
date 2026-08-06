@@ -1,0 +1,23 @@
+G-S, the y_obs-independence gate  (prereg-permutation-validity.md §4.1)
+200 triples per rule per subject, three subjects, seed 42
+
+  rule         predicted  observed  mismatches  first
+  RE                PASS      PASS           0  -
+  RE_blk            PASS      PASS           0  -
+  KF_free           PASS      PASS           0  -
+  KF_free_blk       PASS      PASS           0  -
+  WITHIN            FAIL      FAIL         600  S1 triple 0
+  FX                FAIL      FAIL         600  S1 triple 0
+  FX_blk            FAIL      FAIL         600  S1 triple 0
+
+  4 of 7 rules pass G-S.
+  Both directions are exhibited, which is what assert 9 never managed:
+  a gate no valid design can pass is not a gate, and neither is one
+  that nothing can fail.
+
+  Every verdict matches the pre-registration. C2 (=FX) and C4 (=FX_blk)
+  are disqualified structurally, in microseconds, with no EEG loaded --
+  the withdrawal of 2026-07-26 reached by a route that needs no data,
+  no null mean, and no argument about a band.
+
+Result: PASS

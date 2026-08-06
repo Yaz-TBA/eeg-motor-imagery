@@ -1,0 +1,475 @@
+INFERENTIAL STATISTICS FOR RUNGS 8-11
+Two-sided, alpha = 0.05, paired where the folds are shared.
+Intervals are Student-t with df = n - 1 unless a line says otherwise.
+Power is noncentral t at 80%, with the normal approximation beside it.
+No multiplicity correction is applied to any published figure; Holm is
+printed separately per family.
+
+==========================================================================
+0. INPUTS
+==========================================================================
+Every figure below is derived from one of these. Nothing is restated
+from prose, and nothing is imputed where an array is absent.
+
+regime_decomposition.json   7 cells (narrow-short, wide-short, narrow-long, wide-long, original-C, cue-only, pre-cue)
+                            20 per-fold accuracies per model per cell
+                            DATED 2026-07-23. The 2026-07-25 cold run
+                            resumed from this file, so rung-11 figures
+                            are checkpoint values, not 07-25 values.
+riemannian_perfold.json     in this repo, committed
+                            5 pipelines (CSP+LDA, MDM-64, TSLR-64, MDM-mot, TSLR-mot)
+                            20 subjects, pooled chance 50.1%
+                            riemannian.py computes these and persists
+                            none; this copy is the 2026-07-23 capture.
+sweep_results.csv           109 subjects, within-subject 5-fold accuracies
+
+==========================================================================
+1. RUNG 8 -- THE WITHIN-TO-CROSS-SUBJECT GAP
+==========================================================================
+n = 20 subjects, the same 20 in both arms, paired by subject id.
+The cross arm is the CSP+LDA baseline of the leave-one-subject-out run;
+the within arm is the same subject's stratified 5-fold accuracy.
+
+within-subject mean       64.1%  (sd 17.6%)
+cross-subject  mean       59.4%  (sd 12.1%)
+
+--- the gap, paired, two-sided ---
+THE GAP                   +4.7 points  (se 3.358)
+  95% CI, normal (z)      [-1.9, +11.2] points
+  95% CI, Student-t df=19 [-2.4, +11.7] points
+  paired t = +1.390, p = 0.181
+  THE MULTIPLIER IS LOAD-BEARING. The two intervals differ by about half
+  a point at each end. The published interval matches the z form.
+  What this does NOT show: both bounds straddle zero, so the direction of
+  the gap is not established at n=20, only its point estimate.
+  COLLISION HAZARD: p = 0.181 here is the within-minus-cross test. Rung
+  11's pre-cue EEGNet cell reports the same value from a different test.
+
+--- power ---
+sd of the paired differences  15.02 points
+MDE at 80% power, noncentral t  9.92 points
+MDE at 80% power, normal approx 9.41 points
+  This comparison could not have detected a true gap smaller than that.
+  A non-significant result here is therefore not evidence of no gap.
+
+==========================================================================
+2. RUNG 9 -- RIEMANNIAN PIPELINES AGAINST THE CSP+LDA BASELINE
+==========================================================================
+n = 20 subjects. Identical leave-one-subject-out folds for every arm,
+so every comparison is PAIRED. Each is two-sided against the baseline.
+baseline CSP+LDA mean     59.4%  (sd 12.1%)
+
+pipeline        mean   delta              95% CI       t        p     MDE
+MDM-64         51.7%    -7.8  [ -12.9,   -2.7]   -3.21    0.005    7.17
+TSLR-64        57.2%    -2.2  [  -7.1,   +2.6]   -0.96    0.349    6.83
+MDM-mot        56.9%    -2.6  [  -6.6,   +1.5]   -1.33    0.200    5.68
+TSLR-mot       56.8%    -2.7  [  -8.2,   +2.9]   -1.00    0.330    7.88
+
+delta and CI are in percentage points, EEG pipeline minus baseline.
+MDE is the noncentral-t minimum detectable difference at 80% power.
+
+--- which intervals exclude zero ---
+  MDM-64     [ -12.9,   -2.7]  excludes zero
+  TSLR-64    [  -7.1,   +2.6]  spans zero
+  MDM-mot    [  -6.6,   +1.5]  spans zero
+  TSLR-mot   [  -8.2,   +2.9]  spans zero
+  3 of 4 intervals span zero.
+
+--- multiplicity across the four comparisons ---
+  MDM-64     p = 0.005  Holm-adjusted 0.019  survives
+  TSLR-64    p = 0.349  Holm-adjusted 0.660  does not survive
+  MDM-mot    p = 0.200  Holm-adjusted 0.599  does not survive
+  TSLR-mot   p = 0.330  Holm-adjusted 0.660  does not survive
+  The figures published for this rung are UNCORRECTED p-values. Holm over
+  the family of four is printed so the difference is visible, not to
+  replace them.
+
+--- power across the rung ---
+  noncentral-t MDEs span 5.68 to 7.88 points
+  normal-approx MDEs span 5.39 to 7.47 points
+  Three of these four nulls are therefore uninformative about differences
+  smaller than roughly six points. That is a limit of n = 20, not a
+  finding about the methods.
+
+==========================================================================
+3. THE COMBINED POWER LIMIT ACROSS RUNGS 8 AND 9
+==========================================================================
+All five paired comparisons in rungs 8 and 9, one power routine, so the
+two ranges the documents quote cannot drift apart.
+  noncentral t : 5.68 to 9.92 points
+  normal approx: 5.39 to 9.41 points
+  The rung-9-only subrange is the first four; rung 8's is the largest.
+  rung 8 alone: 9.92 points
+
+==========================================================================
+4. SUBJECT x METHOD INTERACTION -- TWO TESTS THAT DISAGREE BY DESIGN
+==========================================================================
+THE TRAP THIS SECTION EXISTS FOR. Two statistics near 13 have been quoted
+for this question, one a chi-square on 19 df and one a Tukey 1-df F, and
+their p-values are four orders of magnitude apart. They are not the same
+test and neither is a typo. Both are computed here, from the same arrays.
+
+--- A. homogeneity of the per-subject CSP-vs-MDM-motor difference, 19 df ---
+  mean difference        -2.6 points
+  win / loss / tie       9 / 8 / 3
+  Cochran Q, per-arm binomial  chi2 = 13.58 on 19 df, p = 0.808
+  Cochran Q, pooled binomial   chi2 = 13.33 on 19 df, p = 0.821
+  contingency chi2 on the 20x2 correct-counts table: chi2 = 5.39 on 19 df, p = 0.999
+  ASSUMPTION MADE EXPLICIT: the two Cochran forms differ only in whether
+  the per-subject variance is estimated per arm or from the pooled rate.
+  The contingency form treats the 20 subjects as independent samples of a
+  common success rate, which is a different null and gives a different df
+  interpretation.
+  THE FIGURE THIS SECTION PRODUCES for the claim as worded is the pooled
+  Cochran form: chi2 = 13.33 on 19 df, p = 0.821.
+  Consistency arithmetic on the pair quoted in the documents, which is
+  not a measurement: chi2.sf(13.0, 19) = 0.839, so
+  the published statistic and its published p-value agree with each other.
+  The variance model behind that statistic is stated nowhere, so this
+  section reproduces its family rather than its digits, and the value a
+  document should quote is the one printed two lines above.
+
+--- B. Tukey 1-df non-additivity across all five pipelines ---
+  F = 13.4627 on 1 and 75 df, p = 0.0005
+  leave out MDM-64    F =   1.17, p = 0.2847
+  leave out TSLR-64   F =  13.81, p = 0.0005
+  leave out MDM-mot   F =  11.47, p = 0.0013
+  leave out TSLR-mot  F =  12.91, p = 0.0007
+
+--- which test answers the question, and why ---
+  The claim at stake is 'no method dominates per subject' -- i.e. whether
+  the CHOICE of the better method depends on the subject. Test A asks
+  exactly that for one named pair, on the scale the claim is made on, and
+  its 19 df match the 20-subject design. Test B asks whether a
+  multiplicative fan exists across FIVE arms at once, one degree of
+  freedom, and it is dominated by whichever arm has the widest per-subject
+  spread. The leave-one-out rows above show the F collapsing when the
+  64-channel MDM arm is dropped, which identifies that arm as the source.
+  TEST A IS THE APPROPRIATE ONE for the claim as worded. Test B is a
+  correct test of a different hypothesis.
+
+--- what the null does NOT license ---
+  sd of the per-subject difference  8.60 points
+  MDE at 80% power, noncentral t    5.68 points
+  A non-significant homogeneity test on 20 subjects cannot distinguish
+  'no interaction' from 'an interaction this design cannot see'. The
+  defensible wording is that no interaction is DETECTABLE here.
+  argmax pipeline per subject: {'MDM-mot': 4, 'CSP+LDA': 8, 'MDM-64': 3, 'TSLR-64': 3, 'TSLR-mot': 2}
+  A varying argmax is what an additive model with noise produces anyway,
+  so the argmax spread is not itself evidence of an interaction.
+
+==========================================================================
+5. RUNG 10 -- WILSON INTERVALS ON THE WITHIN-SUBJECT COUNTS
+==========================================================================
+n = 45 trials, subject 1, stratified 5-fold, each trial tested
+exactly once. Accuracy is therefore a multiple of 1/45 = 2.2222%.
+Wilson rather than normal, because at n = 45 the normal interval
+misbehaves near the ends of the scale.
+The two counts are the ones the cached stdout prints: 41/45 for CSP+LDA
+(ablate_channels.py, decode_csp.py) and 37/45 for EEGNet
+(eegnet_compare.py experiment A). Section 6 re-derives both from
+per-trial predictions and will disagree if the re-run drifts.
+
+  CSP + LDA    41/45 = 91.1%   95% Wilson CI [79.3%, 96.5%]
+  EEGNet       37/45 = 82.2%   95% Wilson CI [68.7%, 90.7%]
+  overlap                    [79.3%, 90.7%]  = 66% of the CSP interval, 52% of the EEGNet interval
+  The intervals overlap across most of both ranges, so the 8.9-point
+  point difference is not separable at this sample size.
+  What this does NOT show: two overlapping marginal intervals are not a
+  test of the paired difference. The paired test is the next section.
+
+Loading subject 1 for the three measured sections ...
+  45 trials, 64 channels, 161 samples
+
+==========================================================================
+6. RUNG 10 -- McNEMAR ON THE WITHIN-SUBJECT COMPARISON
+==========================================================================
+NO ARRAY ON DISK HOLDS THIS. McNemar needs the discordant pair counts,
+which need the two models' PER-TRIAL predictions on the same folds.
+eegnet_compare.py scores its folds and discards the predictions, so this
+section re-runs experiment A to recover them: same 45 trials, same
+StratifiedKFold(5, shuffle=True, random_state=42), same seed, same model.
+THE SEEDING ORDER IS COPIED, NOT APPROXIMATED. eegnet_compare.py seeds
+once and lets cross_val_score clone across folds, so the five folds do
+not restart from the same RNG state. Reseeding per fold changes four of
+the five folds and moves the EEGNet count by several trials, which is
+enough on its own to make a McNemar table irreproducible.
+
+  CSP + LDA correct     41/45 = 91.1%
+  EEGNet correct        37/45 = 82.2%
+  EEGNet - CSP          -8.9 points
+  EEGNet predicted class counts [21, 24] (true [21, 24])
+
+--- the 2x2 agreement table ---
+  both correct            34
+  CSP only  (b)           7
+  EEGNet only (c)         3
+  neither correct         1
+  McNemar exact, two-sided, binomial on 10 discordant pairs
+  McNemar p = 0.344
+  ASSUMPTION: exact binomial rather than the chi-square approximation,
+  because 10 discordant pairs is far too few for the asymptotic form.
+
+  THE MARGINAL COUNTS DO NOT DETERMINE THE SPLIT. Any (b, c) with
+  b - c = 4 is consistent with 41/45 against 37/45, and the p-value
+  depends on which one it is, not on the difference. The maximally nested
+  split, b = 4 and c = 0, would give p = 0.125; the
+  measured split of b = 7, c = 3 gives p = 0.344. Deriving a
+  McNemar p from two accuracies alone is arithmetic on an assumption about
+  agreement that the predictions themselves settle.
+  What this does NOT show: a non-significant McNemar on 45 trials leaves
+  the direction of the difference undecided. Only the sign of b - c is
+  consistent with the point estimate; its magnitude is not established.
+  DETERMINISM CAVEAT: MPS kernels are not bit-reproducible, so the EEGNet
+  half of this table can shift by a trial or two between runs.
+
+==========================================================================
+7. RUNG 10 -- THE BATCHNORM ACTIVATION-SCALE DEFICIT, MEASURED
+==========================================================================
+NO ARRAY ON DISK HOLDS THIS EITHER. No persisted artefact in this repo
+records a per-layer activation standard deviation, so the deficit figure
+has never been produced by a script. This section measures it directly:
+forward hooks on every BatchNorm2d, one batch in a no-grad forward pass,
+dropout disabled so the only thing varying is scale.
+
+HOW THE MEASUREMENT IS DEFINED. BatchNorm divides by sqrt(var + eps). If
+the input variance is far below eps the divisor is essentially sqrt(eps),
+so the stage's output lands sqrt(eps)/sigma too small instead of at unit
+scale. eps = 0.001, so sqrt(eps) = 0.0316.
+
+Signal scale, subject 1, 8-30 Hz, 1.0-2.0 s:
+  standard deviation in volts   1.265e-05
+  variance in volts             1.599e-10
+  ratio eps / variance          6.25e+06
+
+--- per-stage deficit at volts scale (mean over 5 seeds) ---
+stage                  sigma in      divisor     deficit        sd
+bnorm_temporal       6.6997e-06   3.1623e-02       4744x       378
+bnorm_1              6.9213e-05   3.1623e-02        459x        36
+bnorm_2              5.3677e-04   3.1627e-02         59x         6
+
+THE DEFICIT AT THE FIRST BATCHNORM IS 4744x (sd 378 over 5 seeds).
+  Its input sigma is the signal after one temporal convolution; the
+  divisor is sqrt(eps) because the variance is seven orders below eps.
+
+--- end-to-end, measured rather than modeled ---
+  classifier-input sd, volts       2.2936e-03
+  classifier-input sd, microvolts  1.9095e-01
+  END-TO-END DEFICIT AT THE CLASSIFIER INPUT  84x  (sd 11)
+  logit sd, volts                  1.2906e-03
+  logit sd, microvolts             1.2376e-01
+  DEFICIT AT THE LOGITS            102x
+
+  A RECOVERY MODEL OF 31.6x PER STAGE IS AN ASSUMPTION, NOT A MEASUREMENT.
+  That model implies the deficit runs 4500x, then 142x, then 4.5x, then
+  0.14x across three stages. The measured per-stage deficits above do not
+  decay at that rate, and the measured end-to-end deficit printed here is
+  the figure any downstream scale argument should use.
+  What this does NOT show: this is the BROKEN volts configuration, which
+  eegnet_compare.py's assertion now refuses to run. It is a diagnosis of a
+  configuration kept for the record, not a current result. The microvolt
+  column is the configuration every reported accuracy comes from.
+
+==========================================================================
+8. RUNG 10 -- FINAL-LAYER WEIGHT TRAVEL AGAINST THE SCALE GAP
+==========================================================================
+NO ARRAY ON DISK HOLDS THIS. Nothing records final-layer weight statistics
+at init or after training, so the 'the network cannot train out of it'
+argument has never had a measured margin. This section measures both ends.
+
+One fold of experiment A: 36 training trials, 100 epochs of AdamW at lr = 0.001, batch 32.
+
+  volts       weight sd 0.0645 -> 0.1113   travel in sd 0.0468   mean |dw| 0.1020
+  microvolts  weight sd 0.0645 -> 0.1053   travel in sd 0.0409   mean |dw| 0.0989
+
+  init sd is 0.0645, and the mean per-weight move is 0.1020.
+  Two different quantities have both been called 'the travel': the change
+  in the weight standard deviation, and the mean absolute per-weight
+  change. Here they differ by 2.2x, so a margin quoted without
+  saying which one it is cannot be checked.
+
+--- the margin, computed from the MEASURED end-to-end deficit ---
+  end-to-end deficit at the logits          102x
+  final-layer sd needed to close it         6.568
+  required travel                           6.504
+  travel achieved in 100 epochs (sd)         0.0468
+  shortfall, sd definition                  139x
+  travel achieved in 100 epochs (mean |dw|)  0.1020
+  shortfall, mean-|dw| definition           64x
+
+  A MARGIN COMPUTED FROM AN ASSUMED 4.5x RESIDUAL GAP would give a
+  required travel of 0.226 and a shortfall near 2.2x.
+  That gap comes from the 31.6x-per-stage recovery model, which section 7
+  measures and does not confirm.
+  What this does NOT show: a scale argument is not a training experiment.
+  The direct evidence that the volts configuration does not train is the
+  degenerate-prediction behavior, which the guard in eegnet_compare.py now
+  refuses to reproduce. This section bounds the optimizer's reach; it does
+  not prove the optimizer could never find another route.
+
+==========================================================================
+9. RUNG 11 -- REGIME DECOMPOSITION, EVERY PAIRED TEST
+==========================================================================
+n = 20 leave-one-subject-out folds per cell. Both models see the
+identical folds within a cell, so every model comparison is PAIRED.
+PROVENANCE: these arrays are the 2026-07-23 checkpoint. The 2026-07-25
+cold run resumed from them rather than recomputing, so the figures in
+this section are 07-23 values carrying a 07-25 timestamp on the run log.
+
+--- EEGNet minus CSP, per cell ---
+cell                CSP   EEGNet   delta              95% CI      t       p
+narrow-short      59.4%    60.1%    +0.7  [  -5.2,   +6.5]   0.24   0.815
+wide-short        57.9%    56.1%    -1.8  [  -8.3,   +4.8]  -0.57   0.578
+narrow-long       58.9%    60.7%    +1.8  [  -5.3,   +8.8]   0.53   0.603
+wide-long         55.3%    57.7%    +2.3  [  -5.1,   +9.8]   0.65   0.522
+original-C        51.4%    63.0%   +11.6  [  +5.0,  +18.1]   3.69   0.002
+
+  original-C is the 4-38 Hz, 0.0-4.0 s cell. Its EEGNet mean of 63.0% is the figure the
+  documents quote for that cell, and it is stored in the checkpoint but
+  never echoed by regime_decomposition.py's printed table.
+  Only original-C separates the two models at this sample size.
+
+  Holm across the five cells:
+    narrow-short    p = 0.815   adjusted 1.000   does not survive
+    wide-short      p = 0.578   adjusted 1.000   does not survive
+    narrow-long     p = 0.603   adjusted 1.000   does not survive
+    wide-long       p = 0.522   adjusted 1.000   does not survive
+    original-C      p = 0.002   adjusted 0.008   survives
+  The published table is UNCORRECTED. Only original-C survives Holm.
+
+--- moving the crop start 1.0 s -> 0.0 s (original-C minus wide-long) ---
+  the EEGNet-CSP gap widens by +9.2 points
+  95% CI [+2.0, +16.4]   t = +2.69   p = 0.015
+    eegnet  +5.3 points  95% CI [+0.2, +10.5]  t = +2.16  p = 0.044
+    csp     -3.9 points  95% CI [-9.1, +1.3]  t = -1.56  p = 0.134
+  What this does NOT show: crop start is confounded with window length
+  here, so the split above attributes the change to the earlier start
+  only under the assumption that the extra second is otherwise inert.
+
+--- widening the band, 8-30 Hz -> 4-38 Hz, averaged over window length ---
+  csp     -2.6 points  95% CI [-5.5, +0.4]  t = -1.79  p = 0.089
+  eegnet  -3.5 points  95% CI [-6.3, -0.7]  t = -2.61  p = 0.017
+  difference (EEGNet minus CSP band effect) -0.9 points
+  95% CI [-5.2, +3.3]   t = -0.47   p = 0.645
+  NOTE: these CI bounds are interval endpoints on a paired difference.
+  They are not accuracy differences and must not be read as such.
+
+--- the cue-onset window and the second before it, against chance ---
+window                    model        mean              95% CI       t           p
+-1.0 to 0.0 s pre-cue     csp         47.7%  [ 44.8,  50.6]   -1.69      0.1077
+-1.0 to 0.0 s pre-cue     eegnet      51.8%  [ 49.1,  54.5]    1.39      0.1811
+0.0 to 1.0 s post-cue     csp         53.7%  [ 50.6,  56.8]    2.48      0.0228
+0.0 to 1.0 s post-cue     eegnet      61.1%  [ 57.3,  64.9]    6.18    6.18e-06
+  the EEGNet cue-window p is 6.18e-06, which is below 0.0001, so a
+  stated bound of p < 0.0001 holds. Printing p at three decimals would
+  render it 0.000 and could not license that bound.
+  ONE-SAMPLE, two-sided, against 50.0% -- the balanced-design chance
+  rate. The pooled majority-class rate on this cohort is close to it but
+  is not identical, and the two are not interchangeable.
+
+  THE CONTROL DOES NOT CLEANLY PASS. Pre-cue EEGNet is 51.8% with
+  95% CI [49.1%, 54.5%]. Its upper bound exceeds the
+  cue-window CSP point estimate of 53.7% that the same rung calls
+  significant, so 'chance before the cue' is not established, only
+  'not distinguishable from chance'.
+
+--- paired post-cue minus pre-cue ---
+  csp     +6.0 points  95% CI [+1.6, +10.4]  t = +2.85  p = 0.0103
+  eegnet  +9.3 points  95% CI [+5.7, +12.9]  t = +5.43  p = 3.06e-05
+
+--- what the full imagery window buys over the cue-onset second ---
+  eegnet  +1.9 points  95% CI [-2.8, +6.6]  t = +0.84  p = 0.410
+          sd 10.02, MDE at 80% power 6.62 points
+  csp     -2.2 points  95% CI [-5.8, +1.3]  t = -1.31  p = 0.204
+          sd 7.56, MDE at 80% power 4.99 points
+  THE RUNG-11 CONCLUSION TURNS ON THIS. A non-significant result here is
+  not evidence that the imagery window carries nothing; the interval
+  admits gains up to its upper bound, and the MDE above is the smallest
+  true effect this comparison could have detected.
+
+==========================================================================
+10. THE 109-SUBJECT SWEEP -- THE AT-OR-BELOW-CHANCE PROPORTION
+==========================================================================
+  subjects evaluated              109
+  at or below their own chance    30/109 = 27.5%
+  the same figure at 0 decimals   28%
+  BOTH FORMS ARE THE SAME COUNT. The decimal is load-bearing here because
+  the claim this refutes is stated as 27%, and 27.5 versus 28 straddles
+  it. Quoting one precision in one document and the other elsewhere makes
+  the comparison unreproducible.
+
+--- what a pure-noise null predicts, computed per subject ---
+  expected fraction at or below chance under true accuracy 0.5:
+    exact binomial, per subject, averaged   54.0%
+    implied count                           58.8/109
+  ASSUMPTION: each subject's trials are independent Bernoulli(0.5) draws,
+  and a fold-quantized 5-fold accuracy is treated as a binomial count.
+  Cross-validation correlates folds, so this is an approximation and the
+  simulated figure sweep_subjects.py prints will differ by a point or two.
+  OBSERVED 27.5% IS BELOW THE NULL EXPECTATION,
+  which is evidence of signal across the population. Reading it as an
+  illiteracy rate inverts the direction of the inference.
+  What this does NOT show: it is a statement about the population of
+  recordings, not about any individual subject's trainability.
+
+==========================================================================
+11. WHERE THIS RUN AND THE PROSE DO NOT AGREE
+==========================================================================
+Reconciling the documents is a separate pass, so this section names the
+disagreements rather than resolving them. In each case the value a
+document should carry is the one this file prints in the section named.
+
+  section 6, McNemar on the within-subject comparison
+      the reproduced per-trial predictions give a discordant split that is
+      not the maximally nested one, so the exact test lands well above the
+      value obtainable from the two accuracies alone. A McNemar p derived
+      from marginal accuracies is arithmetic on an assumption, and the
+      predictions contradict that assumption here.
+
+  section 7, the end-to-end activation-scale deficit
+      the measured deficit at the logits is roughly two orders of magnitude,
+      not the single-digit multiplier the 31.6x-per-stage recovery model
+      implies. The first-BatchNorm deficit, by contrast, reproduces the
+      figure the documents state as established.
+
+  section 8, the training-margin shortfall
+      computed against the measured deficit the shortfall is two orders of
+      magnitude rather than the small factor the assumed recovery model
+      gives, and the two definitions of 'travel' differ by about 2x, so a
+      margin quoted without naming its definition cannot be checked.
+
+  section 4, the subject x method interaction
+      the homogeneity test this file computes lands near p = 0.82, not near
+      the p the documents carry. The two are the same family of test with a
+      different variance model, and no document states which model it used.
+
+  section 9, the pre-cue control
+      the interval is computed here for the first time and its upper bound
+      sits above the cue-window CSP estimate the same rung calls
+      significant, so 'the control passes' is not what these arrays support.
+
+
+==========================================================================
+12. LEDGER -- WHAT THIS FILE STILL CANNOT PRODUCE
+==========================================================================
+CANNOT RECOMPUTE: rung-11 figures at 2026-07-25 scores
+  reason:   regime_decomposition.json is a 2026-07-23 checkpoint and the 07-25 run resumed from it, so source-hash cache invalidation was defeated
+  needs:    delete regime_decomposition.json, then rerun regime_decomposition.py cold
+
+CANNOT RECOMPUTE: per-subject arrays produced by riemannian.py itself
+  reason:   riemannian.py persists only a PNG; this file reads a copy captured by the 2026-07-23 audit run, whose means match the cached stdout exactly
+  needs:    edit riemannian.py to dump the score arrays it already holds in memory
+
+CANNOT RECOMPUTE: per-subject arrays produced by cross_subject.py itself
+  reason:   cross_subject.py prints mean, median, min and max but persists no per-subject values; the rung-8 cross arm here comes from the audit capture
+  needs:    edit cross_subject.py to persist its per-subject accuracies
+
+CANNOT RECOMPUTE: the exact variance model behind the published chi-square of 13.0
+  reason:   no script and no document states whether the homogeneity weights are per-arm or pooled binomial; section 4 brackets it rather than matching it
+  needs:    state the weighting in the document, or adopt one of the two forms here
+
+Each line above is a correct output. A plausible number in place of any
+of them would be the defect this repo exists to have stopped making.
+
+Done. Every number above came from a persisted array or a measurement
+taken in this run. Reconciling the documents against it is a separate pass.

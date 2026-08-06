@@ -1,0 +1,18 @@
+{
+  "load_and_plot.py": "7277f6e490f3",
+  "epoch_trials.py": "5e50feb5c25c",
+  "filter_and_epoch.py": "c34674fb6060",
+  "decode_csp.py": "cf1a590337fd",
+  "ablate_channels.py": "065992f05346",
+  "harder_contrast.py": "fb264295a018",
+  "evaluate_honestly.py": "33c22afdbed8",
+  "sweep_subjects.py": "aa87e556cc3a",
+  "cross_subject.py": "0c913498d0b7",
+  "riemannian.py": "1b7f44c41a14",
+  "eegnet_compare.py": "1721e0c11c93",
+  "regime_decomposition.py": "afb5cec01155",
+  "inferential_stats.py": "b013a6dd8012",
+  "emg_proxy.py": "1f4c151d5d9a",
+  "permutation_design.py": "3aafa7b9a87d",
+  "validity_gate.py": "77bd46c15324"
+}
