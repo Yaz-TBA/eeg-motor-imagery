@@ -105,7 +105,7 @@ currently quantified.** An earlier revision of this table quantified it, from a 
 factor and an `n_eff`-corrected interval computed on the fixed-partition cell C4, and that cell
 was withdrawn on exchangeability grounds, so every figure derived from it is withdrawn with it.
 The same applies to the 10,000-draw row this table used to carry. See
-`OVERRIDE-RULING-2026-07-30.md` §1.5, which enumerates them. Requantifying the optimism from a
+`docs/process/OVERRIDE-RULING-2026-07-30.md` §1.5, which enumerates them. Requantifying the optimism from a
 cell that survives is open work, not a finished result. The permutation p is reported as
 **p ≤ 0.001** rather than `0.0010` because 1/1001 is the resolution floor of a 1000-shuffle test,
 not a measurement; the scripts print the bound directly.
