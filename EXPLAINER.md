@@ -2277,7 +2277,7 @@ Absence from the UNBACKED list means *not checked*, not *checked and passed*.
 ```bash
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-python pipeline/decode_csp.py        # full pipeline + writes figures/csp_patterns.png
+python src/pipeline/decode_csp.py        # full pipeline + writes figures/csp_patterns.png
 ```
 - The dataset downloads automatically on first run and is cached in `~/mne_data`, so later runs
   are fast and offline-capable. The first run of rung 6 pulls ~840 MB (all 109 subjects).
@@ -2631,7 +2631,8 @@ currently quantified.** An earlier revision of this table quantified it, from a 
 factor and an `n_eff`-corrected interval computed on the fixed-partition cell C4, and that cell
 was withdrawn on exchangeability grounds, so every figure derived from it is withdrawn with it.
 The same applies to the 10,000-draw row this table used to carry. See
-`docs/process/OVERRIDE-RULING-2026-07-30.md` §1.5, which enumerates them. Requantifying the optimism from a
+the 2026-07-30 override ruling §1.5, an internal record kept outside this
+repository, which enumerates them. Requantifying the optimism from a
 cell that survives is open work, not a finished result. The permutation p is reported as
 **p ≤ 0.001** rather than `0.0010` because 1/1001 is the resolution floor of a 1000-shuffle test,
 not a measurement; the scripts print the bound directly.

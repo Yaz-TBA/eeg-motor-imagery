@@ -50,9 +50,9 @@ integer can be backed by coincidence, and a script that prints a number for any
 reason will back it. This catches fabrication and drift, not misinterpretation.
 
 Usage:
-    python checks/check_provenance.py            # run everything (~3 h, sum of REGISTRY)
-    python checks/check_provenance.py --fast     # skip slow scripts, use their cache
-    python checks/check_provenance.py --list     # show scripts + claims, run nothing
+    python src/checks/check_provenance.py            # run everything (~3 h, sum of REGISTRY)
+    python src/checks/check_provenance.py --fast     # skip slow scripts, use their cache
+    python src/checks/check_provenance.py --list     # show scripts + claims, run nothing
 """
 
 from __future__ import annotations
@@ -67,8 +67,8 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
-# The repo root: this file lives in checks/, one level down.
-ROOT = Path(__file__).resolve().parent.parent
+# The repo root: this file lives in src/checks/, two levels down.
+ROOT = Path(__file__).resolve().parent.parent.parent
 CACHE = ROOT / ".provenance_cache"
 PYTHON = str(ROOT / ".venv" / "bin" / "python")
 DOCS = ["README.md", "EXPLAINER.md"]
@@ -180,12 +180,12 @@ REGISTRY = {
 # Script locations
 # ---------------------------------------------------------------------------
 
-# The scripts moved into pipeline/, attacks/ and checks/ on 2026-08-26. REGISTRY,
+# The scripts live under src/, in the three groups the README names. REGISTRY,
 # NON_ANALYSIS, the .provenance_cache/ filenames and meta.json all stay keyed by bare
-# script name, so the tracked cache survived the move byte-for-byte; this is the one
-# place a name resolves to a path. "." keeps root-level scripts (common.py, status.py)
-# visible to unregistered_scripts().
-SCRIPT_DIRS = ("pipeline", "attacks", "checks", ".")
+# script name, so the tracked cache survives moves byte-for-byte; this is the one
+# place a name resolves to a path. "src" and "." keep common.py and any root-level
+# script visible to unregistered_scripts().
+SCRIPT_DIRS = ("src/pipeline", "src/attacks", "src/checks", "src", ".")
 
 
 def script_path(script: str) -> Path:

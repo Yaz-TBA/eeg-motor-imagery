@@ -152,8 +152,8 @@ from sklearn.model_selection import (
 )
 from scipy import stats
 
-# common.py lives at the repo root, one level up; put it on the path so this script
-# can be launched from anywhere.
+# common.py lives one level up, beside the script groups; put its directory on the
+# path so this script can be launched from anywhere.
 import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))

@@ -108,8 +108,8 @@ from sklearn.model_selection import (
 mne.set_log_level("ERROR")
 warnings.filterwarnings("ignore")
 
-# common.py lives at the repo root, one level up; put it on the path so this script
-# can be launched from anywhere.
+# common.py lives one level up, beside the script groups; put its directory on the
+# path so this script can be launched from anywhere.
 import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -438,8 +438,9 @@ def main():
     # mismatch discards the block and recomputes it. The cache is never consulted
     # across different stamps and holds no summary statistic, only raw per-replicate
     # scores, so nothing derived can be cached stale.
-    CACHE_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-                             ".permutation_design_cache")   # at the repo root, one level up
+    CACHE_DIR = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
+        ".permutation_design_cache")   # at the repo root, two levels up from src/checks/
 
 
     def fingerprint(*parts):
