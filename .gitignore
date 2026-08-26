@@ -30,3 +30,10 @@ __pycache__/
 
 # Derived state -- regenerate with status.py. Never commit; that is how state becomes stale history.
 STATUS.json
+
+# Local working records and ops tooling, deliberately outside the public tree. The
+# process records stay on disk for provenance; status.py writes STATUS.json for the
+# vault and measures the repo, not the EEG data.
+status.py
+CLAUDE.md
+docs/process/
