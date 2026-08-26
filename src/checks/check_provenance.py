@@ -1,4 +1,8 @@
 #!/usr/bin/env python3
+# SIZE-WAIVER: one guard, one contract. The registry with its measured-runtime
+# comments, the extractor, the matcher and the exit contract are a single promise to
+# the reader, and splitting the matcher from the registry it guards would hide that
+# promise. Most of the overhang is the docstring and the registry comments.
 """Every number in the docs must come out of a script. This checks that.
 
 NAVIGATION. Refuses to let a number appear in the docs unless a script in this repo

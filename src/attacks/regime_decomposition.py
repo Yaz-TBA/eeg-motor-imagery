@@ -1,3 +1,6 @@
+# SIZE-WAIVER: one pre-registered design. Seven cells of one factorial are read
+# together, and the pre-cue control the conclusion rests on cannot be separated from
+# the cells it controls. Ninety-five lines over the ceiling, all of them one run.
 """What did regime C actually measure? A 2x2 that separates band from window.
 
 The 2x2 that worked out what regime C had actually measured. TL,DR: the CNN was decoding
