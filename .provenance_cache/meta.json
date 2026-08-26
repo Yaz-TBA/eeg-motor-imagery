@@ -3,7 +3,7 @@
   "epoch_trials.py": "5e50feb5c25c",
   "filter_and_epoch.py": "c34674fb6060",
   "decode_csp.py": "cf1a590337fd",
-  "ablate_channels.py": "76e47a07b607",
+  "ablate_channels.py": "c39278855d79",
   "harder_contrast.py": "7cbfe2cacdbe",
   "evaluate_honestly.py": "1bb95f67a203",
   "sweep_subjects.py": "aa87e556cc3a",

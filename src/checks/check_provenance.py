@@ -393,6 +393,16 @@ NON_ANALYSIS = {
     "infstats_measured.py": "sections 6-8 of inferential_stats.py, the three "
                             "figures measured rather than re-derived.",
     "infstats_ledger.py": "sections 11 and 12 of inferential_stats.py.",
+    # The six ablation_* modules are ablate_channels.py, split the same way on the
+    # same day. Import-only for the same reason.
+    "ablation_data.py": "constants, loader and channel sets of ablate_channels.py.",
+    "ablation_design.py": "the decision-rule arithmetic of ablate_channels.py.",
+    "ablation_conditions.py": "the six registered conditions and controls.",
+    "ablation_sweep.py": "the ten-seed sweep, per-seed McNemar and arm 10.",
+    "ablation_secondary.py": "the secondary arms: re-reference, permutation, "
+                            "Wilson, paired McNemar.",
+    "ablation_verdict.py": "the falsifiers, the registered verdict and the "
+                           "every-band caveats.",
 }
 
 
