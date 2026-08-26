@@ -382,6 +382,17 @@ NON_ANALYSIS = {
                         "by its own test rather than by the run that produced "
                         "it, which inverts the direction the guard is for. "
                         "Added 2026-08-04, same commit gap as common.py.",
+    # The five infstats_* modules are inferential_stats.py, split into readable
+    # pieces on 2026-08-26. Each is import-only: its printing happens inside that
+    # script's registered run, so registering any of them would double-count the
+    # same stdout, the same argument as common.py above.
+    "infstats_lib.py": "estimators, loaders and constants of inferential_stats.py; "
+                       "prints nothing on import.",
+    "infstats_rungs_8_9.py": "sections 0-4 of inferential_stats.py.",
+    "infstats_rungs_10_11.py": "sections 5, 9 and 10 of inferential_stats.py.",
+    "infstats_measured.py": "sections 6-8 of inferential_stats.py, the three "
+                            "figures measured rather than re-derived.",
+    "infstats_ledger.py": "sections 11 and 12 of inferential_stats.py.",
 }
 
 
