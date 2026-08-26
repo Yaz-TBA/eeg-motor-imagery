@@ -414,6 +414,18 @@ NON_ANALYSIS = {
     "emg_ladder_ext.py": "section 8B of emg_proxy.py, the post-registration "
                          "ladder extension.",
     "emg_verdict.py": "section 9 of emg_proxy.py, the pre-registered reading.",
+    # The nine permdesign_* modules are permutation_design.py, split the same way
+    # on the same day. Import-only for the same reason.
+    "permdesign_lib.py": "constants and shared helpers of permutation_design.py.",
+    "permdesign_workers.py": "schemes, scoring workers and block checkpointing.",
+    "permdesign_setup.py": "section 0 of permutation_design.py.",
+    "permdesign_gates.py": "sections 1-2, the two falsification gates.",
+    "permdesign_dummy.py": "sections 2B-2C, the centring departure and the "
+                          "zero-information exactness study.",
+    "permdesign_arm_a.py": "section 3, arm A and its per-subject report.",
+    "permdesign_mechanism.py": "section 4, the secondary mechanism probe.",
+    "permdesign_arm_b.py": "section 5, arm B and the SHUFFLE_MAX replacement.",
+    "permdesign_verdict.py": "section 6, the pre-registered outcomes.",
 }
 
 
