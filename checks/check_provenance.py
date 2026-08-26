@@ -17,8 +17,9 @@ How it works:
   1. Extract numeric CLAIMS from README.md and EXPLAINER.md (percentages,
      p-values, correlations, and a narrow class of counts).
   2. Run each analysis script, capture stdout, cache it under
-     .provenance_cache/ (gitignored) keyed by a hash of the script source, so
-     reruns are free until the script changes.
+     .provenance_cache/ (tracked in git, deliberately -- .gitignore says why)
+     keyed by a hash of the script source, so reruns are free until the script
+     changes.
   3. Assert every claim appears somewhere in some captured stdout, allowing for
      rounding (91.1 in the docs matches 91.11111 in the output).
   4. Print BACKED / ALLOWLISTED / WEAK / UNBACKED. WEAK means the only stdout

@@ -172,6 +172,19 @@ because importing a script that defined them also ran its multi-minute analysis.
 script has a `__main__` guard now, so importing costs nothing and there is one definition
 of what "the published pipeline" means rather than five.
 
+### Why `.provenance_cache/` is committed
+
+The cache is the evidence pool: `checks/check_provenance.py` resolves every number in
+README.md and EXPLAINER.md into some script's captured stdout, and those captures live in
+`.provenance_cache/`, keyed by script name with a source hash in `meta.json`. If the cache
+were untracked, a fresh clone could not check a single claim without first re-running every
+registered script, which is hours of compute, and the slowest script alone is most of a
+working day cold. A claim that can only be checked by people who already have the cache is
+not checkable, so the cache ships with the repo. Entries are verbatim stdout, never edited,
+and a stale entry cannot pass silently, because the recorded source hash stops matching the
+moment a script changes. The longer form of this argument sits where the rule is enforced,
+in `.gitignore`.
+
 ## Next
 
 Cross-subject, harder contrasts and the EEGNet comparison are all built now (rungs 7–11). What
