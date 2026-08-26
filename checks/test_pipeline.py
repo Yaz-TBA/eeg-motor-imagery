@@ -8,12 +8,18 @@ These are deliberately not "does the code run" tests. Each one guards a specific
 this project actually made and had to retract, so a future edit that reintroduces the
 mistake fails here instead of in a README.
 
-    python3 -m pytest test_pipeline.py -q     (or: python3 test_pipeline.py)
+    python3 -m pytest checks/test_pipeline.py -q     (or: python3 checks/test_pipeline.py)
 
 Nothing here downloads data or trains anything; the whole file runs in under a second.
 """
 
 import numpy as np
+
+# common.py lives at the repo root, one level up; put it on the path so this script
+# can be launched from anywhere.
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import common
 from common import (

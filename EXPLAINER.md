@@ -2277,7 +2277,7 @@ Absence from the UNBACKED list means *not checked*, not *checked and passed*.
 ```bash
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-python decode_csp.py        # full pipeline + writes figures/csp_patterns.png
+python pipeline/decode_csp.py        # full pipeline + writes figures/csp_patterns.png
 ```
 - The dataset downloads automatically on first run and is cached in `~/mne_data`, so later runs
   are fast and offline-capable. The first run of rung 6 pulls ~840 MB (all 109 subjects).

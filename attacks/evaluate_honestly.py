@@ -52,6 +52,12 @@ from sklearn.model_selection import (
 mne.set_log_level("ERROR")  # keep parallel workers from flooding stdout
 warnings.filterwarnings("ignore")
 
+# common.py lives at the repo root, one level up; put it on the path so this script
+# can be launched from anywhere.
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
 from common import make_clf, wilson_interval
 
 

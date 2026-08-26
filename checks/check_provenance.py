@@ -49,9 +49,9 @@ integer can be backed by coincidence, and a script that prints a number for any
 reason will back it. This catches fabrication and drift, not misinterpretation.
 
 Usage:
-    python check_provenance.py            # run everything (~3 h, sum of REGISTRY)
-    python check_provenance.py --fast     # skip slow scripts, use their cache
-    python check_provenance.py --list     # show scripts + claims, run nothing
+    python checks/check_provenance.py            # run everything (~3 h, sum of REGISTRY)
+    python checks/check_provenance.py --fast     # skip slow scripts, use their cache
+    python checks/check_provenance.py --list     # show scripts + claims, run nothing
 """
 
 from __future__ import annotations
@@ -66,7 +66,8 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent
+# The repo root: this file lives in checks/, one level down.
+ROOT = Path(__file__).resolve().parent.parent
 CACHE = ROOT / ".provenance_cache"
 PYTHON = str(ROOT / ".venv" / "bin" / "python")
 DOCS = ["README.md", "EXPLAINER.md"]
@@ -173,6 +174,26 @@ REGISTRY = {
     # which is the point of a gate that costs two seconds.
     "validity_gate.py":         (10,    False),
 }
+
+# ---------------------------------------------------------------------------
+# Script locations
+# ---------------------------------------------------------------------------
+
+# The scripts moved into pipeline/, attacks/ and checks/ on 2026-08-26. REGISTRY,
+# NON_ANALYSIS, the .provenance_cache/ filenames and meta.json all stay keyed by bare
+# script name, so the tracked cache survived the move byte-for-byte; this is the one
+# place a name resolves to a path. "." keeps root-level scripts (common.py, status.py)
+# visible to unregistered_scripts().
+SCRIPT_DIRS = ("pipeline", "attacks", "checks", ".")
+
+
+def script_path(script: str) -> Path:
+    for d in SCRIPT_DIRS:
+        p = ROOT / d / script
+        if p.exists():
+            return p
+    return ROOT / script
+
 
 # ---------------------------------------------------------------------------
 # Claim extraction
@@ -367,7 +388,7 @@ def unregistered_scripts() -> list[str]:
     anything named in NON_ANALYSIS. There is no implicit exemption -- a helper
     nobody has justified in writing shows up here and fails the run.
     """
-    return sorted(p.name for p in ROOT.glob("*.py")
+    return sorted(p.name for d in SCRIPT_DIRS for p in (ROOT / d).glob("*.py")
                   if p.name not in REGISTRY
                   and p.name not in NON_ANALYSIS
                   and p.name != Path(__file__).name)
@@ -378,7 +399,7 @@ def cache_path(script: str) -> Path:
 
 
 def source_hash(script: str) -> str:
-    return hashlib.sha256((ROOT / script).read_bytes()).hexdigest()[:12]
+    return hashlib.sha256(script_path(script).read_bytes()).hexdigest()[:12]
 
 
 def run_script(script: str, budget: int) -> str | None:
@@ -390,7 +411,7 @@ def run_script(script: str, budget: int) -> str | None:
     """
     print(f"  running {script} (budget {budget}s) ...", flush=True)
     try:
-        proc = subprocess.run([PYTHON, str(ROOT / script)], cwd=ROOT,
+        proc = subprocess.run([PYTHON, str(script_path(script))], cwd=ROOT,
                               capture_output=True, text=True,
                               timeout=budget * 4)
     except subprocess.TimeoutExpired:
@@ -412,7 +433,7 @@ def gather_outputs(fast: bool) -> tuple[str, list[str]]:
     blobs, missing = [], []
 
     for script, (budget, slow) in REGISTRY.items():
-        if not (ROOT / script).exists():
+        if not script_path(script).exists():
             missing.append(f"{script} (registered but not on disk)")
             continue
         path, cached = cache_path(script), None
@@ -544,7 +565,7 @@ def main() -> int:
         for s, (b, slow) in REGISTRY.items():
             mark = "SLOW" if slow else "fast"
             hit = "cached" if cache_path(s).exists() else "no cache"
-            gone = "" if (ROOT / s).exists() else "  MISSING FROM DISK"
+            gone = "" if script_path(s).exists() else "  MISSING FROM DISK"
             print(f"  {s:<28} {mark:<5} ~{b:>5}s  [{hit}]{gone}")
         for s in unregistered_scripts():
             print(f"  {s:<28} NOT IN REGISTRY -- its output is never checked")
@@ -552,7 +573,7 @@ def main() -> int:
         # indistinguishable from a check that never ran, which is the confusion
         # this tool exists to remove.
         for s in sorted(NON_ANALYSIS):
-            gone = "" if (ROOT / s).exists() else "  NOT ON DISK -- stale exemption"
+            gone = "" if script_path(s).exists() else "  NOT ON DISK -- stale exemption"
             print(f"  {s:<28} NOT ANALYSIS -- exempt by name{gone}")
         print(f"\nCLAIMS ({len(claims)} extracted, "
               f"{dropped} digits inside code fences exempted)")

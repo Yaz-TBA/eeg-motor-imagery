@@ -20,46 +20,48 @@ motor-imagery set (109 subjects, 64-channel EEG @ 160 Hz), loaded via
 ## Repo map: what to read, in what order
 
 There are a lot of scripts here. They are not all equally worth your time, and they fall into
-three groups. **If you read three files, read `decode_csp.py`, `evaluate_honestly.py` and
-`ablate_channels.py`, in that order.**
+three groups, and the folders `pipeline/`, `attacks/` and `checks/` are those groups.
+**If you read three files, read `pipeline/decode_csp.py`, `attacks/evaluate_honestly.py`
+and `attacks/ablate_channels.py`, in that order.**
 
 **1. Building the result** (rungs 1–4). Start here.
 
 | Script | What it does |
 |---|---|
-| `load_and_plot.py` | Load one run, look at the raw signal |
-| `filter_and_epoch.py` | Band-pass to 8–30 Hz, average reference |
-| `epoch_trials.py` | Cut the continuous signal into labeled trials |
-| **`decode_csp.py`** | **The pipeline and the headline number. The entry point.** |
+| `pipeline/load_and_plot.py` | Load one run, look at the raw signal |
+| `pipeline/filter_and_epoch.py` | Band-pass to 8–30 Hz, average reference |
+| `pipeline/epoch_trials.py` | Cut the continuous signal into labeled trials |
+| **`pipeline/decode_csp.py`** | **The pipeline and the headline number. The entry point.** |
 
 **2. Attacking the result** (rungs 5–11). This is the half that matters.
 
 | Script | What it found |
 |---|---|
-| **`evaluate_honestly.py`** | **Moved the headline 94.4% → 91.1%** |
-| `sweep_subjects.py` | Median across all 109 subjects is 60.0%, not 91.1% |
-| `cross_subject.py` | 59.4% on an unseen person, with no calibration |
-| `harder_contrast.py` | Left vs right fist is much harder, and gaze is a confound |
-| **`ablate_channels.py`** | **The artifact control, and a prediction I lost** |
-| `emg_proxy.py` | Whether jaw muscle could be driving it (bounded, not closed) |
-| `riemannian.py` | Covariance geometry as an alternative classifier |
-| `eegnet_compare.py` | A CNN comparison, and the units bug that faked a finding |
-| `regime_decomposition.py` | What the CNN was actually decoding (the cue, not the imagery) |
+| **`attacks/evaluate_honestly.py`** | **Moved the headline 94.4% → 91.1%** |
+| `attacks/sweep_subjects.py` | Median across all 109 subjects is 60.0%, not 91.1% |
+| `attacks/cross_subject.py` | 59.4% on an unseen person, with no calibration |
+| `attacks/harder_contrast.py` | Left vs right fist is much harder, and gaze is a confound |
+| **`attacks/ablate_channels.py`** | **The artifact control, and a prediction I lost** |
+| `attacks/emg_proxy.py` | Whether jaw muscle could be driving it (bounded, not closed) |
+| `attacks/riemannian.py` | Covariance geometry as an alternative classifier |
+| `attacks/eegnet_compare.py` | A CNN comparison, and the units bug that faked a finding |
+| `attacks/regime_decomposition.py` | What the CNN was actually decoding (the cue, not the imagery) |
 
 **3. Checking the checks.** Infrastructure. Read only if you want to audit.
 
 | Script | Job |
 |---|---|
-| `permutation_design.py` | Tests whether the permutation null is itself valid |
-| `validity_gate.py` | The registered independence gate |
-| `inferential_stats.py` | Every CI and p-value in the docs, computed in one place |
-| `check_provenance.py` | Refuses numbers in the docs that no script produces |
-| `check_wording.py` | Catches banned phrasings and retracted claims |
-| `test_pipeline.py` | 19 regression tests, one per mistake actually made |
+| `checks/permutation_design.py` | Tests whether the permutation null is itself valid |
+| `checks/validity_gate.py` | The registered independence gate |
+| `checks/inferential_stats.py` | Every CI and p-value in the docs, computed in one place |
+| `checks/check_provenance.py` | Refuses numbers in the docs that no script produces |
+| `checks/check_wording.py` | Catches banned phrasings and retracted claims |
+| `checks/test_pipeline.py` | 19 regression tests, one per mistake actually made |
 | `common.py` | The shared pipeline definition, imported by everything |
 | `status.py` | Computes the two repo gates into `STATUS.json` |
 
-**Directories:** `prereg/` the registered designs, written before the scripts existed ·
+**Directories:** `pipeline/` · `attacks/` · `checks/` are the three groups above
+(`common.py` and `status.py` stay at the root) · `prereg/` the registered designs, written before the scripts existed ·
 `figures/` generated plots · `results/` generated data · `.provenance_cache/` captured stdout
 that `check_provenance.py` checks the docs against.
 
@@ -139,7 +141,7 @@ audit, and every correction along the way, is in [EXPLAINER.md](EXPLAINER.md) §
 ```bash
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-python decode_csp.py        # full pipeline + CSP patterns → figures/csp_patterns.png
+python pipeline/decode_csp.py        # full pipeline + CSP patterns → figures/csp_patterns.png
 ```
 
 Data downloads automatically on first run (cached in `~/mne_data`).
@@ -147,7 +149,7 @@ Data downloads automatically on first run (cached in `~/mne_data`).
 ### Tests
 
 ```bash
-python test_pipeline.py       # or: python -m pytest test_pipeline.py -q
+python checks/test_pipeline.py       # or: python -m pytest checks/test_pipeline.py -q
 ```
 
 19 regression tests, under a second, no data download. They are not "does it run" tests.

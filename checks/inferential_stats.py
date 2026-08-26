@@ -88,9 +88,15 @@ import numpy as np
 from scipy import stats
 from scipy.optimize import brentq
 
+# common.py lives at the repo root, one level up; put it on the path so this script
+# can be launched from anywhere.
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
 from common import holm as common_holm, wilson_interval as common_wilson
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parent.parent  # the repo root: this file lives in checks/
 
 ALPHA = 0.05
 POWER = 0.80

@@ -48,7 +48,7 @@ import re
 import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parent.parent  # the repo root: this file lives in checks/
 DOCS = ("README.md", "EXPLAINER.md")
 
 # Each entry: (compiled pattern, what to write instead). Patterns run against
