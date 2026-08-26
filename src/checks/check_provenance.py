@@ -403,6 +403,17 @@ NON_ANALYSIS = {
                             "Wilson, paired McNemar.",
     "ablation_verdict.py": "the falsifiers, the registered verdict and the "
                            "every-band caveats.",
+    # The seven emg_* modules are emg_proxy.py, split the same way on the same
+    # day. Import-only for the same reason.
+    "emg_setup.py": "sections 0-2 of emg_proxy.py: constants, data, bands, epochs.",
+    "emg_psd.py": "section 3 of emg_proxy.py, the PSD diagnostic.",
+    "emg_sharp.py": "sections 4-5 of emg_proxy.py: positive control and arm (b).",
+    "emg_univariate.py": "sections 6-7 of emg_proxy.py: arm (a) and the pre-cue "
+                         "diagnostic.",
+    "emg_ladder.py": "section 8 of emg_proxy.py, the sensitivity ladder.",
+    "emg_ladder_ext.py": "section 8B of emg_proxy.py, the post-registration "
+                         "ladder extension.",
+    "emg_verdict.py": "section 9 of emg_proxy.py, the pre-registered reading.",
 }
 
 
