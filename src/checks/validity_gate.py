@@ -1,14 +1,14 @@
 """G-S, the y_obs-independence gate registered in prereg-permutation-validity.md §4.
 
-NAVIGATION. The G-S gate registered in prereg-permutation-validity.md. Small on purpose:
-it answers one question, whether the null is independent of the observed labels, and it
-answers it the way the pre-registration said it would before the run happened.
+Small on purpose: it answers one question, whether the null is independent of
+the observed labels, and answers it the way the pre-registration said it would
+before the run happened.
 
 Deterministic. No EEG, no Monte Carlo, no estimator, no tie-break. A permutation
-rule is a pair (partition, permutation group). Theorem 3.1's hypothesis 2 says
-neither object may be a function of the observed label vector. G-S checks that
-by instantiating the rule under two different observed vectors drawn from the
-same marginal and demanding the two objects come out element-wise identical.
+rule is a pair (partition, permutation group), and Theorem 3.1's hypothesis 2
+says neither object may be a function of the observed label vector. G-S checks
+that by instantiating the rule under two different observed vectors drawn from
+the same marginal and demanding the two objects come out element-wise identical.
 
 A rule failing G-S is disqualified by §4.3. There is no measurement that
 rehabilitates it, because G-S is a statement about the code and not about the

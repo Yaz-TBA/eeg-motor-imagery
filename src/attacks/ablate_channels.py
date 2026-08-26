@@ -1,127 +1,97 @@
-"""The artifact control: refit on the channels where the EYES are loudest and see
+"""The artifact control: refit on the channels where the eyes are loudest and see
 whether the result survives there.
 
 Genuinely didn't expect this one.. deleting the motor strip was supposed to break the
 decoder and it didn't ?? 77.8% on the remaining 47 channels. Lost this prediction i guess ?
 Read the caveats below before taking anything from it though, since a channel deletion
-can't falsify a SOURCE hypothesis in either direction.
+can't falsify a source hypothesis in either direction.
 
-A scalp topography is not evidence. It is a picture of the model's weights, and
-a model riding an eye-movement artifact will happily draw a picture too. The
-only cheap control that actually bites is an ABLATION: refit the entire pipeline
-on a channel subset that CANNOT see sensorimotor cortex, and check that the
-accuracy collapses to the majority-class rate -- NOT to 50%. With 21 hands and
-24 feet the do-nothing baseline is 53.3%, and a control that lands there has
-failed correctly.
+A scalp topography is a picture of the model's weights, and a model riding an
+eye-movement artifact will happily draw one too. The control that bites is an
+ablation: refit the whole pipeline on a subset that cannot see sensorimotor
+cortex and check that accuracy collapses to the majority-class rate, which with
+21 hands and 24 feet is 53.3%, not 50%.
 
-Six conditions, TWO splitters -- stratified 5-fold for (a)-(c), (e) and (f),
-leave-one-run-out for (d), which is why (d) reports three per-fold values and
-the others report five:
+The six conditions:
 
-  (a) all 64 channels          -- reproduces the published headline
-  (b) sensorimotor only        -- FC/C/CP strip. Should hold or improve.
-  (c) frontopolar only         -- Fp/AF. This is where blinks and saccades are
-                                  LOUDEST. If the decoder were reading the eyes,
-                                  this is the subset that would keep working.
-  (d) leave-one-run-out        -- all 64 channels, but folds are whole recording
-                                  runs, so no fold can share a session-drift or
-                                  electrode-settling trend with its training set.
-  (e) sensorimotor DELETED     -- the 17-channel strip removed, the OTHER 47
-                                  electrodes kept. THE NECESSITY ARM, added
-                                  2026-07-25. See the second caveat below.
-  (f) wide FC/C/CP DELETED     -- the 21-channel FC/C/CP block removed, 43 kept.
-                                  Bounds the FC5/FC6/CP5/CP6 that (e) retains.
+  (a) all 64 channels       reproduces the published headline
+  (b) sensorimotor only     FC/C/CP strip; should hold or improve
+  (c) frontopolar only      Fp/AF, where blinks and saccades are loudest; the
+                            subset that keeps working if the decoder reads eyes
+  (d) leave-one-run-out     all 64, folds are whole runs, so no fold shares a
+                            drift or settling trend with its training set
+  (e) sensorimotor deleted  the 17-channel strip removed, the other 47 kept;
+                            the necessity arm, added 2026-07-25
+  (f) wide FC/C/CP deleted  the 21-channel block removed, 43 kept; bounds the
+                            FC5/FC6/CP5/CP6 that (e) retains
 
-Seed 42 is primary, and (a)-(c), (e) and (f) also carry a ten-seed sweep over
-range(10), because a seed-42 point difference is ONE quantized draw -- this file
-already annotates its own +4.4 point row as "one draw, not an effect size" and
-the same rule now binds the arm that does not flatter. The decision statistic
-for (e) is a ten-seed mean gap AND an exact McNemar, both fixed in advance in
-prereg/prereg-complement-ablation.md, which also records that
-the accuracy half of (e) had already been run once and was NOT blind.
+(a)-(c), (e), (f) use stratified 5-fold; (d) uses leave-one-run-out, which is why
+it prints three per-fold values against the others' five. Seed 42 is primary, and
+every seeded condition also carries a ten-seed sweep, because one seed is one
+quantized draw. The decision statistic for (e) is a ten-seed mean gap AND an exact
+McNemar, both fixed in advance in prereg/prereg-complement-ablation.md, which also
+records that (e)'s accuracy half had already been run once and was not blind.
 
-WHY THIS README TABLE EXISTS AS A SCRIPT NOW. An earlier README published these
-four numbers as 91.1 / 95.9 / 47.4 / 93.3 with no script behind them. Two of
-them were arithmetically impossible: with 45 trials in five equal folds of 9,
-overall accuracy is a count of correct trials over 45, so it can only land on
-multiples of 1/45 = 2.222%. 95.9% and 47.4% are not on that lattice -- there is
-no k with k/45 = 0.959. They were not measurements. This file replaces them.
+Why this table is a script:
 
-A CAVEAT THAT SURVIVES THE ABLATION. The average reference is computed across
-all 64 electrodes BEFORE any subset is picked, exactly as in decode_csp.py. So
-the frontopolar channels are not hermetically sealed off from occipital or
-central activity -- every channel carries -1/64 of every other. The ablation
-therefore bounds the artifact contribution rather than eliminating it. Making
-the subsets independent would mean re-referencing each subset separately, which
-would no longer be the published pipeline. Bounding is the honest claim.
+An earlier README published 91.1 / 95.9 / 47.4 / 93.3 with no script behind them.
+On 45 trials tested once each, accuracy is k/45, steps of 2.222%, and 95.9% and
+47.4% are not on that lattice. They were never measurements. This file replaces them.
 
-A SECOND CAVEAT, ON WHAT (c) IS AND IS NOT. Frontopolar-only is not "sensorimotor
-cortex deleted." It KEEPS 8 of 64 electrodes and deletes the other 56 -- occipital,
-parietal and temporal along with the central strip -- so its collapse is confounded
-with an 8x cut in channel count and feature dimension. What (c) does test is the
-OCULAR hypothesis: the subset where blinks and saccades are loudest does not carry
-the result.
+Two caveats that survive every outcome:
 
-THE ARM THIS FILE USED TO DECLARE ABSENT, NOW BUILT (2026-07-25). Conditions (e)
-and (f) delete the strip and keep the rest, which is the falsifiable form: "if the
-decoder reads sensorimotor cortex then deleting sensorimotor cortex must break it."
-Read what (e) IS before reading its number. It is "the 17-channel strip deleted,"
-not "sensorimotor cortex deleted": SENSORIMOTOR does not contain FC5, FC6, CP5 or
-CP6, so (e) keeps four peri-Rolandic electrodes, and (f) exists to bound exactly
-that leak. (e) also keeps T8/T10/TP8, which is temporalis muscle territory that
-NOTHING in this repo yet bounds, and POz/PO4/Oz, the peak of the strongest
-retained CSP pattern. And the instrument limit comes BEFORE the number, not after
-it: no channel-deletion experiment on a 64-channel scalp montage can falsify a
-SOURCE hypothesis in either direction, because deleting the electrodes nearest a
-source does not delete the source from the remaining ones. These are sensor-space
-measurements and they license only sensor-space claims.
+The average reference is computed over all 64 electrodes before any subset is
+picked, so every channel carries -1/64 of every other and no subset is
+electrically sealed off. The ablation bounds the artifact contribution; it cannot
+eliminate it. And (c) is not "sensorimotor cortex deleted": it keeps 8 of 64 and
+drops the other 56, so its collapse is confounded with an 8x cut in feature
+dimension. What (c) does test is the ocular hypothesis.
 
-WHAT THIS SCRIPT WITHDREW, KEPT VISIBLE (2026-07-25):
-  - "Four conditions, one seed, one splitter." False: the conditions block below
-    constructs a StratifiedKFold AND a LeaveOneGroupOut, and hands the second to
-    condition (d). "One seed" is true, and (d)'s three per-fold values against
-    the others' five were the visible tell all along.
-  - The opening line used to read "take the motor cortex away and see if the
-    decoder dies," which describes an arm this script does not build. See the
-    second caveat above.
-  - The printed line "so the result is not a within-session drift artifact"
-    claimed more than the design supports. Runs 6, 10 and 14 are three
-    recordings from ONE session, so holding out a run removes drift shared
-    inside a run but not a session-level trend running across all three.
-  - "No condition in this script deletes the sensorimotor strip and retains the
-    rest of the montage, so the falsifiable form 'if the decoder reads
-    sensorimotor cortex then deleting sensorimotor cortex must break it' is NOT
-    tested here and must not be attributed to this file." True from the day it
-    was written until 2026-07-25, false from the edit that added conditions (e)
-    and (f). Kept visible rather than deleted because that sentence was quoted
-    elsewhere in the corpus as the evidence that the arm was missing, and a
-    reader who meets it there has to be able to see that it was retired by
-    BUILDING the arm rather than by rewording the disclosure.
+The necessity arm, built 2026-07-25:
 
-WHAT THIS SCRIPT WITHDREW, KEPT VISIBLE (2026-07-26). All four came from an
-adversarial pass, all four are defects in what the run SAID rather than in what
-it computed, and no measured value below changes because of them.
-  - "The complement re-referenced within its own 47 (LEAK REMOVED)." False. The
+(e) and (f) are the falsifiable form: "if the decoder reads sensorimotor cortex,
+deleting sensorimotor cortex must break it." Read what (e) is before its number.
+It deletes the 17-channel strip, not the cortex: it keeps FC5/FC6/CP5/CP6 (four
+peri-Rolandic electrodes, which (f) bounds), T8/T10/TP8 (temporalis territory,
+unbounded in this repo), and POz/PO4/Oz (the peak of the strongest retained CSP
+pattern). The instrument limit comes before the number: deleting the electrodes
+nearest a source does not delete the source from the rest of the montage, so no
+channel-deletion result licenses a source claim in either direction.
+
+Withdrawn, kept visible (2026-07-25):
+
+  - "Four conditions, one seed, one splitter." False: the conditions block builds
+    a StratifiedKFold and a LeaveOneGroupOut, and (d)'s three per-fold values
+    were the visible tell. "One seed" was true.
+  - The opening "take the motor cortex away and see if the decoder dies"
+    described an arm this script did not then build.
+  - "So the result is not a within-session drift artifact" overclaimed: runs
+    6/10/14 are one session, so (d) removes within-run drift only, never a
+    session-level trend.
+  - "No condition here deletes the strip and retains the rest of the montage."
+    True until 2026-07-25, false once (e) and (f) landed. Kept because the
+    corpus quoted it as evidence the arm was missing, and a reader who meets it
+    there has to see it was retired by building the arm, not by rewording.
+
+Withdrawn, kept visible (2026-07-26), all four from an adversarial pass, all four
+defects in what the run said rather than what it computed:
+
+  - "The complement re-referenced within its own 47 (leak removed)." False: the
     secondary arm is provably the primary minus its own across-channel mean, a
-    RANK-1 COMMON-MODE PROJECTION that drops the rank 47 to 46. The direction it
-    deletes carries the average-referenced strip contribution AND the
-    complement's own global component, so its cost is not assignable to the leak.
-    Both the identity and the rank drop are now measured and asserted in the run.
-  - The McNemar power line conditioned only on the observed n_disc, which is a
-    random draw. The binding constraint is the DESIGN: in a paired 2x2 on the
-    same 45 trials, b - c is identically the trial gap, so the smallest gap that
-    can ever reach p < 0.05 is 6 trials = 13.3 points, while the registered G
-    threshold is 10.0 points = 4.5 trials. The conjunctive rule cannot fire in
-    between, at any discordant count. The pre-registration's stated reason for
-    the rule ("at a gap of 10 or more points the McNemar should fire
-    comfortably") is refuted by that arithmetic and was checkable when it was
-    written. The pre-registration is NOT edited; the refutation is reported.
-  - The McNemar was computed at seed 42 only, while G is a mean over range(10),
-    so the two halves of one conjunctive rule were evaluated on DISJOINT seed
-    sets. The test now runs on every sweep seed. The registered verdict stays at
-    seed 42, where it was registered, and the spread is printed beside it.
-  - "NO CHANNEL-COUNT CONTROL", declared as a live confound in this file and in
-    the pre-registration and never run. It is now run, as arm 10, and it is
+    rank-1 common-mode projection (rank 47 -> 46) whose deleted direction mixes
+    the strip contribution with the complement's own global component. Its cost
+    is not assignable to the leak. Both facts are now measured and asserted.
+  - The McNemar power line conditioned on the observed n_disc, a random draw.
+    The binding constraint is the design: b - c is identically the trial gap, so
+    the smallest gap that can reach p < 0.05 is 6 trials = 13.3 points, while
+    the registered G threshold is 10.0 points = 4.5 trials. Between them the
+    conjunctive rule cannot fire at any discordant count. That refutes the
+    pre-registration's own justification and was checkable when it was written;
+    the prereg is not edited, the refutation is reported.
+  - The McNemar ran at seed 42 only while G is a mean over range(10), so one
+    conjunctive rule was evaluated on disjoint seed sets. It now runs on every
+    sweep seed; the registered verdict stays at seed 42 with the spread beside it.
+  - "No channel-count control", declared and never run. Now run as arm 10, and
     retired for the 47-vs-64 comparison only.
 """
 

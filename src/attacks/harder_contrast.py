@@ -15,53 +15,44 @@ patterns rather than distant ones. Accuracy should drop. That drop is the point:
 it tells you what the method costs when the classes move closer together, and a
 left/right decision is what actually drives a cursor in a real BCI.
 
-TWO TRAPS, both silent, both worth understanding:
+Two silent traps:
 
-  1. RUN NUMBERS. This uses runs 4/8/12, NOT 3/7/11. On PhysioNet's EEGBCI,
-     runs 3/7/11 are motor EXECUTION (really moving the hand) and runs 4/8/12
-     are motor IMAGERY. An earlier version of this repo's EXPLAINER said 3/7/11
-     were the imagined ones. Building this rung on those runs would have decoded
-     real movement -- which is a stronger, easier signal -- while the writeup
-     claimed imagined movement. The code would have run fine and produced a
-     flattering number attached to a false claim.
+  1. Run numbers. This uses runs 4/8/12, not 3/7/11: on EEGBCI, 3/7/11 are motor
+     execution and 4/8/12 are imagery. An earlier EXPLAINER said 3/7/11 were the
+     imagined ones; built on those, this rung would have decoded real movement,
+     a stronger signal, under a writeup claiming imagery, and the code would
+     have run fine.
+  2. Label meaning. T1/T2 are not fixed across the dataset: in runs 5/6/9/10/13/14
+     they mean fists/feet, in 3/4/7/8/11/12 they mean left/right fist. Copy the
+     epoching block from decode_csp.py without renaming and every downstream
+     label says "hands" while holding left-fist trials.
 
-  2. LABEL MEANING. T1 and T2 do not mean fixed things across the dataset. In
-     runs 5/6/9/10/13/14, T1 = both fists and T2 = both feet. In runs
-     3/4/7/8/11/12, T1 = LEFT fist and T2 = RIGHT fist. Copy the epoching block
-     from decode_csp.py without renaming and every label downstream says "hands"
-     while holding left-fist trials.
+Retracted, and why it is still here:
 
-WHAT THIS RUNG RETRACTED, AND WHY IT IS STILL HERE
+The first version printed one sentence, "fists-vs-feet on this subject was
+91.1%, so a harder contrast costs 17.8 points", both halves hardcoded strings,
+and the framing wrong four ways:
 
-The first version of this file printed one sentence: "fists-vs-feet on this
-subject was 91.1%, so a harder contrast costs 17.8 points." Both halves of that
-were hardcoded string constants, and the framing around them was wrong:
+  - n = 1: rung 6 had just swept all 109 subjects and this rung silently
+    reverted to the cleanest one, reporting the gap as a property of the method.
+  - The conditions come from different recording runs (4/8/12 vs 6/10/14), so
+    "harder contrast" cannot be separated from "different recordings".
+  - The 1-second crop was the joint maximum; the window sweep below shows
+    adjacent windows swinging by tens of points.
+  - The comparison number was frozen in a print, so when the baseline moved
+    (94.4% -> 91.1% at rung 5) this file kept quoting the stale one. It is now
+    recomputed at runtime in this process. Do not read that move as the cost of
+    the estimator: over 100 seeds StratifiedKFold averages 0.2 points above
+    ShuffleSplit, so the estimator change raises the expectation and the drop is
+    where seed 42 lands. See evaluate_honestly.py section 6.
 
-  - It is n = 1. Rung 6 had just swept all 109 subjects and this rung silently
-    reverted to the single cleanest one, then reported the gap as if it were a
-    property of the method rather than of subject 1.
-  - The two conditions come from DIFFERENT RECORDING RUNS (4/8/12 vs 6/10/14),
-    so "harder contrast" cannot be separated from "different session."
-  - The 1-second crop was the joint maximum. The window sweep printed below
-    shows adjacent windows swinging by tens of points; the published one is the
-    peak of that noise.
-  - The comparison number was frozen in a print statement. If the baseline moved
-    -- and it did, from 94.4% to 91.1% when rung 5 changed the estimator and the
-    seed placement moved with it -- this file would have kept quoting the stale
-    one. So it is now RECOMPUTED at runtime, from the same pipeline, in this same
-    process. Do not read that move as the cost of the estimator: across 100 seeds
-    StratifiedKFold averages 0.2 points ABOVE ShuffleSplit, so the estimator
-    change RAISES the expectation and the drop is where seed 42 happens to land.
-    See evaluate_honestly.py section 6.
-
-And then the real problem, which is the reason this rung is worth keeping. The
-PhysioNet protocol puts the target on the LEFT or RIGHT of the screen and leaves
-it there for the whole trial, so a lateralized visual stimulus is present for the
-entire decoding window. A left/right decoder can ride the subject's EYES instead
-of their motor cortex. EEGMMIDB ships no EOG channels and this pipeline has no
-ICA, so that confound can be bounded by ablation but never removed. The ablation
-is run below, at MATCHED settings, because an ablation run at different settings
-than the headline is not a control -- it is a second experiment.
+The real problem, and the reason this rung is worth keeping: the protocol parks
+the target on the left or right of the screen for the whole trial, so a
+lateralized visual stimulus spans the entire decoding window and a left/right
+decoder can ride the eyes instead of motor cortex. EEGMMIDB has no EOG and this
+pipeline no ICA, so the confound can be bounded by ablation but never removed.
+The ablation runs below at matched settings, because an ablation at different
+settings than the headline is a second experiment, not a control.
 """
 
 import matplotlib

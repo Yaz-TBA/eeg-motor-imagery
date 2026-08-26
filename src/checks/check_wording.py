@@ -1,45 +1,37 @@
 #!/usr/bin/env python3
 """Fail when outcome-describing prose reuses wording a pre-registration banned.
 
-NAVIGATION. Checks WORDING, not truth. It catches banned phrasings (unscoped accuracy
-claims, 'chance is 50%', the withdrawn scalp-map defence) and can't tell you whether the
-surrounding sentence is correct.
+Checks wording, not truth: it catches the banned phrasings and cannot tell
+whether the surrounding sentence is correct.
 
-WHY THIS EXISTS, AND WHY check_provenance.py CANNOT DO IT
+Why check_provenance.py cannot do this:
 
-check_provenance.py matches by VALUE. It asks whether some committed script
-prints the number a document claims. It is blind to a sentence that contains no
-number, which is exactly where this project's worst defects have lived: the
-estimator-versus-seed misattribution, "each compared on identical folds", and
-the one this file guards -- describing the complement-ablation outcome as the
-decoder "not breaking".
+That guard matches by value, so it is blind to a sentence with no number in it,
+which is where this project's worst defects have lived: the estimator-vs-seed
+misattribution, "each compared on identical folds", and the one guarded here,
+describing the complement-ablation outcome as the decoder "not breaking".
 
-THE BAN, verbatim from prereg/prereg-complement-ablation.md:650-655 in the
-study corpus:
+The ban, verbatim from prereg/prereg-complement-ablation.md:650-655:
 
     Do not write "break", "does not break", "sensorimotor cortex" or "necessary"
     in any sentence describing this run's outcome, and do not place any statement
     of the falsifiable form's fate under a heading containing the word
     "established".
 
-The permitted floor statement, scoped and in sensor space, is: the 47 electrodes
+The permitted floor statement, scoped and in sensor space: the 47 electrodes
 remaining after the 17-channel strip is deleted score 35/45 = 77.8% at seed 42,
 above the 53.3% majority floor, with a 1000-shuffle permutation p <= 0.001.
 
-WHAT THIS CHECKS, AND WHAT IT DELIBERATELY DOES NOT
+What it checks, and deliberately does not:
 
-The bare word "break" is not bannable: these documents must be free to QUOTE the
-falsifiable prediction ("if it reads sensorimotor cortex, deleting sensorimotor
-cortex must break it") in order to report that it did not hold. Banning the word
-outright would forbid stating the hypothesis at all. So this guard matches the
-specific OUTCOME phrasings, which is what the prereg's own supporting text at
-:633-648 names.
-
-Whitespace is normalized before matching. Three of the eleven violations found
-on 2026-07-29 wrapped across a newline and were invisible to line-oriented grep,
+The bare word "break" is not bannable, since the documents must be free to quote
+the falsifiable prediction in order to report it did not hold. So the guard
+matches the specific outcome phrasings the prereg's own supporting text at
+:633-648 names. Whitespace is normalized first: three of the eleven violations
+found on 2026-07-29 wrapped across a newline, invisible to line-oriented grep,
 which is very likely why the prereg's own grep claim was written as passing.
 
-Absence from this file's failure list means NOT CHECKED, not CHECKED AND PASSED.
+Absence from this file's failure list means not checked, never checked-and-passed.
 """
 
 from __future__ import annotations

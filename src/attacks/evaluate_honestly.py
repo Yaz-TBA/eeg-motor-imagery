@@ -3,10 +3,10 @@
 This is the file that moved the headline from 94.4% to 91.1%. Was written to verify my
 own result and it succeeded in denying it, which i guess means it worked.. yippeeee ! :P
 
-THIS RUNG IS WHAT CHANGED THE HEADLINE. decode_csp.py originally reported
+This rung is what changed the headline. decode_csp.py originally reported
 "94.4% +/- 5.6%" from 10 random 80/20 splits (ShuffleSplit); it now uses
 StratifiedKFold(5) and reports 91.1% with a permutation p <= 0.001. The original
-number reproduced exactly, but three things about it were weaker than they looked:
+number reproduced exactly, and three things about it were weaker than they looked:
 
   1. With 45 trials, a 20% test set is 9 trials -- so a fold's accuracy can ONLY
      be a multiple of 1/9. The "+/- 5.6%" is the gap between two rungs of a

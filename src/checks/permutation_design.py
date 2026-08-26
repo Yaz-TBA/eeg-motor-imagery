@@ -1,73 +1,65 @@
-"""Measure what a CORRECTLY DESIGNED permutation null does to this repo's p-values.
+"""Measure what a correctly designed permutation null does to this repo's p-values.
 
-NAVIGATION. This is the registered validity run and it is long since the design IS the
-result. Section 0 sets up, section 1 is falsification gate 1 (does the pilot reproduce),
-section 2 is gate 2 (sklearn agreement), and the two arms diverge after that. If you only
-want the outcome, search for "PRE-REGISTERED VERDICT". No jokes anywhere in this file, on
-purpose: a script whose whole job is showing I didn't fool myself should read like one.
+The registered validity run, and it is long because the design is the result.
+Section 0 sets up, sections 1 and 2 are the falsification gates (pilot
+reproduction, sklearn agreement), and the two arms diverge after that. If you
+only want the outcome, search for "PRE-REGISTERED VERDICT". No jokes anywhere in
+this file, on purpose: a script whose whole job is showing I didn't fool myself
+should read like one.
 
-WHY THIS SCRIPT EXISTS. Two published nulls in this repo are built on assumptions
-the experiment does not satisfy, and until now the repo has conceded that in prose
-without measuring it.
+Why this exists:
 
-  (a) WITHIN-SUBJECT. decode_csp.py:124 and evaluate_honestly.py:185 call
+Two published nulls rest on assumptions the experiment does not satisfy, conceded
+until now in prose without measurement.
+
+  (a) Within-subject. decode_csp.py and evaluate_honestly.py call
       permutation_test_score with cv=StratifiedKFold(5, shuffle=True,
-      random_state=42). sklearn's _permutation_test_score loops
-      `for train, test in cv.split(X, y, ...)` with the PERMUTED labels as y, so
-      StratifiedKFold re-derives the folds from each permuted vector. Every
-      replicate is therefore scored on a DIFFERENT partition, while the observed
-      91.1% is scored on the partition stratified on the TRUE labels. The null
-      marginalises over partitions the observed value conditions on.
+      random_state=42), and sklearn re-derives the folds from each permuted
+      vector. Every replicate is scored on a different partition while the
+      observed 91.1% is scored on the partition stratified on the true labels:
+      the null marginalises over partitions the observed value conditions on.
+  (b) Cross-subject. cross_subject.py draws one global permutation of all 900
+      pooled labels, which also assumes labels are exchangeable across subjects.
+      That is false by protocol: each subject's class marginal is fixed by the
+      experiment, and a global shuffle can deal a 45-trial subject 30 feet and
+      15 hands, a draw the experiment could not produce. The null carries a
+      variance component that has nothing to do with decoding.
 
-  (b) CROSS-SUBJECT. cross_subject.py:135 draws ONE global permutation of all 900
-      pooled labels. That tests the compound hypothesis "labels are unrelated to
-      the EEG AND labels are exchangeable ACROSS subjects". The second conjunct is
-      false by protocol: each subject's class marginal is fixed by the experiment.
-      A global shuffle can deal a 45-trial subject 30 feet and 15 hands, a draw the
-      experiment could not have produced, so the null carries a variance component
-      that has nothing to do with decoding.
-
-Those are the same underlying error at two levels: THE NULL MUST CONDITION ON
-WHATEVER THE OBSERVED STATISTIC CONDITIONS ON. Arm (a) is a defect of the
-PARTITION. Arm (b) is a defect of the REFERENCE SET. They are not one objection
-applied twice, and LeaveOneGroupOut is already label-invariant, so arm (a)'s defect
+Same underlying error at two levels: the null must condition on whatever the
+observed statistic conditions on. (a) is a defect of the partition, (b) of the
+reference set, and LeaveOneGroupOut is already label-invariant, so (a)'s defect
 does not exist in arm (b).
 
-THE EXCHANGEABLE UNIT, stated explicitly, which is what the objection said this
-project could not do:
-  (a) the trial, CONDITIONAL ON RUN, with the statistic evaluated on a FIXED
-      partition. Within each of runs 6/10/14 the labels are exchangeable; nothing
-      is exchangeable across runs, because run is a blocking factor with its own
-      electrode settling and drift.
-  (b) the trial, CONDITIONAL ON SUBJECT. The partition needs no correction because
-      LeaveOneGroupOut already conditions on subject.
+The exchangeable unit, stated explicitly:
 
-WHAT THIS SCRIPT GUARDS AGAINST. Three things, in order of how easy they are to
-fool yourself with:
-  1. Reading a resolution floor as a measurement. Subject 1's effect is roughly
-     4.5 null sd out, so its p is at the floor in EVERY cell no matter which null
-     is used. That is a property of the effect size, not evidence that the design
-     was right. This script therefore leads with the PAIRED per-replicate null
-     difference and the null's SHAPE, not with the p.
-  2. An unpaired comparison masquerading as a paired one. The pilot this replaces
-     fed different label vectors to the cells it compared, so a 3.0-point gap was
-     confounded with Monte Carlo noise. Here ONE list of permuted label vectors
-     feeds both partition rules, and the script asserts the two cells saw
-     element-wise identical labels at every replicate.
-  3. A correction that silently changed nothing. Asserts 5 and 6 below check that
-     the fixed cells really are fixed AND that the re-stratified cells really do
-     move. A "correction" where both cells were secretly identical would look like
-     a clean null result.
+  (a) the trial, conditional on run, scored on a fixed partition. Labels are
+      exchangeable within each of runs 6/10/14 and nothing is exchangeable
+      across runs, since run is a blocking factor with its own settling and drift.
+  (b) the trial, conditional on subject; LeaveOneGroupOut already conditions on
+      subject, so the partition needs no correction.
 
-WHAT THIS SCRIPT DOES NOT SHOW. It does not repair n=45. It does not make the
-within-subject null binomial. It does not address a session-level trend across all
-three runs, which survives every null here exactly as it survives the
-leave-one-run-out ablation in ablate_channels.py:255-259. And three subjects is
-not a survey: subjects 17 and 19 were picked by a fixed median rule from
-sweep_results.csv, so the claim available from them is EXISTENCE (whether the
-correction CAN move a verdict), never frequency.
+What this guards against, in order of how easy each is to fool yourself with:
 
-PRE-REGISTERED at neuro-canon/measurements/prereg-block-permutation.md, written
+  1. Reading a resolution floor as a measurement. Subject 1 sits roughly 4.5
+     null sd out, so its p is at the floor in every cell no matter the null.
+     The finding for subject 1 is the paired per-replicate difference and the
+     null's shape, never the p.
+  2. An unpaired comparison masquerading as paired. The pilot fed different
+     label vectors to the cells it compared. Here one list of permuted vectors
+     feeds both partition rules, asserted element-wise identical per replicate.
+  3. A correction that silently changed nothing. Asserts 5 and 6 check the fixed
+     cells really are fixed and the re-stratified cells really move.
+
+What it does not show:
+
+It does not repair n=45, does not make the within-subject null binomial, and
+does not address a session-level trend across the three runs, which survives
+every null here as it survives the leave-one-run-out ablation. Three subjects is
+not a survey: 17 and 19 came from a fixed median rule on sweep_results.csv, so
+the available claim is existence (the correction can move a verdict), never
+frequency.
+
+Pre-registered at neuro-canon/measurements/prereg-block-permutation.md, written
 before this file existed. Every outcome below was written down in advance.
 """
 

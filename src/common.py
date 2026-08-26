@@ -5,18 +5,13 @@ any of those files also ran its analysis (idk how to work around that at the tim
 importing was expensive and copying was cheaper. That's fixed now, and this is where they
 live.
 
-WHY THIS FILE EXISTS. Until now every analysis script defined its own `make_clf`,
-`wilson_interval`, `holm` and `load_subject`. The copies agreed, and two of them carried
-docstrings explaining that they were copied deliberately rather than imported, because
-importing a script that defines its helpers at module scope also runs that script's
-five-minute analysis. That reasoning was correct and the workaround was the right call at
-the time. It also meant the repo had five definitions of what "the classifier" is, and
-nothing enforced that they stayed in step.
-
-They are here now, once. Every script keeps its own `if __name__ == "__main__"` guard, so
+The copies agreed, and two even carried docstrings saying they were copied
+deliberately rather than imported. The reasoning was right at the time; it still
+left five definitions of "the classifier" with nothing keeping them in step.
+They live here now, once, and every script keeps its own __main__ guard, so
 importing this module runs nothing.
 
-WHAT IS DELIBERATELY *NOT* UNIFIED. The five old `load_subject` functions were not the same
+Deliberately not unified: the five old `load_subject` functions were not one
 function wearing five hats. They differ on purpose:
 
   - cross_subject.py / riemannian.py   8-30 Hz, 1.0-2.0 s crop, the published settings

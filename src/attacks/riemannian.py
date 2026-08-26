@@ -4,29 +4,26 @@ Covariance matrices don't live in flat space, they live on a curved manifold, an
 measuring distance along the curve instead of straight through it turns out to work
 better. Genuinely one of the prettiest ideas in the whole field.
 
-This rung exists to answer the failure the previous one measured. cross_subject.py
-measures a 4.7-point within-to-cross gap that this repo's own test cannot
-distinguish from zero: 95% CI [-1.9, +11.2] points, paired t = +1.390, p = 0.181
-(inferential_stats.py). So "CSP+LDA loses accuracy on an unseen person" is a
-direction, not an established quantity. The HYPOTHESIS this rung tests is
-geometric: CSP learns spatial filters tuned to the training population's anatomy,
-and a new skull shifts everything. Nothing here isolates anatomy from class
-balance, session drift or sample size, so treat it as the motivation for the
-experiment rather than as its finding.
+This rung answers the failure the previous one measured. cross_subject.py finds
+a 4.7-point within-to-cross gap this repo's own test cannot distinguish from
+zero (95% CI [-1.9, +11.2] points, paired t = +1.390, p = 0.181, from
+inferential_stats.py), so "CSP+LDA loses accuracy on an unseen person" is a
+direction, not an established quantity. The hypothesis here is geometric: CSP
+learns spatial filters tuned to the training population's anatomy, and a new
+skull shifts everything. Nothing isolates anatomy from class balance, drift or
+sample size, so read that as the motivation, not the finding.
 
-Riemannian methods attack that directly. A trial's spatial covariance matrix is a
-symmetric positive definite (SPD) matrix, and SPD matrices do not live in ordinary
-flat space -- they live on a curved manifold. Treating them as flat feature vectors
-(which is effectively what log-variance does) distorts the distances between them.
-Measuring distance along the manifold instead respects the actual geometry, and the
-literature reports it as far more robust to the between-subject shift. ON THIS DATA
-IT IS NOT. Read that sentence as the hypothesis this rung tests, not as its result:
-every Riemannian arm below has a negative mean paired change against CSP+LDA on the
-identical folds, and the last line this script prints is "Best on this data: CSP +
-LDA (baseline)". The paired table is the evidence; trust it over this paragraph.
+A trial's spatial covariance is an SPD matrix, and SPD matrices live on a curved
+manifold, not in flat space; treating them as flat vectors (effectively what
+log-variance does) distorts the distances between them. The literature reports
+manifold distance as far more robust to the between-subject shift. On this data
+it is not: every Riemannian arm below has a negative mean paired change against
+CSP+LDA on identical folds, and the last printed line is "Best on this data:
+CSP + LDA (baseline)". The paired table is the evidence; trust it over this
+paragraph.
 
-Two pipelines, both classical and both interpretable. The descriptions below are
-the literature's framing of each method, not claims about how they scored here:
+Two pipelines, both classical and interpretable; the descriptions are the
+literature's framing, not claims about how they scored here:
 
   Covariances -> MDM
       Minimum Distance to Riemannian Mean. Compute each class's mean covariance

@@ -1,12 +1,8 @@
 """Regression tests for the claims this repo publishes.
 
-NAVIGATION. Regression tests, not 'does it run' tests. Each one guards a mistake this
-project actually made and had to retract, so a future edit that reintroduces it fails
+Not "does it run" tests: each one guards a specific mistake this project
+actually made and had to retract, so a future edit that reintroduces it fails
 here instead of in the README.
-
-These are deliberately not "does the code run" tests. Each one guards a specific mistake
-this project actually made and had to retract, so a future edit that reintroduces the
-mistake fails here instead of in a README.
 
     python3 -m pytest src/checks/test_pipeline.py -q     (or: python3 src/checks/test_pipeline.py)
 

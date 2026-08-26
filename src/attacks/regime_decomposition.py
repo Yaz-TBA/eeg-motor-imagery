@@ -6,74 +6,53 @@
 The 2x2 that worked out what regime C had actually measured. TL,DR: the CNN was decoding
 the cue, not the imagery.
 
-eegnet_compare.py runs three regimes, and the third one is not interpretable.
-Regime B is 8-30 Hz on a 1-2 s crop. Regime C is 4-38 Hz on a 0-4 s crop. That
-changes THREE things at once:
+eegnet_compare.py's regime C is not interpretable: against regime B (8-30 Hz,
+1-2 s) it changes three things at once,
 
-  1. the band       8-30 Hz  ->  4-38 Hz
-  2. the window     1 s      ->  4 s long
-  3. the START      1.0 s    ->  0.0 s
+  1. the band     8-30 Hz  ->  4-38 Hz
+  2. the window   1 s      ->  4 s long
+  3. the start    1.0 s    ->  0.0 s
 
-Change three factors and measure one difference and you have measured nothing.
-The write-up nonetheless told a mechanism story about it ("CSP wins in B only
-because the band was pre-selected for it"), which adversarial review refuted.
-Item 3 is the worst of the three because it was never mentioned at all: moving
-the crop start to 0.0 s pulls in the cue-evoked response, so regime C decodes a
-different COGNITIVE window, not merely a longer one. A model can score on the
-visual evoked potential to the cue and never touch motor imagery.
+and change three factors while measuring one difference and you have measured
+nothing. The write-up still told a mechanism story ("CSP wins in B only because
+the band was pre-selected for it"), which adversarial review refuted. Item 3 is
+the worst because it was never mentioned: starting at 0.0 s pulls in the
+cue-evoked response, a different cognitive window, and a model can score on the
+visual evoked potential without touching motor imagery.
 
-So this rung re-runs it as a factorial. Crop start is pinned at 1.0 s for the
-four cells of the 2x2, so "longer window" means "more imagery", not "now with
-added cue response":
+The factorial:
+
+Crop start pinned at 1.0 s for the four 2x2 cells, so "longer window" means
+"more imagery", never "added cue response":
 
                      8-30 Hz          4-38 Hz
     1.0-2.0 s      narrow-short      wide-short
     1.0-4.0 s      narrow-long       wide-long
 
-From those four cells the band effect, the window effect, and the interaction
-between them are each identified separately. A fifth cell reproduces the
-original regime C exactly (4-38 Hz, 0.0-4.0 s) so the cue-onset contribution --
-the change nobody documented -- gets its own number instead of hiding inside
-the others.
+Those four identify the band effect, the window effect and their interaction. A
+fifth cell reproduces regime C exactly (4-38 Hz, 0.0-4.0 s), so the cue-onset
+contribution gets its own number. A sixth decodes 0-1 s alone, and the seventh
+is its control: 0-1 s holds the evoked response AND the first second of imagery
+(the subject starts imagining at the cue), so the honest control is -1.0 to
+0.0 s, which holds neither. That second sits inside the T0 rest, onsets 8.3 s
+apart with 4.2 s rest before each. Chance is the correct answer for the pre-cue
+cell, which makes it the only cell that can fail: above-chance decoding there is
+a defect (identity leakage, drift, ringing, a bug), not a finding. Both models
+run in every cell on identical LOSO folds; a grid for the CNN with a fixed
+classical baseline would smuggle the confound back in.
 
-That fifth cell prices the change but does not explain it, so a sixth cell
-decodes the 0-1 s window ON ITS OWN, and a seventh is that cell's control.
-The control is the part that was missing. Calling 0-1 s "the cue window, no
-imagery in it" is an assumption, not a measurement: the subject begins
-imagining AT the cue, so 0-1 s holds the visual evoked response AND the first
-second of imagery, and either one could be carrying the score. The honest
-control is the second BEFORE the cue, -1.0 to 0.0 s, which contains neither.
-That window sits inside the T0 rest period -- task onsets are 8.3 s apart with
-a 4.2 s rest before each -- so nothing task-related has happened in it yet.
+Checkpointing, because this is the run that died:
 
-Chance is the correct answer for the pre-cue cell, which makes it the only cell
-in the grid that can FAIL. Above-chance decoding there would not be a finding,
-it would be a defect: subject identity leaking through the folds, slow drift,
-filter ringing, or a bug. Only if pre-cue sits at chance while 0-1 s sits above
-it is the effect genuinely locked to cue onset.
-
-Both models run in every cell on identical LOSO folds. Reporting the CNN across
-a grid while holding the classical baseline fixed would smuggle the confound
-back in through the comparison.
-
-CHECKPOINTING, because this is the run that died. The first attempt at regime C
-was killed mid-run and left nothing behind, so a multi-hour job produced zero
-recoverable results. Every cell here appends to regime_decomposition.json the
-moment it finishes. Kill this script at any point and every completed cell
-survives; re-running skips what is already on disk.
-
-WHAT THAT COSTS, AND IT IS NOT SMALL. Resuming means this script can print a
-complete report without computing anything. If regime_decomposition.json exists,
-every cell reports "cached, skipping" and the tables below are whatever was in
-that file, however old. The 2026-07-25 provenance run did exactly that: its
-captured stdout opens "Resuming: 7 cell(s) already on disk", every cell says
-cached, and regime_decomposition.json is dated 2026-07-23. So rung 11's
-published figures are a 2026-07-23 checkpoint and were NOT freshly reproduced by
-that run, and nothing downstream may describe them as newly reproduced while
-that file predates the run. check_provenance.py cannot detect this: it hashes
-sources and stdout, and a cached cell produces the same stdout a computed one
-would. TO REPRODUCE COLD, DELETE regime_decomposition.json FIRST. A resumed run
-now says so in its own output, immediately under the "Resuming" line.
+The first regime-C attempt was killed mid-run and left nothing. Every cell here
+appends to regime_decomposition.json the moment it finishes, so a kill loses
+nothing and a re-run skips finished cells. What that costs is not small: a
+resumed run can print a complete report while computing nothing. The 2026-07-25
+provenance run did exactly that, its stdout opens "Resuming: 7 cell(s) already
+on disk" and regime_decomposition.json is dated 2026-07-23, so rung 11's
+published figures are a 07-23 checkpoint that run did not freshly reproduce, and
+nothing downstream may say otherwise. check_provenance.py cannot detect this: a
+cached cell prints the same stdout a computed one would. To reproduce cold,
+delete regime_decomposition.json first; a resumed run says so in its own output.
 """
 
 import matplotlib

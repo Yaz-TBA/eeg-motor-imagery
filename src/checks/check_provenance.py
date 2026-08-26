@@ -5,56 +5,46 @@
 # promise. Most of the overhang is the docstring and the registry comments.
 """Every number in the docs must come out of a script. This checks that.
 
-NAVIGATION. Refuses to let a number appear in the docs unless a script in this repo
-produces it. Exits FAIL on figures quoted inside retraction prose too, which is expected;
-those need adjudicating by hand rather than fixing.
-
-The failure mode this guards against is the one that actually happened here: a
-table of ablation accuracies (95.9% / 47.4% / 93.3%) sat in README.md for weeks
-while NO script in the repo produced those numbers. Two of them were
-arithmetically impossible -- on 45 trials with 5-fold CV, accuracy has to be a
-multiple of 1/45, and 95.9% is not one. Prose drifts off code silently. This
-makes it loud.
+Refuses to let a number appear in the docs unless a script in this repo produces
+it, and exits FAIL on figures quoted inside retraction prose too, which is
+expected; those get adjudicated by hand, not fixed. The failure mode it guards
+against actually happened here: ablation accuracies (95.9% / 47.4% / 93.3%) sat
+in README.md for weeks while no script produced them, and two were
+arithmetically impossible, since on 45 trials accuracy is a multiple of 1/45.
+Prose drifts off code silently. This makes it loud.
 
 How it works:
 
-  1. Extract numeric CLAIMS from README.md and EXPLAINER.md (percentages,
-     p-values, correlations, and a narrow class of counts).
-  2. Run each analysis script, capture stdout, cache it under
-     .provenance_cache/ (tracked in git, deliberately -- .gitignore says why)
-     keyed by a hash of the script source, so reruns are free until the script
-     changes.
-  3. Assert every claim appears somewhere in some captured stdout, allowing for
-     rounding (91.1 in the docs matches 91.11111 in the output).
-  4. Print BACKED / ALLOWLISTED / WEAK / UNBACKED. WEAK means the only stdout
-     line carrying that number reads like a retraction ("the two numbers the old
-     README table carried"), which is not the same as the number being produced
-     -- see RETRACTION_HINT.
+  1. Extract numeric claims from README.md and EXPLAINER.md: percentages,
+     p-values, correlations, a narrow class of counts.
+  2. Run each analysis script, capture stdout, cache it in .provenance_cache/
+     (tracked in git, deliberately; .gitignore says why), keyed by a hash of
+     the script source so reruns are free until the script changes.
+  3. Assert every claim appears in some captured stdout, rounding-tolerant
+     (91.1 in the docs matches 91.11111 in the output).
+  4. Print BACKED / ALLOWLISTED / WEAK / UNBACKED, where WEAK means the only
+     backing line reads like a retraction; see RETRACTION_HINT.
 
 The exit contract, stated exactly, because an overstated one is worse than none:
 
-  exit 1  any UNBACKED claim, OR any analysis script on disk that the registry
-          does not list (its output is checked by nobody), OR -- on a FULL run
-          only -- any registered script that produced no output, because a
-          crashed or timed-out script would otherwise turn a FAIL into a pass.
-  exit 0  everything else, including INCOMPLETE.
+  exit 1  any UNBACKED claim, or any analysis script on disk the registry does
+          not list, or, on a full run only, any registered script that produced
+          no output (a crashed script must not turn a FAIL into a pass)
+  exit 0  everything else, including INCOMPLETE, which is reachable only under
+          --fast, where skipped slow scripts are expected to contribute nothing
 
-  INCOMPLETE is reachable ONLY under --fast, where skipped slow scripts are
-  expected to contribute nothing.
+WEAK is advisory and never affects the exit code. It cannot: this repo keeps
+corrected claims visible inside retraction passages, and RETRACTION_HINT also
+fires on innocent lines (the word "retracted" inside an estimator label puts
+live figures in WEAK). Every WEAK entry needs a human to decide quoting from
+republishing; a green exit does not mean the list was reviewed.
 
-  WEAK IS ADVISORY AND NEVER AFFECTS THE EXIT CODE. It cannot: this repo keeps
-  corrected claims visible inside retraction passages, and RETRACTION_HINT also
-  fires on innocent lines (it matches the word "retracted" inside an estimator
-  LABEL, so live figures land in WEAK). Every WEAK entry needs a human to decide
-  whether the doc is quoting a retracted number or republishing it. A green exit
-  code does not mean the WEAK list was reviewed.
-
-Known limits, stated plainly: matching is by value, not by meaning, so a small
-integer can be backed by coincidence, and a script that prints a number for any
-reason will back it. This catches fabrication and drift, not misinterpretation.
+Known limits: matching is by value, not meaning, so a small integer can be
+backed by coincidence and any printed number backs a claim. This catches
+fabrication and drift, not misinterpretation.
 
 Usage:
-    python src/checks/check_provenance.py            # run everything (~3 h, sum of REGISTRY)
+    python src/checks/check_provenance.py            # everything (~3 h, sum of REGISTRY)
     python src/checks/check_provenance.py --fast     # skip slow scripts, use their cache
     python src/checks/check_provenance.py --list     # show scripts + claims, run nothing
 """

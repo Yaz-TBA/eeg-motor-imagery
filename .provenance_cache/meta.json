@@ -3,16 +3,16 @@
   "epoch_trials.py": "5e50feb5c25c",
   "filter_and_epoch.py": "c34674fb6060",
   "decode_csp.py": "cf1a590337fd",
-  "ablate_channels.py": "c39278855d79",
-  "harder_contrast.py": "7cbfe2cacdbe",
+  "ablate_channels.py": "68485384b20b",
+  "harder_contrast.py": "650780839eea",
   "evaluate_honestly.py": "1bb95f67a203",
   "sweep_subjects.py": "aa87e556cc3a",
   "cross_subject.py": "0c913498d0b7",
   "riemannian.py": "1b7f44c41a14",
   "eegnet_compare.py": "1721e0c11c93",
   "regime_decomposition.py": "afb5cec01155",
-  "inferential_stats.py": "349d8fc8d4ec",
-  "emg_proxy.py": "edbd9a8b9624",
+  "inferential_stats.py": "e5a0bb960d27",
+  "emg_proxy.py": "e97d1a1282ea",
   "permutation_design.py": "a6bf9b404b9a",
-  "validity_gate.py": "77bd46c15324"
+  "validity_gate.py": "1264381489ac"
 }

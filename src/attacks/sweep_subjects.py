@@ -4,55 +4,44 @@ Subject 1 gets 91.1%. The median across all 109 is 60.0%. Both numbers are true,
 it's entirely worth testing ALL subjects to confirm the result isn't just subject 1
 being unusually easy to decode ?
 
-This is the rung that turns a demo into a result. A single subject's accuracy
-says almost nothing about the METHOD -- subject 1 is a clean recording, and
-per-subject quality in this dataset varies enormously.
+The rung that turns a demo into a result: one subject's accuracy says almost
+nothing about the method, so the identical pipeline runs on every subject and
+the report is the distribution, median, spread, and how many land below their
+own chance line.
 
-So we run the identical pipeline across every subject and look at the whole
-distribution: median, spread, and how many people land below their own chance
-line.
+Read that last count carefully, because an earlier version got it backwards:
 
-READ THAT LAST COUNT CAREFULLY, BECAUSE AN EARLIER VERSION OF THIS SCRIPT GOT IT
-BACKWARDS. It called the below-chance fraction a "BCI illiteracy rate" and noted
-it fell inside the literature's familiar 15-30%, which made it feel like
-replication. The inference was inverted. This pipeline's own permutation null is
-50.7% +/- 8.5%, so under a GLOBAL NULL in which nobody has any signal you would
-expect roughly 55% of subjects to land at or below their own chance line. The
-observed figure is 28%. Seeing half the noise-only rate is evidence of signal
-ACROSS THE POPULATION, not a measure of failure. The pure-noise expectation is
-now printed directly beneath the counts so the number cannot be misread that way
-a second time.
+It called the below-chance fraction a "BCI illiteracy rate" inside the
+literature's familiar 15-30%, which felt like replication. The inference was
+inverted. This pipeline's own permutation null is 50.7% +/- 8.5%, so under a
+global null with no signal anywhere, roughly 55% of subjects should land at or
+below their own chance line; the observed figure is 28%. Half the noise-only
+rate is evidence of signal across the population, not a failure rate, and the
+pure-noise expectation now prints beneath the counts. The literature comparison
+was also wrong: 15-30% describes users who cannot achieve control after
+training with online feedback, and these are naive single-session offline
+subjects. By that literature's own ~70% criterion for usable binary control,
+this sweep says 65% fall short, not 27%.
 
-The literature comparison was wrong too: 15-30% describes users who cannot
-achieve control AFTER training with online feedback. These are naive,
-single-session, offline subjects. By that literature's own operational criterion
-(~70% for usable binary control), this sweep says 65% fall short, not 27%.
+Two rules:
 
-Two rules this script follows:
-  1. Chance is computed PER SUBJECT. Class balance differs between people, so
-     borrowing subject 1's 53.3% to judge subject 47 would be its own small lie.
-  2. No SUBJECT is dropped silently. Any subject that fails to process is
-     recorded with its reason and reported in the exclusion list.
+  1. Chance is computed per subject; borrowing subject 1's 53.3% to judge
+     subject 47 would be its own small lie.
+  2. No subject is dropped silently; failures are recorded with reasons in the
+     exclusion list.
 
-RULE 2 USED TO SAY "NOTHING IS DROPPED SILENTLY", AND AT THE TRIAL LEVEL THAT
-WAS FALSE. It is corrected rather than deleted, because the bug it papered over
-is still live. TMIN/TMAX below open a -1.0 to 4.0 s epoch while only the
-(1.0, 2.0) crop is ever used, so on subjects whose runs end early the unused
-4-second tail runs off the end of the recording and MNE drops those trials
-without raising. The subject still returns a row, is counted "ok", and never
-appears in the exclusion list: 12 of 109 subjects reach the report with
-non-standard trial counts, and the sweep flagged only the sampling-rate anomaly.
-Two consequences, both now printed at the bottom of the report:
-  - With n not divisible by N_SPLITS the folds are UNEQUAL, so mean(fold
-    accuracies) is no longer correct-trials/n and lands off the k/n lattice
-    ablate_channels.py asserts against. Those accuracies are means over folds of
-    different sizes, which is not the quantity the other rungs report.
-  - Right-sizing the epoch to tmin=0.0, tmax=2.0 would recover the trials and
-    would MOVE the published per-subject numbers, including the 60.0% median.
-    Deliberately not done here: EXPLAINER.md 12.2 owns that decision, and
-    changing the script and the prose that quotes it in one pass is how a repo
-    loses track of which is which. This pass makes the bug visible; it does not
-    silently re-baseline the sweep.
+Rule 2 was false at the trial level, corrected rather than deleted because the
+bug it papered over is still live: TMIN/TMAX open a -1.0 to 4.0 s epoch while
+only the (1.0, 2.0) crop is used, so where runs end early MNE drops the
+tail-clipped trials without raising. The subject still counts "ok": 12 of 109
+reach the report with non-standard trial counts, flagged only for a
+sampling-rate anomaly. Both consequences now print at the bottom of the report:
+with n not divisible by N_SPLITS the folds are unequal, so mean(fold accuracies)
+leaves the k/n lattice and is not the quantity the other rungs report; and
+right-sizing the epoch to tmin=0.0, tmax=2.0 would recover the trials and move
+the published numbers, including the 60.0% median. Deliberately not done here:
+EXPLAINER.md 12.2 owns that decision. This pass makes the bug visible; it does
+not silently re-baseline the sweep.
 
 First run downloads ~840 MB of EDF files (108 new subjects x 3 runs); MNE caches
 them in ~/mne_data, so later runs are offline and fast.

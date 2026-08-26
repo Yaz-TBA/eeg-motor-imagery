@@ -7,32 +7,29 @@ same person's brain. That is a real result, but it is not the result a working
 BCI needs. A deployed system meets a new user whose skull thickness, cortical
 folding, and electrode placement are all different, and it has to work anyway.
 
-So this rung pools trials across many subjects and evaluates leave-one-subject-out:
+So this rung pools trials across subjects and evaluates leave-one-subject-out:
 train on N-1 people, test on the held-out one, rotate. Naive CSP is known to
-struggle here, because the spatial filters it learns are tuned to the training
-population's anatomy and do not transfer cleanly.
+struggle here, since its spatial filters are tuned to the training population's
+anatomy and do not transfer cleanly.
 
-EXPECT THE NUMBER TO FALL, AND DO NOT TUNE UNTIL IT STOPS FALLING. The size of
-the within-to-cross gap is the deliverable. It is the honest measure of how far
-this method is from something you could hand to a stranger, and it is what
-motivates the Riemannian rung that follows.
+Expect the number to fall, and do not tune until it stops falling. The
+within-to-cross gap is the deliverable: the honest measure of how far this
+method is from something you could hand to a stranger, and the motivation for
+the Riemannian rung. Read it with the caveat printed next to it: the within
+column comes from sweep_subjects.py's per-subject StratifiedKFold run, the cross
+column from LeaveOneGroupOut over pooled trials, two estimators over two fold
+structures, so the difference is not a paired comparison and not purely a
+transfer cost.
 
-Read that gap with the caveat printed next to it. The within-subject column comes
-from sweep_subjects.py's per-subject StratifiedKFold run, the cross-subject column
-from LeaveOneGroupOut over pooled trials -- two estimators over two fold
-structures, so the difference is not a paired comparison on identical folds and is
-not purely a transfer cost.
-
-Leakage safety: CSP lives inside the sklearn Pipeline, so it refits on only the
-training subjects inside every fold. The held-out subject's data never touches
-filter estimation. That is a STRUCTURAL guarantee of where CSP sits, not something
-this file asserts -- and deliberately so: the comment at the structural-checks
-block explains why an assertion on fold disjointness would be theatre, since
-LeaveOneGroupOut makes it definitionally true. What the checks below do verify is
-fold structure (one held-out subject per fold, each subject held out once), array
-alignment, and a label-shuffle control. Note what that control can and cannot see:
-a shuffled-label score that stays elevated indicates LABEL leakage. It does not
-test for FEATURE leakage, which is the thing the Pipeline placement rules out.
+Leakage safety: CSP lives inside the sklearn Pipeline, so it refits on the
+training subjects only, inside every fold, and the held-out subject never
+touches filter estimation. That is a structural guarantee, deliberately not an
+assertion; the structural-checks comment explains why asserting fold
+disjointness would be theatre when LeaveOneGroupOut makes it definitionally
+true. What the checks verify is fold structure, array alignment, and a
+label-shuffle control, whose scope matters: an elevated shuffled-label score
+indicates label leakage, and says nothing about feature leakage, which the
+Pipeline placement rules out.
 """
 
 import matplotlib

@@ -1,72 +1,58 @@
-"""Compute the confidence intervals, p-values and power figures that the write-up
+"""Compute the confidence intervals, p-values and power figures the write-up asserts.
 
-NAVIGATION. Every inferential claim in the repo, recomputed in one place so the numbers
-in README.md and EXPLAINER.md have exactly one source. Organised as section_*() functions
-in the infstats_* modules beside this file; jump to the one you need.
-asserts but no committed script produces.
+Every inferential claim in the repo, recomputed in one place so the numbers in
+README.md and EXPLAINER.md have exactly one source. Organised as section_*()
+functions in the infstats_* modules beside this file; jump to the one you need.
 
-THE DEFECT THIS GUARDS AGAINST is the one that cost this project nine retracted
-claims: a number whose provenance you cannot state is not a result, however true
-it turns out to be. `check_provenance.py` already catches numbers that no script
-prints. It caught roughly thirty of them at once, and they were all the same
-kind of number -- the inferential wrapper around a point estimate. Rungs 8-11
-print accuracies and win/loss/tie tallies; the intervals, the paired tests, the
-minimum detectable differences and the one chi-square live only in prose. Prose
-drifts off code silently, and an interval computed once in a chat window and
-typed into a document is indistinguishable, six weeks later, from an interval
-that was never computed at all.
+The defect this guards against:
 
-So this file recomputes every one of them from persisted arrays, prints each with
-its baseline and its spread, and states what each does NOT show. Three of the
-figures could not be recovered from any persisted artefact, and this file
-measures them directly rather than restating them: the BatchNorm activation-scale
-deficit, the final-layer weight travel, and the McNemar test on the within-subject
-comparison. Where an input genuinely does not exist, the output says so and names
-what would have to be re-run. An honest "cannot reproduce" line is a correct
-output.
+The one that cost this project nine retracted claims: a number whose provenance
+you cannot state is not a result, however true it turns out to be.
+check_provenance.py caught roughly thirty at once, all the same kind, the
+inferential wrapper around a point estimate. Rungs 8-11 print accuracies and
+tallies; the intervals, paired tests, minimum detectable differences and the one
+chi-square lived only in prose, and an interval computed once in a chat window
+is indistinguishable, six weeks later, from one that was never computed at all.
+So this file recomputes each from persisted arrays, prints it with its baseline
+and spread, and states what it does not show. Three figures no artefact can
+supply are measured directly: the BatchNorm activation-scale deficit, the
+final-layer weight travel, and the McNemar on the within-subject comparison.
+Where an input does not exist, the output says so and names the re-run; an
+honest "cannot reproduce" line is a correct output.
 
-WHAT THIS FILE DOES NOT DO. It does not re-run any model whose scores are already
-on disk. Rungs 8, 9 and 11 are re-analyzed from stored per-fold arrays, so this
-script inherits their provenance exactly, including the caveat that
-`regime_decomposition.json` is a 2026-07-23 checkpoint that the 2026-07-25 cold
-run resumed from rather than recomputed. It also does not correct anything in the
+What this file does not do:
+
+It re-runs no model whose scores are on disk, so rungs 8, 9 and 11 inherit their
+provenance exactly, including that regime_decomposition.json is a 2026-07-23
+checkpoint the 2026-07-25 cold run resumed from. It also corrects nothing in the
 documents; reconciling prose against this output is a separate pass.
 
-INPUTS, and where each comes from:
+Inputs:
 
-  regime_decomposition.json   in this repo. 20 per-fold accuracies per model per
-                              cell, seven cells. Dated 2026-07-23.
-  sweep_results.csv           in this repo. 109 within-subject accuracies.
-  riemannian_perfold.json     in this repo, and committed rather than generated.
-                              20 per-subject LOSO accuracies for five pipelines.
-                              `riemannian.py` computes these and persists none of
-                              them, so no committed script can rebuild this file;
-                              this copy was captured by the 2026-07-23 audit run.
-                              Its five pipeline means are 59.4 / 51.7 / 57.2 /
-                              56.9 / 56.8 %, which is what `riemannian.py` prints,
-                              and that agreement is the evidence it is the right
-                              run's arrays. Re-check by running riemannian.py; the
-                              old citation here pointed into `.provenance_cache/`,
-                              which .gitignore excludes, so it named nothing a
-                              reader of a clone could open.
-  the EEGBCI recordings       re-loaded for subject 1 only, for the three figures
-                              that no array can supply.
+  regime_decomposition.json  in this repo; 20 per-fold accuracies per model per
+                             cell, seven cells, dated 2026-07-23
+  sweep_results.csv          in this repo; 109 within-subject accuracies
+  riemannian_perfold.json    in this repo, committed rather than generated:
+                             riemannian.py persists none of its 20 per-subject
+                             LOSO arrays, so this copy is the 2026-07-23 audit
+                             capture. Its five pipeline means, 59.4 / 51.7 /
+                             57.2 / 56.9 / 56.8 %, match what riemannian.py
+                             prints, which is the evidence it is the right run
+  the EEGBCI recordings      re-loaded for subject 1 only, for the three
+                             measured figures
 
-STATISTICAL CONVENTIONS, stated once because every test below has options and
-picking one silently is how two numbers that disagree end up looking like one
-number that agrees. All tests are TWO-SIDED at alpha = 0.05. All model-versus-
-model and window-versus-window comparisons are PAIRED, because every arm sees the
-identical folds. Intervals are Student-t with df = n - 1 unless a line says
-otherwise. Power uses the noncentral t at 80%; the normal approximation is
-printed beside it because the two differ by ~5% and the documents do not say
-which was used. Nothing here is corrected for multiplicity by default -- a Holm
-pass over each family is printed separately, because the published figures are
-uncorrected and quoting a corrected p beside an uncorrected estimate would be a
-third kind of drift.
+Conventions, stated once because picking silently is how two numbers that
+disagree end up looking like one that agrees: all tests two-sided at alpha =
+0.05; every model-vs-model and window-vs-window comparison paired, since every
+arm sees identical folds; intervals Student-t with df = n - 1 unless a line says
+otherwise; power from the noncentral t at 80%, the normal approximation printed
+beside it because they differ by ~5% and the documents never said which was
+used. No multiplicity correction by default; Holm prints separately per family,
+because the published figures are uncorrected.
 
 Usage:
-    python src/checks/inferential_stats.py              # everything (~12 s, one data load)
-    python src/checks/inferential_stats.py --skip-torch # array re-analysis only (~1 s)
+    python src/checks/inferential_stats.py              # everything (~12 s)
+    python src/checks/inferential_stats.py --skip-torch # array re-analysis (~1 s)
 """
 
 from __future__ import annotations

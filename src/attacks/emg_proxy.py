@@ -1,78 +1,65 @@
-"""The EMG probe: refit the pipeline on MUSCLE-BAND frequencies at MUSCLE-TERRITORY
+"""The EMG probe: refit the pipeline on muscle-band frequencies at muscle-territory
 electrodes and see whether hands vs. feet is still decodable there.
 
 Checks if the jaw muscle could be affecting the result, with it only bounding the answer
 (not closing it) since this probe is blindest to the decoder's own 8-30 Hz band.
 
-WHY THIS SCRIPT EXISTS. The repo's only artifact control is ablate_channels.py,
-whose frontopolar-only row (23/45, 51.1%, against a 24/45 = 53.3% majority floor)
-addresses OCULAR contamination. It says nothing about MUSCLE, and it structurally
-cannot: the published pipeline band-passes to 8-30 Hz, so everything above the
-passband is discarded before any covariance is computed, and the surface-EMG
-signature lives mostly above 30 Hz. The filter, not the feature, decides what is
-findable. An EMG probe inside 8-30 Hz cannot see the thing it is probing for.
+Why this exists:
 
-Meanwhile the fourth retained CSP component peaks at T8, with T10 and TP8 in its
-top five, which is temporalis territory. The corpus names that as an open
-exposure at canon level and then does not close it. This script closes it, in the
-only direction the data permits: it BOUNDS an EMG contribution. It cannot
-eliminate one.
+The repo's only artifact control was ablate_channels.py, whose frontopolar row
+(23/45 = 51.1% against the 24/45 = 53.3% majority floor) addresses ocular
+contamination. It structurally cannot address muscle: the published pipeline
+band-passes to 8-30 Hz before any covariance is computed, and surface EMG lives
+mostly above 30 Hz, so an EMG probe inside 8-30 Hz cannot see what it is probing
+for. Meanwhile the fourth retained CSP component peaks at T8, with T10 and TP8 in
+its top five, which is temporalis territory. This script closes that exposure in
+the only direction the data permits: it bounds an EMG contribution, never
+eliminates one.
 
-PRE-REGISTERED. Every band, channel set, test, threshold and outcome-meaning in
-this file was fixed in writing before any of it was executed, in
-prereg/prereg-emg-proxy.md. The point of that document is that
-no number produced here can be narrated after the fact. This project's round-one
-failure mode was inventing the mechanism story in the same breath as the number.
-Measuring and explaining are separate steps, and the explanation was written
-first, on purpose, so it could not be fitted to the result.
+Pre-registered:
 
-WHAT IT RUNS.
-  positive control  8-30 Hz, all 64 ch. Must reproduce 41/45 = 91.1%, or the
-                    harness is not the published pipeline and nothing below is
-                    comparable to the existing ablation table.
-  arm (a)           univariate. Does log high-band power differ by class, per
-                    channel and in aggregate? Welch t plus Mann-Whitney U,
-                    Holm-Bonferroni across the 8 temporal channels.
-  arm (b)           THE SHARP TEST, and the one that governs. The unmodified
+Every band, channel set, test, threshold and outcome-meaning was fixed in
+prereg/prereg-emg-proxy.md before any of it ran, so no number here can be
+narrated after the fact. Measuring and explaining are separate steps, and the
+explanation was written first on purpose.
+
+What it runs:
+
+  positive control  8-30 Hz, all 64 ch; must reproduce 41/45 = 91.1% or nothing
+                    below is comparable to the ablation table
+  arm (a)           univariate: does log high-band power differ by class?
+                    Welch t plus Mann-Whitney U, Holm across the 8 temporal ch
+  arm (b)           the sharp test, and the one that governs: the unmodified
                     CSP+LDA pipeline, same splitter, same seed 42, refit on
-                    40-75 Hz (60 Hz notched) at the temporal ring. Plus three
-                    comparison channel sets, so the answer has a spatial profile
-                    rather than being a single number that cannot distinguish a
-                    local source from a global one.
-  robustness        R1 40-55 (below line), R2 65-75 (above line), R3 32-75
-                    (greedy). Fixed role: they cannot promote a null primary to a
-                    positive. They can only qualify a positive or expose line
-                    contamination.
-  ladder            THE PART THAT TURNS A NULL INTO A BOUND. Inject a synthetic
-                    class-correlated broadband source with a fixed topography at
-                    known amplitude and find the smallest one this probe can see.
-                    Without it, a probe at floor supports only "we looked and
-                    found nothing", which is another disclosure, not a
-                    measurement.
+                    40-75 Hz (60 Hz notched) at the temporal ring, plus three
+                    comparison channel sets so the answer has a spatial profile
+  robustness        R1 40-55 (below line), R2 65-75 (above), R3 32-75 (greedy);
+                    fixed role: they can qualify a positive or expose line
+                    contamination, never promote a null primary
+  ladder            the part that turns a null into a bound: inject a synthetic
+                    class-correlated broadband source at known amplitude and
+                    find the smallest one this probe can see. Without it a probe
+                    at floor supports only "we looked and found nothing"
 
-WHAT IT DOES NOT SHOW, IN EVERY POSSIBLE OUTCOME.
-  1. 160 Hz sampling truncates the EMG spectrum. Surface temporalis EMG has
-     substantial power well above the 80 Hz Nyquist and none of it was recorded.
-     Even a perfect null bounds only the recorded part of the spectrum.
-  2. The average reference is computed over all 64 channels BEFORE any subset is
-     picked, exactly as in decode_csp.py and ablate_channels.py. Every channel
-     carries -1/64 of every other, so the temporal ring is not electrically
-     sealed off from the rest of the head.
-  3. EEGMMIDB ships no EOG and no EMG channel. There is no ground truth for
-     "this is muscle". This probe measures high-band power at muscle-adjacent
-     scalp sites. It does not measure muscle.
-  4. A positive here cannot distinguish temporalis EMG from a saccadic spike
-     potential, and the cue is position-confounded with the label (bar at the
-     top of the screen for fists, bottom for feet), which makes the ocular
-     candidate genuinely plausible. Different confounds, different remedies.
-  5. n = 45, one subject, one session. Arm (a) can only detect large effects.
+What it cannot show, in any outcome:
 
-OUT OF SCOPE ON PURPOSE. The temporal-channel-DELETED row (all 64 minus the
-temporal ring, inside the decoder's own 8-30 Hz band) is the corpus's other
-requested arm and it is cheap. It is NOT run here, because it answers a different
-question (does the headline NEED those channels) and pre-registering it loosely
-alongside this probe would let a null on one be read as covering the other. It
-gets its own pre-registration.
+  1. 160 Hz sampling truncates the EMG spectrum; temporalis EMG has substantial
+     power above the 80 Hz Nyquist and none of it was recorded.
+  2. The average reference spans all 64 channels before any pick, so every
+     channel carries -1/64 of every other; the ring is not sealed off.
+  3. EEGMMIDB ships no EOG and no EMG channel. This measures high-band power at
+     muscle-adjacent scalp sites, not muscle.
+  4. A positive cannot separate temporalis EMG from a saccadic spike potential,
+     and the cue is position-confounded with the label (bar top for fists,
+     bottom for feet), so the ocular candidate is genuinely plausible.
+  5. n = 45, one subject, one session; arm (a) detects only large effects.
+
+Out of scope on purpose:
+
+The temporal-channel-deleted row inside 8-30 Hz is the corpus's other requested
+arm, and it answers a different question (does the headline need those
+channels). Pre-registering it loosely alongside this probe would let a null on
+one be read as covering the other, so it gets its own pre-registration.
 """
 
 import time

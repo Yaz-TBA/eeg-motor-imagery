@@ -11,30 +11,26 @@ learns a spatial filter per temporal filter. The interesting question is not
 "is deep learning better" but "at what sample size does learning the filters
 start to beat designing them".
 
-So this rung runs three experiments, and the third one exists to keep the
-comparison fair:
+Three experiments, the third there to keep the comparison fair:
 
-  A. WITHIN-SUBJECT, subject 1, 45 trials.
-     The data-starvation case. CSP+LDA gets 91.1% here.
+  A. Within-subject, subject 1, 45 trials: the data-starvation case, where
+     CSP+LDA gets 91.1%.
+  B. Cross-subject LOSO, 20 subjects, ~900 trials, on the identical 1-second
+     8-30 Hz data every other rung uses; same folds, same preprocessing, same
+     everything but the model.
+  C. Cross-subject LOSO on a longer window (0-4 s) and wider band (4-38 Hz).
+     B is slightly rigged: one second of narrowly band-passed signal removes
+     most of what EEGNet is for, since it cannot learn temporal filters inside
+     a band already cut to 8-30 Hz. C gives it room, and runs CSP+LDA on the
+     same wider data so the comparison stays honest in both directions.
 
-  B. CROSS-SUBJECT LOSO, 20 subjects, ~900 trials, on the IDENTICAL 1-second
-     8-30 Hz data every other rung uses. Apples to apples: same folds, same
-     preprocessing, same everything but the model.
+Same treatment riemannian.py got: run the naive configuration, then a fair one,
+and report both. A diagnosed negative result is worth far more than an
+undiagnosed one.
 
-  C. CROSS-SUBJECT LOSO on a LONGER window (0-4 s) and a WIDER band (4-38 Hz).
-     Experiment B is a slightly rigged test. Handing EEGNet one second of
-     narrowly band-passed signal removes most of what it is for -- it cannot
-     learn useful temporal filters inside a band that has already been filtered
-     down to 8-30 Hz. Regime C gives it room, and runs CSP+LDA on the same wider
-     data so the comparison stays honest in both directions.
-
-This mirrors the treatment riemannian.py got: run the naive configuration, then
-run a fair one, and report both. A negative result that has been diagnosed is
-worth far more than one that has not.
-
-NOTE ON DETERMINISM: seeds are fixed for torch, numpy and python, but MPS (Apple
-GPU) kernels are not guaranteed bit-reproducible. Expect small run-to-run drift
-in the CNN numbers. The classical baselines are exactly reproducible.
+Determinism: seeds are fixed for torch, numpy and python, but MPS kernels are
+not guaranteed bit-reproducible, so expect small run-to-run drift in the CNN
+numbers. The classical baselines are exactly reproducible.
 """
 
 import matplotlib
