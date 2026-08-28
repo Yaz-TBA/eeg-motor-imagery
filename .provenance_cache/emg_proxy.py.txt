@@ -813,4 +813,4 @@ reads best.
   passband, and the temporal-channel-deleted arm the corpus asks for
   alongside this one has not been run.
 
-MEASURED RUNTIME: 103.7 s wall on this machine.
+MEASURED RUNTIME: 85.4 s wall on this machine.

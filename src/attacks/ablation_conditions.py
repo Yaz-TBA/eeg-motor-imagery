@@ -2,7 +2,7 @@
 attainable-accuracy lattice, and the positive and negative controls. Split out
 2026-08-26; the stage bodies are verbatim from that file."""
 
-import ablation_data  # noqa: F401  -- installs the common.py path first
+import _bootstrap  # noqa: F401  -- puts src/ on the path; must come first
 
 from mne.datasets import eegbci
 from sklearn.model_selection import (

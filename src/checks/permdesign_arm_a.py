@@ -3,7 +3,7 @@ labels, with the exact label-free cells C5 and C6, the ten asserts, and the full
 per-subject report. Split out 2026-08-26; the body is verbatim, withdrawals
 included."""
 
-import permdesign_lib  # noqa: F401  -- environment and path setup runs first
+import _bootstrap  # noqa: F401  -- puts src/ on the path; must come first
 
 import numpy as np
 from sklearn.model_selection import KFold, cross_val_score

@@ -3,7 +3,9 @@ its own 47, the permutation test on the complement, the Wilson interval, and the
 registered exact McNemar, paired per trial. Split out 2026-08-26; the stage bodies
 are verbatim from that file."""
 
-import ablation_data  # noqa: F401  -- installs the common.py path first
+import _bootstrap  # noqa: F401  -- puts src/ on the path; must come first
+
+from typing import NamedTuple
 
 import numpy as np
 import mne
@@ -180,6 +182,22 @@ def run_wilson(comp_seed42, n, majority, maj_correct):
           f"printed so the point estimate is never read alone.")
 
 
+class McNemar(NamedTuple):
+    """The seven outputs of the paired McNemar test, which travel together everywhere.
+
+    A NamedTuple rather than a dataclass on purpose: it still unpacks as the 7-tuple
+    this function has always returned, so no caller that unpacks it had to change.
+    """
+
+    both: int
+    only_all: int
+    only_comp: int
+    neither: int
+    n_disc: int
+    mcn_p: float
+    worst: object
+
+
 def run_paired_mcnemar(per_trial, ALL64, COMP, by_name, comp_seed42, n):
     # --- exact McNemar: all 64 against the complement, paired on the same folds ----
     # THE DECISION STATISTIC, and the blind half of it: nothing in the corpus carries
@@ -242,4 +260,4 @@ def run_paired_mcnemar(per_trial, ALL64, COMP, by_name, comp_seed42, n):
           f"near-predetermined to miss,")
     print(f"      and that was checkable with two lines of arithmetic at "
           f"prereg-writing time.")
-    return both, only_all, only_comp, neither, n_disc, mcn_p, worst
+    return McNemar(both, only_all, only_comp, neither, n_disc, mcn_p, worst)

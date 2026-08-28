@@ -2,7 +2,7 @@
 observed values on P0, and falsification checks 4 and 6. Split out 2026-08-26;
 the body is verbatim. build_setup() returns what every later section reads."""
 
-import permdesign_lib  # noqa: F401  -- environment and path setup runs first
+import _bootstrap  # noqa: F401  -- puts src/ on the path; must come first
 
 import csv
 from types import SimpleNamespace

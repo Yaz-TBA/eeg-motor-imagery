@@ -2,7 +2,7 @@
 verdict with its bands, and the caveats printed in every band. Split out 2026-08-26;
 the stage bodies are verbatim, and the band edges stay exactly as registered."""
 
-import ablation_data  # noqa: F401  -- installs the common.py path first
+import _bootstrap  # noqa: F401  -- puts src/ on the path; must come first
 
 import numpy as np
 
@@ -11,9 +11,14 @@ from ablation_data import RUNS, SEED, SEEDS
 from ablation_design import ALPHA
 
 
-def run_falsifiers(by_name, results, ALL64, SMC, FP, n, sweeps, comp_sweep,
-                   comp_seed42, COMPLEMENT, ch_names, null_off_50, perm_null,
-                   _fp_off, maj_correct, mcn_p, n_disc, NOISE_BAND, skf, labels):
+def run_falsifiers(A, M, null_off_50, perm_null, _fp_off):
+    # A is the design bundle, M the McNemar result. Unpacked into the same local
+    # names the twenty-parameter version used, so everything below is unchanged.
+    by_name, results, ALL64, SMC, FP = A.by_name, A.results, A.ALL64, A.SMC, A.FP
+    n, sweeps, comp_sweep, comp_seed42 = A.n, A.sweeps, A.comp_sweep, A.comp_seed42
+    COMPLEMENT, ch_names, maj_correct = A.COMPLEMENT, A.ch_names, A.maj_correct
+    NOISE_BAND, skf, labels = A.NOISE_BAND, A.skf, A.labels
+    mcn_p, n_disc = M.mcn_p, M.n_disc
     # --- the registered analysis-falsifiers, all ten, printed --------------------
     # These fire when the MEASUREMENT is broken, not when the hypothesis moved. If any
     # fires, no number above is quotable until it is resolved. Printed rather than
@@ -102,9 +107,13 @@ def run_falsifiers(by_name, results, ALL64, SMC, FP, n, sweeps, comp_sweep,
     return G, PRIOR_COMPLEMENT_SWEEP
 
 
-def run_verdict(G, NOISE_BAND, G_THRESHOLD, mcn_p, n_disc, only_all, only_comp,
-                both, neither, worst, _min_gap, _sweep_ps, _n_fire, sweeps, SMC,
-                ALL64, comp_sweep, comp_seed42, n, COMPLEMENT):
+def run_verdict(A, M, G, _min_gap, _sweep_ps, _n_fire):
+    # Same bundling as run_falsifiers: names below are identical to the old signature.
+    NOISE_BAND, G_THRESHOLD, sweeps = A.NOISE_BAND, A.G_THRESHOLD, A.sweeps
+    SMC, ALL64, comp_sweep = A.SMC, A.ALL64, A.comp_sweep
+    comp_seed42, n, COMPLEMENT = A.comp_seed42, A.n, A.COMPLEMENT
+    mcn_p, n_disc, only_all, only_comp = M.mcn_p, M.n_disc, M.only_all, M.only_comp
+    both, neither, worst = M.both, M.neither, M.worst
     # --- THE PRE-REGISTERED VERDICT ------------------------------------------------
     # G and the bands were fixed in writing before this script existed. The band is
     # selected by arithmetic here, not by reading, so the edge cannot be resolved in
@@ -259,10 +268,14 @@ def run_verdict(G, NOISE_BAND, G_THRESHOLD, mcn_p, n_disc, only_all, only_comp,
         print("then it is bad news for the framing.")
 
 
-def run_closing(ch_names, COMPLEMENT, by_name, ALL64, SMC, FP, LORO, NWIDE, n,
-                majority, maj_correct, n_hands, n_feet, sweeps, WIDE,
-                _null_means, _null_G, _G_obs, N_RANDOM_DRAWS, n_disc,
-                PRIOR_COMPLEMENT_SWEEP):
+def run_closing(A, M, _null_means, _null_G, _G_obs, PRIOR_COMPLEMENT_SWEEP):
+    # Same bundling again.
+    ch_names, COMPLEMENT, by_name = A.ch_names, A.COMPLEMENT, A.by_name
+    ALL64, SMC, FP, LORO, NWIDE, WIDE = A.ALL64, A.SMC, A.FP, A.LORO, A.NWIDE, A.WIDE
+    n, majority, maj_correct = A.n, A.majority, A.maj_correct
+    n_hands, n_feet, sweeps = A.n_hands, A.n_feet, A.sweeps
+    N_RANDOM_DRAWS = A.N_RANDOM_DRAWS
+    n_disc = M.n_disc
     # --- printed in EVERY band, without exception ---------------------------------
     print("\nTRUE IN EVERY BAND (1): THE AVERAGE-REFERENCE LEAK. The reference is")
     print(f"computed over all {len(ch_names)} electrodes BEFORE the "

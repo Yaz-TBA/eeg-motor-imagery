@@ -96,7 +96,7 @@ defects in what the run said rather than what it computed:
 """
 
 from ablation_conditions import load_and_partition, run_conditions
-from ablation_design import print_detection_floor
+from ablation_design import Ablation, print_detection_floor
 from ablation_secondary import (
     run_paired_mcnemar,
     run_permutation,
@@ -164,26 +164,27 @@ def main():
 
     run_wilson(comp_seed42, n, majority, maj_correct)
 
-    both, only_all, only_comp, neither, n_disc, mcn_p, worst = run_paired_mcnemar(
-        per_trial, ALL64, COMP, by_name, comp_seed42, n)
+    M = run_paired_mcnemar(per_trial, ALL64, COMP, by_name, comp_seed42, n)
+    both, only_all, only_comp, neither, n_disc, mcn_p, worst = M
 
     _null_means, _null_G, _G_obs = run_random_deletion(
         cropped, labels, ch_names, sweeps, ALL64, comp_sweep, n,
         N_RANDOM_DRAWS, RANDOM_DELETION_SEED, COMPLEMENT)
 
-    G, PRIOR_COMPLEMENT_SWEEP = run_falsifiers(
-        by_name, results, ALL64, SMC, FP, n, sweeps, comp_sweep, comp_seed42,
-        COMPLEMENT, ch_names, null_off_50, perm_null, _fp_off, maj_correct,
-        mcn_p, n_disc, NOISE_BAND, skf, labels)
+    # One bundle, built once, read by all three stages. Nothing in it is written.
+    A = Ablation(
+        by_name=by_name, results=results, ALL64=ALL64, SMC=SMC, FP=FP, LORO=LORO,
+        NWIDE=NWIDE, WIDE=WIDE, n=n, majority=majority, maj_correct=maj_correct,
+        n_hands=n_hands, n_feet=n_feet, sweeps=sweeps, comp_sweep=comp_sweep,
+        comp_seed42=comp_seed42, COMPLEMENT=COMPLEMENT, ch_names=ch_names,
+        NOISE_BAND=NOISE_BAND, G_THRESHOLD=G_THRESHOLD,
+        N_RANDOM_DRAWS=N_RANDOM_DRAWS, skf=skf, labels=labels)
 
-    run_verdict(G, NOISE_BAND, G_THRESHOLD, mcn_p, n_disc, only_all, only_comp,
-                both, neither, worst, _min_gap, _sweep_ps, _n_fire, sweeps, SMC,
-                ALL64, comp_sweep, comp_seed42, n, COMPLEMENT)
+    G, PRIOR_COMPLEMENT_SWEEP = run_falsifiers(A, M, null_off_50, perm_null, _fp_off)
 
-    run_closing(ch_names, COMPLEMENT, by_name, ALL64, SMC, FP, LORO, NWIDE, n,
-                majority, maj_correct, n_hands, n_feet, sweeps, WIDE,
-                _null_means, _null_G, _G_obs, N_RANDOM_DRAWS, n_disc,
-                PRIOR_COMPLEMENT_SWEEP)
+    run_verdict(A, M, G, _min_gap, _sweep_ps, _n_fire)
+
+    run_closing(A, M, _null_means, _null_G, _G_obs, PRIOR_COMPLEMENT_SWEEP)
 
 
 if __name__ == "__main__":

@@ -19,9 +19,8 @@ motor-imagery set (109 subjects, 64-channel EEG @ 160 Hz), loaded via
 
 ## Repo map: what to read, in what order
 
-There are a lot of scripts here. They are not all equally worth your time, and they fall into
-three groups, and the folders `src/pipeline/`, `src/attacks/` and `src/checks/` are
-those groups. **If you read three files, read `src/pipeline/decode_csp.py`,
+There are a lot of scripts here, and they aren't all equally worth your time. They fall into
+three groups, one folder each: `src/pipeline/`, `src/attacks/`, `src/checks/`. **If you read three files, read `src/pipeline/decode_csp.py`,
 `src/attacks/evaluate_honestly.py` and `src/attacks/ablate_channels.py`, in that order.**
 
 **1. Building the result** (rungs 1–4). Start here.
@@ -101,18 +100,18 @@ audit, and every correction along the way, is in [EXPLAINER.md](EXPLAINER.md) §
 
 ## Honest limitations
 
-- **Within-subject, small-n.** One subject, 45 trials. The number does not claim cross-subject
+- **Within-subject, small-n.** One subject, 45 trials. The number doesn't claim cross-subject
   generalization, and the honest interval is roughly [79%, 97%].
 - **Easy contrast.** Fists vs. feet are far apart on the motor homunculus (lateral vs.
   top-central), so their scalp patterns differ a lot. Left-hand-vs-right-hand is harder, and
-  `harder_contrast.py` found it is also **gaze-confounded** in this dataset. The cue sits on one
+  `harder_contrast.py` found it's also **gaze-confounded** in this dataset. The cue sits on one
   side of the screen for the whole trial, and on subject 1 the frontopolar asymmetry
   (Fp1+AF7+AF3 minus Fp2+AF8+AF4) is **+11.89 µV on left cues and −12.99 µV on right cues** in
   the cue window (Welch t = +7.71, p = 3.7e-09). A decoder using **frontopolar mean amplitude
   alone reaches 86.7%** on that window (p ≤ 0.001).
 
   > **Correction.** This bullet used to say "a decoder using only frontopolar channels at
-  > 0.5–5 Hz matches the 64-channel result on this subject." At matched settings it does not.
+  > 0.5–5 Hz matches the 64-channel result on this subject." At matched settings it doesn't.
   > Same trials, same folds, same 1.0–2.0 s window: all-64 at 8–30 Hz is 73.3%, frontopolar at
   > 0.5–5 Hz is **53.3%**: 20 points below, not level. The old "match" compared a frontopolar
   > decoder on the whole 0–4 s epoch against a 64-channel decoder on a 1-second crop, which is
@@ -122,16 +121,16 @@ audit, and every correction along the way, is in [EXPLAINER.md](EXPLAINER.md) §
   > actually finds it.
 
 - **Clean subject.** Subject 1 is the **91st percentile** of the 109; the median subject scores
-  60.0%. Picking it is fair for a baseline, and quoting it without the distribution would not be.
+  60.0%. Picking it's fair for a baseline, and quoting it without the distribution wouldn't be.
 - **No artifact rejection.** No ICA, and EEGMMIDB ships **no EOG channels**, so ocular
   contamination can be bounded by ablation but never removed or directly measured. Any "ocular
-  check" in this repo is a *frontal-EEG surrogate*, not an eye electrode, and it is named as one
-  wherever it appears. The same holds for muscle: there is no EMG reference channel either, so
+  check" in this repo is a *frontal-EEG surrogate*, not an eye electrode, and it's named as one
+  wherever it appears. The same holds for muscle: there's no EMG reference channel either, so
   `emg_proxy.py` is a *high-band-power-at-muscle-adjacent-sites* probe and is named as one. It
   bounds a myogenic contribution inside 40 to 75 Hz and bounds **nothing** inside the decoder's
   own 8 to 30 Hz passband.
-- **The falsifiable artifact test was run and did not falsify.** Deleting the sensorimotor strip
-  leaves 77.8% (35/45). That is the single most important caveat on this page, it is written up
+- **The falsifiable artifact test was run and didn't falsify.** Deleting the sensorimotor strip
+  leaves 77.8% (35/45). That's the single most important caveat on this page, it's written up
   in full in [EXPLAINER.md](EXPLAINER.md) §17 rather than buried here, and its registered
   verdict is *suggested, not established*.
 
@@ -151,24 +150,24 @@ Data downloads automatically on first run (cached in `~/mne_data`).
 python src/checks/test_pipeline.py       # or: python -m pytest src/checks/test_pipeline.py -q
 ```
 
-19 regression tests, under a second, no data download. They are not "does it run" tests.
+19 regression tests, under a second, no data download. They aren't "does it run" tests.
 Each one guards a mistake this project actually made and had to retract, so a future edit
 that reintroduces it fails here instead of in this README. The three that matter most:
 
-- **95.9% and 47.4% are not attainable accuracies.** With 45 trials tested exactly once
+- **95.9% and 47.4% aren't attainable accuracies.** With 45 trials tested exactly once
   each, accuracy is a count over 45, so it can only land on multiples of 2.222%. Both
   numbers were published here as measurements. Neither is on the lattice, so neither ever
   was one.
-- **CSP sits inside the Pipeline.** If it is fitted once outside, the spatial filters see
+- **CSP sits inside the Pipeline.** If it's fitted once outside, the spatial filters see
   the test trials and every accuracy in this repo is invalid.
 - **`for_torch` rejects volts-scale data.** Feeding EEGNet volts leaves BatchNorm unable to
   normalize; the network scores exactly the majority-class rate while being dead, which
-  reads as a plausible finding and is not one.
+  reads as a plausible finding and isn't one.
 
 Shared definitions live in `common.py`: the classifier, the Wilson interval, Holm
 correction, the channel sets and the loader. They used to be copied into each script,
 because importing a script that defined them also ran its multi-minute analysis. Every
-script has a `__main__` guard now, so importing costs nothing and there is one definition
+script has a `__main__` guard now, so importing costs nothing and there's one definition
 of what "the published pipeline" means rather than five.
 
 ### Why `.provenance_cache/` is committed
@@ -176,11 +175,11 @@ of what "the published pipeline" means rather than five.
 The cache is the evidence pool: `src/checks/check_provenance.py` resolves every number in
 README.md and EXPLAINER.md into some script's captured stdout, and those captures live in
 `.provenance_cache/`, keyed by script name with a source hash in `meta.json`. If the cache
-were untracked, a fresh clone could not check a single claim without first re-running every
+were untracked, a fresh clone couldn't check a single claim without first re-running every
 registered script, which is hours of compute, and the slowest script alone is most of a
 working day cold. A claim that can only be checked by people who already have the cache is
 not checkable, so the cache ships with the repo. Entries are verbatim stdout, never edited,
-and a stale entry cannot pass silently, because the recorded source hash stops matching the
+and a stale entry can't pass silently, because the recorded source hash stops matching the
 moment a script changes. The longer form of this argument sits where the rule is enforced,
 in `.gitignore`.
 
@@ -190,8 +189,8 @@ Cross-subject, harder contrasts and the EEGNet comparison are all built now (run
 is actually left:
 
 - **More trials per subject.** Almost every limitation above traces back to 45 trials: the
-  quantized folds, the underpowered comparisons, the learning curve that cannot be run. Public
-  corpora exist with 2,000–5,000 trials per subject. It is also what would give the
+  quantized folds, the underpowered comparisons, the learning curve that can't be run. Public
+  corpora exist with 2,000–5,000 trials per subject. It's also what would give the
   sensorimotor-deletion McNemar enough discordant trials to decide anything.
 - **Filter-bank CSP (FBCSP).** CSP per sub-band, combined by the classifier. A reliable gain, and
   still classical and interpretable.
@@ -201,15 +200,15 @@ is actually left:
 - **ICA-based artifact rejection**, and a paradigm that records EOG.
 - **The second arm of the muscle check.** `emg_proxy.py` is one half of a two-part condition:
   the high-band probe at muscle territory, which came back null. The other half is a
-  temporal-channel-**deleted** ablation *inside* 8–30 Hz, which should not hurt appreciably if
-  the decoder is not riding muscle. It has not been run, and a conjunction with one arm run is
+  temporal-channel-**deleted** ablation *inside* 8–30 Hz, which shouldn't hurt appreciably if
+  the decoder isn't riding muscle. It hasn't been run, and a conjunction with one arm run is
   not satisfied.
 - **EMG inside the decoder's own passband.** The probe covers 40–75 Hz and is blind at 8–30 Hz
   by construction, which is the only band the headline can actually be contaminated in. Closing
-  that needs an instrument this montage and this sampling rate cannot provide.
+  that needs an instrument this montage and this sampling rate can't provide.
 - **Re-scoring `results/sweep_results.csv` on an exact null.** Run blocking moved one of the two median
   subjects across 0.05, so per-subject significance across the 109 was computed with a null
-  that is exact but not the best available. Three subjects is an existence proof, not a survey.
+  that's exact but not the best available. Three subjects is an existence proof, not a survey.
 
 See [EXPLAINER.md](EXPLAINER.md) §12 for the full scoreboard, including the complete list of
 claims this project published and later retracted. That list only grows, corrections are added

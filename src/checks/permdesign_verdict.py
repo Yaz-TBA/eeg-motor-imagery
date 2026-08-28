@@ -3,7 +3,7 @@ matches, the falsification-gate summary, the exact-cells-only re-scoring, and th
 registered risks this run does not repair. Split out 2026-08-26; the body is
 verbatim, withdrawn headlines included."""
 
-import permdesign_lib  # noqa: F401  -- environment and path setup runs first
+import _bootstrap  # noqa: F401  -- puts src/ on the path; must come first
 
 import numpy as np
 

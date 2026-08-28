@@ -2,7 +2,7 @@
 pilot reproduce) and gate 2 (is C1 what sklearn does). Split out 2026-08-26; the
 bodies are verbatim from that file."""
 
-import permdesign_lib  # noqa: F401  -- environment and path setup runs first
+import _bootstrap  # noqa: F401  -- puts src/ on the path; must come first
 
 import time
 

@@ -84,11 +84,7 @@ from sklearn.model_selection import (
 mne.set_log_level("ERROR")
 warnings.filterwarnings("ignore")
 
-# common.py lives one level up, beside the script groups; put its directory on the
-# path so this script can be launched from anywhere.
-import sys
-from pathlib import Path
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+import _bootstrap  # noqa: F401  -- puts src/ on the path; must come first
 
 from common import FRONTOPOLAR, make_clf
 

@@ -60,11 +60,7 @@ from __future__ import annotations
 import argparse
 import sys
 
-# common.py lives one level up, beside the script groups; put its directory on the
-# path so this script can be launched from anywhere.
-import sys
-from pathlib import Path
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+import _bootstrap  # noqa: F401  -- puts src/ on the path; must come first
 
 from infstats_lib import cannot, head
 from infstats_ledger import section_discrepancies, section_ledger

@@ -11,11 +11,7 @@ Nothing here downloads data or trains anything; the whole file runs in under a s
 
 import numpy as np
 
-# common.py lives one level up, beside the script groups; put its directory on the
-# path so this script can be launched from anywhere.
-import sys
-from pathlib import Path
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+import _bootstrap  # noqa: F401  -- puts src/ on the path; must come first
 
 import common
 from common import (

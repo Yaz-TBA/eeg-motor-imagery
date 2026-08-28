@@ -17,11 +17,7 @@ import numpy as np
 import mne
 from mne.datasets import eegbci
 
-# common.py lives one level up, beside the script groups; put its directory on the
-# path so every emg_* module can be imported from anywhere.
-import sys
-from pathlib import Path
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+import _bootstrap  # noqa: F401  -- puts src/ on the path; must come first
 
 from common import FRONTOPOLAR, SENSORIMOTOR, TEMPORAL
 

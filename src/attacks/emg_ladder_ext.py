@@ -2,6 +2,8 @@
 family, the intermittent arm, the saturation probe and the tiered bound. Split out
 2026-08-26; the body is verbatim, and it is disclosed there as not blind."""
 
+import _bootstrap  # noqa: F401  -- puts src/ on the path; must come first
+
 import numpy as np
 
 from common import TEMPORAL

@@ -3,7 +3,7 @@ permutation_design.py. Split out 2026-08-26; the bodies are verbatim, and the
 block-cache stamps are unchanged, so existing .permutation_design_cache/ blocks
 keep resolving."""
 
-import permdesign_lib  # noqa: F401  -- environment and path setup runs first
+import _bootstrap  # noqa: F401  -- puts src/ on the path; must come first
 
 import hashlib
 import os

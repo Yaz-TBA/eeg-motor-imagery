@@ -2,7 +2,7 @@
 and post-registration arm 10, the random-17-channel-deletion null. Split out
 2026-08-26; the stage bodies are verbatim from that file."""
 
-import ablation_data  # noqa: F401  -- installs the common.py path first
+import _bootstrap  # noqa: F401  -- puts src/ on the path; must come first
 
 import numpy as np
 from scipy import stats

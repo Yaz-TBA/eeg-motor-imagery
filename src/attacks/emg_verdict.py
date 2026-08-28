@@ -3,15 +3,41 @@ spatial profile, arm (a) against arm (b), the limitations that survive every
 outcome, and the word this run is allowed to use. Split out 2026-08-26; the body
 is verbatim from that file."""
 
+from typing import NamedTuple
+
 import time
 
 from emg_setup import ALPHA, INTERMITTENT_FRACTION, hr, sub
 
 
-def run_verdict(D, K_PRIMARY, PRIMARY_CELL, primary_results, null_stats,
-                p_perm_str, agg_t_p, agg_u_p, agg_d, ARM_A_POSITIVE,
-                MDE_AGGREGATE, MDE_PERCHANNEL, LADDER_FAILED, thr_by_topo,
-                CONT_SHAPE_BOUND, ALL_TOPOS, T_START):
+class Primary(NamedTuple):
+    """The primary test's outputs, which are read together and written nowhere.
+
+    Bundled out of run_verdict's seventeen positional parameters. Each field is
+    unpacked below into the name the old signature used, so the body is unchanged.
+    """
+
+    K_PRIMARY: object
+    PRIMARY_CELL: object
+    primary_results: object
+    null_stats: object
+    p_perm_str: object
+    agg_t_p: object
+    agg_u_p: object
+    agg_d: object
+    ARM_A_POSITIVE: object
+    MDE_AGGREGATE: object
+    MDE_PERCHANNEL: object
+    CONT_SHAPE_BOUND: object
+    T_START: object
+
+
+def run_verdict(D, P, LADDER_FAILED, thr_by_topo, ALL_TOPOS):
+    K_PRIMARY, PRIMARY_CELL, primary_results = P.K_PRIMARY, P.PRIMARY_CELL, P.primary_results
+    null_stats, p_perm_str = P.null_stats, P.p_perm_str
+    agg_t_p, agg_u_p, agg_d = P.agg_t_p, P.agg_u_p, P.agg_d
+    ARM_A_POSITIVE, MDE_AGGREGATE = P.ARM_A_POSITIVE, P.MDE_AGGREGATE
+    MDE_PERCHANNEL, CONT_SHAPE_BOUND, T_START = P.MDE_PERCHANNEL, P.CONT_SHAPE_BOUND, P.T_START
     acc_str, FLOOR, MAJ_CORRECT, N = D.acc_str, D.FLOOR, D.MAJ_CORRECT, D.N
     BANDS, NYQ = D.BANDS, D.NYQ
 

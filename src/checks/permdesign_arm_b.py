@@ -2,7 +2,7 @@
 global shuffle against block shuffle, and the replacement for SHUFFLE_MAX. Split
 out 2026-08-26; the body is verbatim from that file."""
 
-import permdesign_lib  # noqa: F401  -- environment and path setup runs first
+import _bootstrap  # noqa: F401  -- puts src/ on the path; must come first
 
 from types import SimpleNamespace
 

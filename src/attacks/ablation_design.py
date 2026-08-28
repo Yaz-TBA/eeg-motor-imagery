@@ -2,6 +2,8 @@
 half can and cannot detect, computed from the design alone. Split out 2026-08-26.
 Everything here conditions on nothing the run produces."""
 
+from dataclasses import dataclass
+
 from scipy import stats
 
 ALPHA = 0.05   # the registered two-sided alpha, shared by every stage
@@ -125,3 +127,39 @@ def print_detection_floor(n, G_THRESHOLD):
     print("rule are not even evaluated on the same seed set. See the per-seed McNemar "
           "table below.")
     return _min_gap, _mg_ndisc, _mg_b, _mg_c, _mg_p
+
+
+@dataclass(frozen=True)
+class Ablation:
+    """Everything the three verdict stages read but none of them change.
+
+    These twenty values were threaded through run_falsifiers, run_verdict and
+    run_closing as positional arguments, which put three functions at 20+ parameters.
+    Nothing about the analysis changed when they were bundled: each stage still
+    unpacks them into the same local names on its first line, so every body below
+    that line is the code that produced the committed stdout.
+    """
+
+    by_name: object
+    results: object
+    ALL64: object
+    SMC: object
+    FP: object
+    LORO: object
+    NWIDE: object
+    WIDE: object
+    n: int
+    majority: object
+    maj_correct: object
+    n_hands: object
+    n_feet: object
+    sweeps: object
+    comp_sweep: object
+    comp_seed42: object
+    COMPLEMENT: object
+    ch_names: object
+    NOISE_BAND: object
+    G_THRESHOLD: object
+    N_RANDOM_DRAWS: object
+    skf: object
+    labels: object

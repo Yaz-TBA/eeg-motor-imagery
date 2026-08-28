@@ -2,6 +2,8 @@
 pre-declared informativeness call on R2. Split out 2026-08-26; the body is
 verbatim from that file."""
 
+import _bootstrap  # noqa: F401  -- puts src/ on the path; must come first
+
 import numpy as np
 
 from common import TEMPORAL

@@ -70,7 +70,7 @@ from emg_sharp import run_positive_control, run_sharp
 from emg_univariate import run_precue, run_univariate
 from emg_ladder import run_ladder
 from emg_ladder_ext import run_ladder_extension
-from emg_verdict import run_verdict
+from emg_verdict import Primary, run_verdict
 
 
 def main():
@@ -92,10 +92,15 @@ def main():
     run_precue(D, log_power, two_tests)
     L = run_ladder(D, cohens_d, MDE_AGGREGATE)
     CONT_SHAPE_BOUND = run_ladder_extension(D, L)
-    run_verdict(D, K_PRIMARY, PRIMARY_CELL, primary_results, null_stats,
-                p_perm_str, agg_t_p, agg_u_p, agg_d, ARM_A_POSITIVE,
-                MDE_AGGREGATE, MDE_PERCHANNEL, L.LADDER_FAILED, L.thr_by_topo,
-                CONT_SHAPE_BOUND, L.ALL_TOPOS, T_START)
+    P = Primary(
+        K_PRIMARY=K_PRIMARY, PRIMARY_CELL=PRIMARY_CELL,
+        primary_results=primary_results, null_stats=null_stats,
+        p_perm_str=p_perm_str, agg_t_p=agg_t_p, agg_u_p=agg_u_p, agg_d=agg_d,
+        ARM_A_POSITIVE=ARM_A_POSITIVE, MDE_AGGREGATE=MDE_AGGREGATE,
+        MDE_PERCHANNEL=MDE_PERCHANNEL, CONT_SHAPE_BOUND=CONT_SHAPE_BOUND,
+        T_START=T_START)
+
+    run_verdict(D, P, L.LADDER_FAILED, L.thr_by_topo, L.ALL_TOPOS)
 
 
 if __name__ == "__main__":
