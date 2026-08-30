@@ -221,7 +221,6 @@ is actually left:
   that's exact but not the best available. Three subjects is an existence proof, not a survey.
 
 See [EXPLAINER.md](EXPLAINER.md) §12 for the full scoreboard, including the complete list of
-claims this project published and later retracted. That list only grows, corrections are added
-to it, never swapped in over the record of the claim they correct.
+claims this project published and later retracted.
 
 The list only grows :sob: good to keep track & iterate, iterate, iterate tho.
