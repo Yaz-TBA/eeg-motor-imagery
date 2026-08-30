@@ -167,8 +167,14 @@ that reintroduces it fails here instead of in this README. The three that matter
 Shared definitions live in `common.py`: the classifier, the Wilson interval, Holm
 correction, the channel sets and the loader. They used to be copied into each script,
 because importing a script that defined them also ran its multi-minute analysis. Every
-script has a `__main__` guard now, so importing costs nothing and there's one definition
-of what "the published pipeline" means rather than five.
+script has a `__main__` guard now, so importing costs nothing.
+
+The statistics helpers are genuinely shared. The classifier is not, and the README used to say
+otherwise. Seven scripts still build their own CSP+LDA, and `decode_csp.py`, the one that
+produces the headline number, imports nothing from `common.py` at all. All of those
+constructions put CSP inside the Pipeline, so nothing leaks and no published number is affected,
+but `common.py` isn't yet one definition of what "the published pipeline" means, and claiming it
+was is an overclaim I'd rather correct than keep.
 
 ### Why `.provenance_cache/` is committed
 
@@ -179,8 +185,12 @@ were untracked, a fresh clone couldn't check a single claim without first re-run
 registered script, which is hours of compute, and the slowest script alone is most of a
 working day cold. A claim that can only be checked by people who already have the cache is
 not checkable, so the cache ships with the repo. Entries are verbatim stdout, never edited,
-and a stale entry can't pass silently, because the recorded source hash stops matching the
-moment a script changes. The longer form of this argument sits where the rule is enforced,
+and the recorded source hash stops matching the
+moment the registered script itself changes. That hash covers the entry file alone, not the
+modules it imports, so since the 2026-08-26 split into `src/pipeline`, `src/attacks` and
+`src/checks`, an edit inside an imported module leaves the key unchanged and the entry gets
+reported as cached. I tested it: a within-subject count changed from 41 to 39 inside a split
+module and the check still passed the script. That's a real hole and it's mine to close. The longer form of this argument sits where the rule is enforced,
 in `.gitignore`.
 
 ## Next

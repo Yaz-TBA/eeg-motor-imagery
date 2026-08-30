@@ -144,7 +144,9 @@ csp = CSP(n_components=4, reg=None, log=True, norm_trace=False)
 # Pipeline wrapper is this way so the CSP can refit within each training fold.
 # Stops it from cheating on the answers or smth LOL. Fit CSP once outside the loop
 # and the spatial filters get to peek at the test trials, which inflates every
-# number in this repo. test_pipeline.py asserts this exact placement.
+# number in this repo. test_pipeline.py asserts this placement on make_clf(), which this script
+# never calls, so the construction on the next line is unguarded: move the CSP fit outside the
+# loop here and the suite still reports 19/19. I checked, and that's a gap in the tests.
 clf = Pipeline([("CSP", csp), ("LDA", LinearDiscriminantAnalysis())])
 
 # Stratified k-fold, not ShuffleSplit: it tests every trial exactly once and

@@ -11,8 +11,14 @@ __pycache__/
 # This is NOT a contradiction of the STATUS.json rule below, and the difference is the reason
 # both rules can coexist: STATUS.json describes MUTABLE CURRENT STATE and is stale the moment
 # a commit lands. The provenance cache is a RECORD OF WHAT A SPECIFIC VERSION OF A SCRIPT
-# PRINTED, keyed by a SHA-256 of that script's source (see meta.json). Change the source and
-# the key changes and the entry stops matching, automatically. It cannot silently go stale.
+# PRINTED, keyed by a SHA-256 of that script's source (see meta.json). Change the registered
+# script and the key changes and the entry stops matching, automatically.
+#
+# WHAT THAT HASH DOES NOT COVER, stated because the README used to overstate it: the entry
+# file only, never the modules it imports. Before the 2026-08-26 split those were the same
+# thing. They are not any more, so an edit inside an imported module leaves the key intact and
+# the entry reports as cached when it is stale. Verified by changing a within-subject count
+# from 41 to 39 inside a split module and watching the check pass it.
 #
 # Contents are VERBATIM stdout and are never edited, including the three files that carry a
 # local MNE download path (~/mne_data/...). Scrubbing them would make the cache no longer a

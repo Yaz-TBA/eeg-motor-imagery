@@ -2,7 +2,7 @@
   "load_and_plot.py": "7277f6e490f3",
   "epoch_trials.py": "5e50feb5c25c",
   "filter_and_epoch.py": "c34674fb6060",
-  "decode_csp.py": "cf1a590337fd",
+  "decode_csp.py": "a55bd2dbfb35",
   "ablate_channels.py": "e574d9bab546",
   "harder_contrast.py": "3e84d1d48e0a",
   "evaluate_honestly.py": "1262c2133ede",
