@@ -55,11 +55,11 @@ three groups, one folder each: `src/pipeline/`, `src/attacks/`, `src/checks/`. *
 | `src/checks/inferential_stats.py` | Every CI and p-value in the docs, computed in one place |
 | `src/checks/check_provenance.py` | Refuses numbers in the docs that no script produces |
 | `src/checks/check_wording.py` | Catches banned phrasings and retracted claims |
-| `src/checks/test_pipeline.py` | 19 regression tests, one per mistake actually made |
+| `src/checks/test_pipeline.py` | 21 regression tests, one per mistake actually made |
 | `src/common.py` | The shared pipeline definition, imported by everything |
 
 **Directories:** `src/` all the code, sorted into the three groups above, with
-`src/common.py` the shared definition · `prereg/` the registered designs, written before the scripts existed ·
+`src/common.py` the shared definition · `prereg/` the registered designs, each dated in `prereg/README.md` ·
 `figures/` generated plots · `results/` generated data · `.provenance_cache/` captured stdout
 that `check_provenance.py` checks the docs against.
 
@@ -147,10 +147,10 @@ Data downloads automatically on first run (cached in `~/mne_data`).
 ### Tests
 
 ```bash
-python src/checks/test_pipeline.py       # or: python -m pytest src/checks/test_pipeline.py -q
+python src/checks/test_pipeline.py       # or, with pytest installed: python -m pytest src/checks/test_pipeline.py -q
 ```
 
-19 regression tests, under a second, no data download. They aren't "does it run" tests.
+21 regression tests, under a second, no data download. They aren't "does it run" tests.
 Each one guards a mistake this project actually made and had to retract, so a future edit
 that reintroduces it fails here instead of in this README. The three that matter most:
 

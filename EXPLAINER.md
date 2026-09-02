@@ -987,9 +987,12 @@ rung 10's claim.
 > **A second layer, 2026-07-25: the control cell reproduces and the audited cell doesn't.**
 > `narrow-short` matches regime B exactly, as stated. But the `original-C` cell is the one this
 > whole rung exists to audit, and it does **not** match rung 10: this table's **63.0%** against
-> the **63.3%** that `eegnet_compare.py` prints for the identical configuration (section C of its
-> stdout, the `EEGNet (wide)` row), a gap of **0.3 points**: 3 trials of 900, since the mean runs
-> over 20 leave-one-subject-out folds of 45 trials each. CSP agrees to the digit (51.4% in both),
+> the **63.3%** that `eegnet_compare.py` printed for the identical configuration when this was
+> written (section C of its stdout, the `EEGNet (wide)` row), a gap of **0.3 points**: 3 trials of
+> 900, since the mean runs over 20 leave-one-subject-out folds of 45 trials each. Regenerated on
+> 2026-08-05 the same cell printed 63.2%, and on 2026-08-26 it printed 62.9%, which is what the
+> shipped cache holds, so three runs of one configuration span 4 trials of 900. CSP agrees to the
+> digit (51.4% in both),
 > so the disagreement is the CNN's, not the data's or the folds'. Don't expect to reproduce
 > either figure exactly: that a byte-identical configuration moves between runs is the finding
 > here, not a fault in the capture. Nothing
@@ -2054,12 +2057,13 @@ anyone had rechecked them.
   wrong side: it retracted an accurate note about CNN non-determinism and replaced it with an
   unmeasured claim of determinism. Runs of a byte-identical regime-C configuration disagree by
   **0.3 points**: 63.0% in the committed `regime_decomposition.json` checkpoint against the 63.3%
-  `eegnet_compare.py` prints for that cell, while CSP reproduces exactly. Restored, with the measurement
+  `eegnet_compare.py` printed for that cell at the time, then 63.2% on the 2026-08-05 regeneration
+  and 62.9% on 2026-08-26, while CSP reproduces exactly. Restored, with the measurement
   attached (§13).
 - **"One commit per rung."** 26 commits for 11 rungs, one commit introducing four rungs, and rung
   11 spanning three. Wrong in both directions, in a sentence inviting the reader to check it
   against the history (§6).
-- **" 282  extracts every number in the docs."** Stated in four places; the script
+- **"`check_provenance.py` extracts every number in the docs."** Stated in four places; the script
   never claimed it. It can't see multipliers, point-differences, µV, t-statistics or parameter
   counts, which is exactly where the two worst defects above live. Corrected to the docstring's
   own scope, with the blind spots tabulated below.
@@ -2121,7 +2125,7 @@ refuted**, and the entries are ordered with the costly ones first.
   p < 0.05 at *any* discordant count is 6 trials, or 13.3 points. The rule's other half fires at
   10.0 points. Between those two the conjunction can't fire whatever the data does. The
   pre-registration wasn't edited to match; it's refuted on the record.
-- **" 284  builds four conditions and only four."** A factual statement about the
+- **"`ablate_channels.py` builds four conditions and only four."** A factual statement about the
   code, true when written and false now that the script builds six. Listed because this document
   has twice been caught describing its own scripts from memory, and a correction that leaves the
   old line unmarked is how the next reader gets misled.
@@ -2304,8 +2308,9 @@ python src/pipeline/decode_csp.py        # full pipeline + writes figures/csp_pa
   > the facts even though it was wrong on the emphasis.** Two runs of a byte-identical
   > configuration disagree: `regime_decomposition.json`'s `original-C` cell (900 trials, 641
   > samples, 4–38 Hz, 0.0–4.0 s) records EEGNet **0.630000**, while a later run of
-  > `eegnet_compare.py` prints **63.3%** for the same regime on the same
-  > data. That's **0.3 points, 3 trials of 900**. CSP over the same cell reproduces
+  > `eegnet_compare.py` printed **63.3%** for the same regime on the same
+  > data. That's **0.3 points, 3 trials of 900**, and two regenerations since printed 63.2%
+  > (2026-08-05) and 62.9% (2026-08-26). CSP over the same cell reproduces
   > *exactly* (51.4% both places), which is what isolates the disagreement to the CNN rather than
   > to the data or the folds.
   >
@@ -3082,6 +3087,14 @@ when some script happens to print the number in the act of retracting it. A figu
 produced by any code, and now survives only in the record of its own withdrawal, is
 indistinguishable to this tool from a fabrication. It's left failing rather than papered over,
 because deleting a retraction to turn a guard green is the exact trade this repo exists to refuse.
+
+> **Update 2026-09-02.** The count above is dated. Nine quotations are unbacked today, not one:
+> the two withdrawn ocular-decoder means quoted inside their own withdrawal in §7 rung 7, and the
+> two earlier values of the non-deterministic regime-C cell quoted in §7 rung 11, §12 and §13,
+> which later regenerations superseded. `check_provenance.py` now names each of them in
+> `EXPECTED_UNBACKED` with a reason, reports them under their own heading, and exits 0 only when
+> nothing else is unbacked, so a new unbacked figure fails the run on its own. Nothing was
+> deleted to get there; the trade this paragraph refuses is still refused.
 
 > **Correction, on this section's account of its own guard.** Two claims here are
 > withdrawn. The script table used to say `check_provenance.py` *"extracts every number

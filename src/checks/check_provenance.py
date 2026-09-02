@@ -6,8 +6,9 @@
 """Every number in the docs must come out of a script. This checks that.
 
 Refuses to let a number appear in the docs unless a script in this repo produces
-it, and exits FAIL on figures quoted inside retraction prose too, which is
-expected; those get adjudicated by hand, not fixed. The failure mode it guards
+it. Figures quoted inside retraction prose that no script ever produced are named
+in EXPECTED_UNBACKED with a reason and reported under their own heading; they don't
+fail the run, and anything unbacked that isn't named there does. The failure mode it guards
 against actually happened here: ablation accuracies (95.9% / 47.4% / 93.3%) sat
 in README.md for weeks while no script produced them, and two were
 arithmetically impossible, since on 45 trials accuracy is a multiple of 1/45.
@@ -27,9 +28,10 @@ How it works:
 
 The exit contract, stated exactly, because an overstated one is worse than none:
 
-  exit 1  any UNBACKED claim, or any analysis script on disk the registry does
-          not list, or, on a full run only, any registered script that produced
-          no output (a crashed script must not turn a FAIL into a pass)
+  exit 1  any UNBACKED claim not named in EXPECTED_UNBACKED, or any analysis
+          script on disk the registry does not list, or, on a full run only,
+          any registered script that produced no output (a crashed script must
+          not turn a FAIL into a pass)
   exit 0  everything else, including INCOMPLETE, which is reachable only under
           --fast, where skipped slow scripts are expected to contribute nothing
 
@@ -271,6 +273,26 @@ ALLOWLIST = {
     # CONTEXT_EXEMPT handles "95% CI", not by value.
 }
 
+# Claims the docs are EXPECTED to carry with no script behind them, keyed by
+# (document, claim key). Two kinds qualify, and each entry says which: a figure quoted
+# only inside its own withdrawal that no script ever produced, and a dated value that a
+# non-deterministic cell printed on an earlier run. Listing one here is a claim that a
+# reader has adjudicated it by hand; anything unbacked and NOT listed fails the run,
+# which is what keeps this from becoming an allowlist for fabrication. Value-keyed like
+# ALLOWLIST, so a second 63.3% appearing elsewhere in the same document would also pass:
+# read the EXPECTED section of the report whenever a count moves.
+EXPECTED_UNBACKED = {
+    ("EXPLAINER.md", "pct:57.5"): "withdrawn ocular-decoder group mean (rung 7), quoted "
+                                  "inside its own withdrawal; no script ever produced it",
+    ("EXPLAINER.md", "pct:53.9"): "withdrawn ocular-decoder group mean (rung 7), the same "
+                                  "withdrawal; no script ever produced it",
+    ("EXPLAINER.md", "pct:63.3"): "regime-C EEGNet accuracy from the run the rung-11 audit was "
+                                  "written against; the cell is non-deterministic and later "
+                                  "regenerations printed 63.2 and 62.9, the shipped cache",
+    ("EXPLAINER.md", "pct:63.2"): "the same cell on the 2026-08-05 regeneration, kept dated "
+                                  "beside 63.3 as the record of the drift",
+}
+
 
 @dataclass
 class Claim:
@@ -346,6 +368,9 @@ def extract_claims(doc: Path) -> tuple[list[Claim], int]:
 # "forgotten". Adding a script here asserts that its stdout backs no doc claim.
 # If that stops being true, register it instead.
 NON_ANALYSIS = {
+    "_bootstrap.py": "path setup only: puts src/ on sys.path so the split modules can "
+                     "import common.py. Three identical copies, one per folder, and "
+                     "none prints anything.",
     "status.py": "writes STATUS.json, a machine-written account of git state "
                  "(branch, dirty counts, default-branch SHA, gh visibility). "
                  "It measures the repo, not the EEG data, and no claim in "
@@ -365,7 +390,7 @@ NON_ANALYSIS = {
                  "surface. Added 2026-08-04, after it was extracted in "
                  "8419ddd and left in neither list -- which made the guard "
                  "exit FAIL for a reason README.md never disclosed.",
-    "test_pipeline.py": "a test suite. Its stdout is nineteen PASS lines and "
+    "test_pipeline.py": "a test suite. Its stdout is twenty-one PASS lines and "
                         "a count, and every figure inside it is an assertion "
                         "about a number that is already registered somewhere "
                         "else. Registering it would let a doc claim be backed "
@@ -617,7 +642,8 @@ def main() -> int:
         print(f"\nCLAIMS ({len(claims)} extracted, "
               f"{dropped} digits inside code fences exempted)")
         for c in claims:
-            tag = "allowlist" if c.key in ALLOWLIST else "check"
+            tag = ("allowlist" if c.key in ALLOWLIST
+                   else "expected" if (c.doc, c.key) in EXPECTED_UNBACKED else "check")
             print(f"  {c.doc}:{c.line:<5} {c.kind:<6} {c.raw:<8} {tag:<10} "
                   f"{c.context}")
         return 0
@@ -643,6 +669,11 @@ def main() -> int:
         else:
             backed.append(c)
 
+    # Named exceptions leave the failing bucket here, by (document, key), and are
+    # reported under their own heading below so they stay visible.
+    expected = [c for c in unbacked if (c.doc, c.key) in EXPECTED_UNBACKED]
+    unbacked = [c for c in unbacked if (c.doc, c.key) not in EXPECTED_UNBACKED]
+
     stray = unregistered_scripts()
     for s in stray:
         print(f"  ! {s} is not in REGISTRY -- its output is never checked")
@@ -652,6 +683,7 @@ def main() -> int:
     print(f"ALLOWLISTED {len(allowed):>4}   exempt by documented rule")
     print(f"WEAK        {len(weak):>4}   only backed by a line that reads as retraction")
     print(f"UNBACKED    {len(unbacked):>4}   no script produces this number")
+    print(f"EXPECTED    {len(expected):>4}   unbacked by documented rule, see EXPECTED_UNBACKED")
 
     if weak:
         print(f"\n{'-' * 72}\nWEAKLY BACKED (check by hand: is the doc quoting a "
@@ -660,6 +692,13 @@ def main() -> int:
             print(f"{c.doc}:{c.line} [{c.kind}] {c.raw}")
             print(f"    doc:  {c.context}")
             print(f"    only: {line[:88]}")
+
+    if expected:
+        print(f"\n{'-' * 72}\nEXPECTED UNBACKED (named in EXPECTED_UNBACKED with a reason; "
+              f"a new figure would not be here)\n{'-' * 72}")
+        for c in sorted(expected, key=lambda x: (x.doc, x.line)):
+            print(f"{c.doc}:{c.line} [{c.kind}] {c.raw}")
+            print(f"    {EXPECTED_UNBACKED[(c.doc, c.key)]}")
 
     if unbacked:
         print(f"\n{'-' * 72}\nUNBACKED CLAIMS\n{'-' * 72}")

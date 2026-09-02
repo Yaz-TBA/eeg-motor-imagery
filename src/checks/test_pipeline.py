@@ -176,6 +176,28 @@ def test_complement_size_is_47():
     assert 64 - len(SENSORIMOTOR) == 47
 
 
+def test_sensorimotor_strip_is_the_published_seventeen():
+    """Size and disjointness are not identity. Swapping C3 for an occipital channel keeps
+    every other test in this section green and changes what "sensorimotor deleted" means."""
+    assert SENSORIMOTOR == [
+        "FC3", "FC1", "FCz", "FC2", "FC4",
+        "C5", "C3", "C1", "Cz", "C2", "C4", "C6",
+        "CP3", "CP1", "CPz", "CP2", "CP4",
+    ]
+
+
+def test_loader_defaults_are_the_published_experiment():
+    """common.load_epochs's defaults ARE the experiment. Runs 4/8/12 are executed, not
+    imagined, movement; a 0-4 s crop is the whole-epoch window the README retracted a
+    comparison over; 4-38 Hz is the CNN's band, not the decoder's."""
+    assert common.SUBJECT == 1
+    assert common.RUNS == [6, 10, 14]
+    assert (common.L_FREQ, common.H_FREQ) == (8.0, 30.0)
+    assert (common.TMIN, common.TMAX) == (-1.0, 4.0)
+    assert common.CROP == (1.0, 2.0)
+    assert common.SEED == 42
+
+
 # =============================================================================
 # 5. The units guard. Regression test for a bug that produced a plausible wrong result.
 # =============================================================================

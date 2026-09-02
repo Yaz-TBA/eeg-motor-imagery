@@ -19,12 +19,12 @@ nobody can check is not an authority.
 
 | File | Governs | Written |
 |---|---|---|
-| `prereg-complement-ablation.md` | `../ablate_channels.py` | 2026-07-25 |
-| `prereg-emg-proxy.md` | `../emg_proxy.py` | 2026-07-25 |
-| `prereg-block-permutation.md` | `../permutation_design.py` | 2026-07-25 |
-| `prereg-permutation-validity.md` | `../validity_gate.py` | 2026-07-30 |
+| `prereg-complement-ablation.md` | `../src/attacks/ablate_channels.py` | 2026-07-25 |
+| `prereg-emg-proxy.md` | `../src/attacks/emg_proxy.py` | 2026-07-25 |
+| `prereg-block-permutation.md` | `../src/checks/permutation_design.py` | 2026-07-25 |
+| `prereg-permutation-validity.md` | `../src/checks/validity_gate.py` | 2026-07-30 |
 
-`runs/permutation-design-2026-07-25.stdout` is the captured run output that `../validity_gate.py:29`
+`runs/permutation-design-2026-07-25.stdout` is the captured run output that `../src/checks/validity_gate.py:33-34`
 cites for its subject marginals.
 
 ## These files are byte-identical to the originals. Nothing was edited.
@@ -51,15 +51,16 @@ directory tree and they point at it:
   `neuro-canon/runs/hostile-pass-2026-07-25/hostile_verify_A.py` and its stdout. **That harness is
   not vendored.** It is pilot material the registered designs cite as the *source of the disclosure
   they respond to*, never as evidence for a reported number. Every figure this repo publishes traces
-  to a script in the parent directory and to `.provenance_cache/`.
+  to a script under `../src/` and to `../.provenance_cache/`.
 - Three absolute paths of the form `/Users/<user>/...` survive, in
   `prereg-emg-proxy.md`, `prereg-block-permutation.md` and `prereg-complement-ablation.md`.
 - `prereg-permutation-validity.md:11` sends a reader to `OVERRIDE-RULING-2026-07-30.md` for the
-  twelve-agent adjudication of the fired gate. **That document is not in this repo and it is not
-  on my disk either.** It is the one citation in this directory with nothing behind it, and it
+  twelve-agent adjudication of the fired gate. **That document is not in this repo. It is held
+  locally, outside the published tree, with the other process records.** It is the one citation
+  in this directory a reader can't follow from here, and it
   was missing from this list until 2026-08-29. The two claims it is cited for, that the gate was
   unsatisfiable by any valid design and that half the override's reasoning was false, should be
-  read as assertions rather than as findings anyone can check.
+  read as assertions rather than as findings a reader can check here.
 
 A broken link in a frozen document is a smaller problem than an edited frozen document. That is the
 trade, and it is why it went this way.
