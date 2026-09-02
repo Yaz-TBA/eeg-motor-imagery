@@ -7,10 +7,10 @@ When you imagine moving, your sensorimotor cortex changes its mu (8–12 Hz) and
 (13–30 Hz) rhythm power in a spatially specific way. This project reads that pattern with
 a classic **CSP + LDA** baseline and guesses which movement was imagined.
 
-The decoder itself is a tutorial baseline and I want to be upfront about that. What I think
-is worth looking at is the second half: the suite I built to attack my own result, and the
-corrections it forced me to publish. The headline used to read 94.4%. It reads 91.1% now,
-and the reason is written up next to it rather than quietly edited out :)
+The decoder itself is a tutorial baseline. What I think
+is worth looking at is mainly the second half: the verification suite I built to attack my own result, and the
+corrections I had to publish. The headline used to read 94.4%. It reads 91.1% now,
+and the reason is written up next to it :)
 
 **Dataset:** [PhysioNet EEGBCI](https://physionet.org/content/eegmmidb/1.0.0/)
 motor-imagery set (109 subjects, 64-channel EEG @ 160 Hz), loaded via
